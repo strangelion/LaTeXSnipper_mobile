@@ -122,6 +122,7 @@ function cropGetPos(e) {
 }
 
 function bindCropEvents() {
+  camCropCanvas.style.touchAction = 'none';
   camCropCanvas.addEventListener('pointerdown', (e) => {
     const p = cropGetPos(e);
     camCropStart = { x: p.x, y: p.y };

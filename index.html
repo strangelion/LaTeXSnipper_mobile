@@ -55,7 +55,7 @@
         <input type="file" id="fileInput" accept="image/*,.pdf">
         <div id="dropContent">
           <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-          <div>拖入公式截图 / PDF · 点击上传 · <kbd>Ctrl+V</kbd> paste</div>
+          <div>拖入公式截图 / PDF · 点击上传 · <kbd>Ctrl+V</kbd> 粘贴</div>
           <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">所有识别均在本地浏览器完成，图片不会上传</div>
         </div>
         <img id="preview" style="display:none;" alt="Preview">
@@ -113,7 +113,7 @@
       <div class="error-msg" id="errorMsg" style="display:none;"></div>
 
       <div class="info-note">
-        <strong>Offline OCR:</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF（最多 100 页）、拍照和手写识别。
+        <strong>离线OCR：</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF（最多 100 页）、拍照和手写识别。
       </div>
     </div>
 
@@ -128,8 +128,8 @@
     <!-- ── Tab 4: History ── -->
     <div class="page" id="page-history">
       <div class="history-toolbar">
-        <button class="active" data-filter="all">All</button>
-        <button data-filter="favorites">Favorites</button>
+        <button class="active" data-filter="all">全部</button>
+        <button data-filter="favorites">收藏</button>
         <button id="clearHistory">清空</button>
       </div>
       <div class="history-list" id="historyList">

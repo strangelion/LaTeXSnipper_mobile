@@ -109,7 +109,7 @@ pre.result-code {
 }
 .cam-modal.show { display: flex; }
 .cam-modal video { max-width: 95vw; max-height: 70vh; border-radius: 12px; background: #000; }
-.cam-modal canvas { max-width: 95vw; max-height: 65vh; border-radius: 12px; display: block; }
+.cam-modal canvas { width: 95vw; max-height: 65vh; border-radius: 12px; display: block; object-fit: contain; }
 .cam-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
 .cam-btn {
   padding: 12px 28px; border-radius: 10px; border: none;
