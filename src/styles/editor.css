@@ -1,69 +1,52 @@
-/* editor.css — MathLive formula editor page styles */
+/* editor.css — Simple formula editor (textarea + MathLive preview) */
 
-.editor-wrap {
-  display: flex; flex-direction: column; gap: 0.75rem;
-}
+.editor-wrap { display: flex; flex-direction: column; gap: 0.6rem; }
 
-/* ── LaTeX source textarea ── */
 .latex-source {
-  width: 100%; padding: 0.75rem;
+  width: 100%; padding: 0.7rem;
   border: 1px solid var(--border-color);
   border-radius: 10px; background: var(--card-bg);
   color: var(--fg); font-family: "SF Mono","Cascadia Code","Consolas",monospace;
-  font-size: 0.9rem; line-height: 1.6;
+  font-size: 0.95rem; line-height: 1.6;
   resize: vertical; outline: none;
-  transition: border-color 0.2s;
+  touch-action: manipulation;
 }
 .latex-source:focus { border-color: var(--accent); }
-.latex-source::placeholder { color: var(--muted); opacity: 0.6; }
 
-.editor-wrap mathlive-field {
-  width: 100%; min-height: 100px;
-  font-size: 1.1rem;
-  border-radius: 12px;
+mathlive-field {
+  display: block; width: 100%; min-height: 60px;
   border: 1px solid var(--border-color);
-  background: var(--card-bg);
+  border-radius: 10px; background: var(--card-bg);
+  padding: 0.5rem; font-size: 1.1rem;
 }
 
-/* ── Snippet panel ── */
-.snippet-panel {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem;
+/* Snippet + symbol buttons */
+.snippet-row {
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
 }
-.snippet-btn {
-  padding: 8px 4px; border: 1px solid var(--border-color);
-  border-radius: 8px; background: var(--card-bg); color: var(--fg);
-  cursor: pointer; font-size: 0.78rem; font-family: inherit;
-  transition: all 0.15s; text-align: center;
+.snip-btn {
+  padding: 5px 10px; border: 1px solid var(--border-color);
+  border-radius: 7px; background: var(--card-bg); color: var(--fg);
+  font-size: 0.8rem; cursor: pointer; font-family: inherit;
+  touch-action: manipulation; user-select: none;
 }
-.snippet-btn:hover { border-color: var(--accent); background: rgba(37,99,235,0.06); }
-.snippet-btn:active { transform: scale(0.96); }
+.snip-btn:active { background: var(--accent); color: #fff; }
 
-.snippet-symbols {
-  display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center;
+/* Compute buttons */
+.compute-row {
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
 }
-.snippet-symbols .snippet-btn {
-  flex: 0 0 auto; padding: 6px 10px; font-size: 1rem; min-width: 36px;
+.comp-btn {
+  padding: 6px 12px; border: 1px solid var(--accent);
+  border-radius: 7px; background: var(--card-bg); color: var(--accent);
+  font-size: 0.8rem; cursor: pointer; font-family: inherit;
+  touch-action: manipulation; user-select: none;
 }
+.comp-btn:active { background: var(--accent); color: #fff; }
 
-/* ── Compute section ── */
-.compute-actions {
-  display: flex; gap: 0.4rem; flex-wrap: wrap;
-}
-.compute-btn {
-  padding: 6px 12px; border: 1px solid var(--border-color);
-  border-radius: 8px; background: var(--card-bg); color: var(--fg);
-  cursor: pointer; font-size: 0.82rem; font-family: inherit;
-  transition: all 0.15s;
-}
-.compute-btn:hover { border-color: var(--accent); background: rgba(37,99,235,0.06); }
 .compute-result {
-  padding: 0.75rem; background: var(--card-bg); border: 1px solid var(--border-color);
-  border-radius: 8px; font-size: 0.9rem; min-height: 40px;
+  padding: 0.6rem; background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 8px; font-size: 0.9rem; min-height: 36px;
   font-family: "SF Mono","Cascadia Code","Consolas",monospace;
+  word-break: break-all;
 }
-
-/* ── Export menu ── */
-.export-menu {
-  display: flex; gap: 0.4rem; flex-wrap: wrap;
-}
-.export-menu .snippet-btn { font-size: 0.75rem; }

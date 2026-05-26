@@ -119,57 +119,44 @@
     <!-- ── Tab 2: Editor ── -->
     <div class="page" id="page-editor">
       <div class="editor-wrap">
-        <!-- LaTeX source textarea for manual input -->
-        <textarea id="latexSource" class="latex-source" rows="3"
-          placeholder="在此输入 LaTeX 公式… 例如：&#10;\frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}"
+        <textarea id="latexSource" class="latex-source" rows="4"
+          placeholder="在此输入或粘贴 LaTeX 公式…&#10;例如：\frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}"
         ></textarea>
-        <!-- MathLive visual editor (WYSIWYG) -->
         <mathlive-field id="mathField"></mathlive-field>
-        <div class="snippet-panel" id="snippetPanel">
-          <button class="snippet-btn" data-latex="\frac{}{}">a/b</button>
-          <button class="snippet-btn" data-latex="^{}">xⁿ</button>
-          <button class="snippet-btn" data-latex="_{}">xₙ</button>
-          <button class="snippet-btn" data-latex="\sqrt{}">√</button>
-          <button class="snippet-btn" data-latex="\sqrt[]{}">ⁿ√</button>
-          <button class="snippet-btn" data-latex="\sum_{}^{}">Σ</button>
-          <button class="snippet-btn" data-latex="\prod_{}^{}">Π</button>
-          <button class="snippet-btn" data-latex="\int_{}^{}">∫</button>
-          <button class="snippet-btn" data-latex="\iint_{}^{}">∬</button>
-          <button class="snippet-btn" data-latex="\lim_{x\to\infty}">lim</button>
-          <button class="snippet-btn" data-latex="\begin{pmatrix}a & b \\ c & d\end{pmatrix}">2×2</button>
-          <button class="snippet-btn" data-latex="\begin{pmatrix}a & b & c \\ d & e & f \\ g & h & i\end{pmatrix}">3×3</button>
+        <div class="snippet-row">
+          <button class="snip-btn" data-latex="\frac{}{}">分式</button>
+          <button class="snip-btn" data-latex="\sqrt{}">根号</button>
+          <button class="snip-btn" data-latex="^{}">上标</button>
+          <button class="snip-btn" data-latex="_{}">下标</button>
+          <button class="snip-btn" data-latex="\sum_{}^{}">求和</button>
+          <button class="snip-btn" data-latex="\int_{}^{}">积分</button>
+          <button class="snip-btn" data-latex="\lim_{x\to\infty}">极限</button>
+          <button class="snip-btn" data-latex="\begin{pmatrix}a & b \\ c & d\end{pmatrix}">矩阵</button>
         </div>
-        <div class="snippet-symbols">
-          <button class="snippet-btn" data-latex="\alpha">α</button>
-          <button class="snippet-btn" data-latex="\beta">β</button>
-          <button class="snippet-btn" data-latex="\gamma">γ</button>
-          <button class="snippet-btn" data-latex="\delta">δ</button>
-          <button class="snippet-btn" data-latex="\epsilon">ε</button>
-          <button class="snippet-btn" data-latex="\theta">θ</button>
-          <button class="snippet-btn" data-latex="\lambda">λ</button>
-          <button class="snippet-btn" data-latex="\mu">μ</button>
-          <button class="snippet-btn" data-latex="\pi">π</button>
-          <button class="snippet-btn" data-latex="\sigma">σ</button>
-          <button class="snippet-btn" data-latex="\phi">φ</button>
-          <button class="snippet-btn" data-latex="\omega">ω</button>
-          <button class="snippet-btn" data-latex="\infty">∞</button>
-          <button class="snippet-btn" data-latex="\partial">∂</button>
-          <button class="snippet-btn" data-latex="\nabla">∇</button>
-          <button class="snippet-btn" data-latex="\approx">≈</button>
+        <div class="snippet-row">
+          <button class="snip-btn" data-latex="\alpha">α</button>
+          <button class="snip-btn" data-latex="\beta">β</button>
+          <button class="snip-btn" data-latex="\gamma">γ</button>
+          <button class="snip-btn" data-latex="\delta">δ</button>
+          <button class="snip-btn" data-latex="\theta">θ</button>
+          <button class="snip-btn" data-latex="\lambda">λ</button>
+          <button class="snip-btn" data-latex="\pi">π</button>
+          <button class="snip-btn" data-latex="\infty">∞</button>
+          <button class="snip-btn" data-latex="\partial">∂</button>
+          <button class="snip-btn" data-latex="\nabla">∇</button>
+          <button class="snip-btn" data-latex="\approx">≈</button>
+          <button class="snip-btn" data-latex="\neq">≠</button>
         </div>
-        <div class="compute-actions">
-          <button class="compute-btn" data-op="simplify">Simplify</button>
-          <button class="compute-btn" data-op="evaluate">Evaluate</button>
-          <button class="compute-btn" data-op="expand">Expand</button>
-          <button class="compute-btn" data-op="factor">Factor</button>
-          <button class="compute-btn" data-op="numeric">N()</button>
+        <div class="compute-row">
+          <button class="comp-btn" data-op="simplify">化简</button>
+          <button class="comp-btn" data-op="evaluate">求值</button>
+          <button class="comp-btn" data-op="expand">展开</button>
+          <button class="comp-btn" data-op="factor">因式分解</button>
+          <button class="comp-btn" data-op="numeric">数值</button>
         </div>
         <div class="compute-result" id="computeResult"></div>
         <div class="math-preview" id="editorPreview"></div>
-        <div class="result-actions">
-          <button class="ocr-btn" id="editorCopy">复制 LaTeX</button>
-          <button class="ocr-btn secondary" id="editorShare">分享</button>
-        </div>
+        <button class="ocr-btn" id="editorCopy" style="width:100%;">复制 LaTeX</button>
       </div>
     </div>
 

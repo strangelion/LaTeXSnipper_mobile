@@ -6,7 +6,13 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Capacitor / Android / iOS build artifacts
+# Signing keys (never commit!)
+*.keystore
+*.jks
+keystore.properties
+!debug.keystore
+
+# Android / iOS
 android/app/build/
 android/build/
 android/.gradle/
