@@ -82,17 +82,15 @@ pre.result-code {
 .result-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 .ocr-btn {
   flex: 1; text-align: center;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
-  color: #fff; border: none; padding: 10px 16px; border-radius: 8px;
-  cursor: pointer; font-size: 0.9rem; font-weight: 600;
-  transition: opacity 0.2s, transform 0.15s; font-family: inherit;
+  background: var(--card-bg); color: var(--accent);
+  border: 1px solid var(--accent); padding: 9px 14px; border-radius: 8px;
+  cursor: pointer; font-size: 0.85rem; font-weight: 500;
+  transition: background 0.2s; font-family: inherit;
 }
-.ocr-btn:hover { opacity: 0.9; transform: scale(1.01); }
-.ocr-btn:active { transform: scale(0.98); }
-.ocr-btn.copied { background: #22c55e; }
+.ocr-btn:active { background: var(--accent); color: #fff; }
+.ocr-btn.copied { background: #22c55e; color: #fff; border-color: #22c55e; }
 .ocr-btn.secondary {
-  background: var(--card-bg); color: var(--fg);
-  border: 1px solid var(--border-color); flex: 0.5;
+  border-color: var(--border-color); color: var(--muted);
 }
 
 /* ── Camera ── */
