@@ -79,20 +79,34 @@ const MATHLIVE_ZH = {
 let mathField = null;
 
 export async function initEditor() {
-  await customElements.whenDefined('mathlive-field');
+  console.debug('[editor] initEditor called');
+  try {
+    console.debug('[editor] waiting for mathlive-field...');
+    await customElements.whenDefined('mathlive-field');
+    console.debug('[editor] mathlive-field defined');
+  } catch(e) {
+    console.debug('[editor] mathlive-field failed', e.message);
+    return;
+  }
+
+  console.debug('[editor] MathfieldElement:', typeof MathfieldElement);
+  console.debug('[editor] mathField element:', document.getElementById('mathField'));
 
   // Chinese locale
-  try { MathfieldElement.strings = { 'zh-CN': MATHLIVE_ZH }; } catch (_) {}
-  try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
+  try { MathfieldElement.strings = { 'zh-CN': MATHLIVE_ZH }; console.debug('[editor] strings set'); } catch (_) { console.debug('[editor] strings failed'); }
+  try { MathfieldElement.locale = 'zh-CN'; console.debug('[editor] locale set'); } catch (_) { console.debug('[editor] locale failed'); }
   MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
+  console.debug('[editor] fontsDirectory set');
 
   mathField = document.getElementById('mathField');
-  if (!mathField) return;
+  if (!mathField) { console.debug('[editor] mathField not found!'); return; }
+  console.debug('[editor] mathField found, configuring...');
 
   // Native MathLive keyboard, smart fence, math mode
   mathField.mathVirtualKeyboardPolicy = 'onfocus';
   mathField.smartFence = true;
   mathField.smartMode = false;
+  console.debug('[editor] mathField configured, ready');
 
   // Sync MathJax preview on input
   mathField.addEventListener('input', () => syncPreview());
