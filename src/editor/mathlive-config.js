@@ -41,31 +41,19 @@ const MATHLIVE_ZH = {
   'menu.insert.real-part': '实部',
   'menu.insert.imaginary-part': '虚部',
   'menu.insert.conjugate': '共轭',
-  'tooltip.blackboard': '黑板粗体',
-  'tooltip.bold': '粗体',
-  'tooltip.italic': '斜体',
-  'tooltip.fraktur': '哥特体',
-  'tooltip.script': '手写体',
-  'tooltip.caligraphic': '书法体',
-  'tooltip.typewriter': '等宽',
-  'tooltip.roman-upright': '罗马正体',
+  'tooltip.blackboard': '黑板粗体', 'tooltip.bold': '粗体',
+  'tooltip.italic': '斜体', 'tooltip.fraktur': '哥特体',
+  'tooltip.script': '手写体', 'tooltip.caligraphic': '书法体',
+  'tooltip.typewriter': '等宽', 'tooltip.roman-upright': '罗马正体',
   'menu.font-style': '字体风格',
-  'menu.accent': '重音/修饰',
-  'menu.decoration': '装饰',
-  'menu.color': '颜色',
-  'menu.background-color': '背景',
-  'menu.evaluate': '计算',
-  'menu.simplify': '化简',
-  'menu.solve': '求解',
+  'menu.accent': '重音/修饰', 'menu.decoration': '装饰',
+  'menu.color': '颜色', 'menu.background-color': '背景',
+  'menu.evaluate': '计算', 'menu.simplify': '化简', 'menu.solve': '求解',
   'menu.solve-for': '求解 %@',
-  'menu.cut': '剪切',
-  'menu.copy': '复制',
-  'menu.copy-as-latex': '复制为 LaTeX',
-  'menu.copy-as-typst': '复制为 Typst',
-  'menu.copy-as-ascii-math': '复制为 ASCII Math',
-  'menu.copy-as-mathml': '复制为 MathML',
-  'menu.paste': '粘贴',
-  'menu.select-all': '全选',
+  'menu.cut': '剪切', 'menu.copy': '复制',
+  'menu.copy-as-latex': '复制为 LaTeX', 'menu.copy-as-typst': '复制为 Typst',
+  'menu.copy-as-ascii-math': '复制为 ASCII Math', 'menu.copy-as-mathml': '复制为 MathML',
+  'menu.paste': '粘贴', 'menu.select-all': '全选',
   'color.red': '红色', 'color.orange': '橙色',
   'color.yellow': '黄色', 'color.lime': '青柠色',
   'color.green': '绿色', 'color.teal': '蓝绿色',
@@ -77,52 +65,43 @@ const MATHLIVE_ZH = {
 };
 
 let mathField = null;
+let hostEl = null;
 
-export async function initEditor() {
-  console.debug('[editor] initEditor called');
-  console.debug('[editor] MathfieldElement global:', typeof window.MathfieldElement);
-  console.debug('[editor] mathlive-field defined:', !!customElements.get('mathlive-field'));
-
-  // Check if script actually loaded
-  if (typeof window.MathfieldElement === 'undefined') {
-    console.debug('[editor] MathLive script not loaded — waiting 5s then retry...');
-    await new Promise(r => setTimeout(r, 5000));
-    console.debug('[editor] after wait, MathfieldElement:', typeof window.MathfieldElement);
-    if (typeof window.MathfieldElement === 'undefined') {
-      console.debug('[editor] MathLive still not loaded, giving up');
-      return;
-    }
+export function initEditor() {
+  // Must wait for MathLive script to load MathfieldElement class
+  if (typeof MathfieldElement === 'undefined') {
+    setTimeout(initEditor, 200);
+    return;
   }
-
-  console.debug('[editor] MathLive OK, waiting for custom element...');
-  try {
-    await customElements.whenDefined('mathlive-field');
-    console.debug('[editor] mathlive-field defined');
-  } catch(e) {
-    console.debug('[editor] mathlive-field whenDefined failed', e.message);
-  }
-
-  console.debug('[editor] MathfieldElement:', typeof MathfieldElement);
-  console.debug('[editor] mathField element:', document.getElementById('mathField'));
 
   // Chinese locale
-  try { MathfieldElement.strings = { 'zh-CN': MATHLIVE_ZH }; console.debug('[editor] strings set'); } catch (_) { console.debug('[editor] strings failed'); }
-  try { MathfieldElement.locale = 'zh-CN'; console.debug('[editor] locale set'); } catch (_) { console.debug('[editor] locale failed'); }
+  try { MathfieldElement.strings = { 'zh-CN': MATHLIVE_ZH }; } catch (_) {}
+  try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
   MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
-  console.debug('[editor] fontsDirectory set');
 
-  mathField = document.getElementById('mathField');
-  if (!mathField) { console.debug('[editor] mathField not found!'); return; }
-  console.debug('[editor] mathField found, configuring...');
-
-  // Native MathLive keyboard, smart fence, math mode
+  // Create MathfieldElement programmatically (same as desktop app)
+  mathField = new MathfieldElement();
   mathField.mathVirtualKeyboardPolicy = 'onfocus';
   mathField.smartFence = true;
   mathField.smartMode = false;
-  console.debug('[editor] mathField configured, ready');
+  mathField.style.minHeight = '100px';
+  mathField.style.fontSize = '1.1rem';
+  mathField.id = 'mathField';
 
-  // Sync MathJax preview on input
-  mathField.addEventListener('input', () => syncPreview());
+  // Append to editor page
+  hostEl = document.getElementById('page-editor')?.querySelector('.editor-wrap');
+  if (hostEl) {
+    // Insert before the preview div (second child)
+    const preview = document.getElementById('editorPreview');
+    if (preview) {
+      hostEl.insertBefore(mathField, preview);
+    } else {
+      hostEl.appendChild(mathField);
+    }
+  }
+
+  // Sync MathJax preview
+  mathField.addEventListener('input', syncPreview);
 
   // Copy button
   document.getElementById('editorCopy')?.addEventListener('click', () => {
@@ -133,6 +112,8 @@ export async function initEditor() {
       if (b) { b.textContent = '已复制 ✓'; setTimeout(() => b.textContent = '复制 LaTeX', 1500); }
     });
   });
+
+  syncPreview();
 }
 
 function syncPreview() {
@@ -156,11 +137,9 @@ function syncPreview() {
 
 // Fill editor from OCR/history
 export function setEditorContent(latex) {
-  if (!mathField) mathField = document.getElementById('mathField');
-  if (mathField) {
-    mathField.value = latex;
-    mathField.dispatchEvent(new Event('input', { bubbles: true }));
-    const t = document.querySelector('.bottom-nav button[data-page="editor"]');
-    if (t) t.click();
-  }
+  if (!mathField) { initEditor(); setTimeout(() => setEditorContent(latex), 300); return; }
+  mathField.value = latex;
+  mathField.dispatchEvent(new Event('input', { bubbles: true }));
+  const t = document.querySelector('.bottom-nav button[data-page="editor"]');
+  if (t) t.click();
 }
