@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="LaTeXSnipper — 公式识别 — 离线 ONNX 公式 OCR 识别">
+  <title>LaTeXSnipper — 公式识别</title>
+  <link rel="icon" type="image/png" href="/icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/vendor/mathlive/mathlive-fonts.css">
+</head>
+<body>
+  <canvas id="mathBg" aria-hidden="true"></canvas>
+  <div class="bg-overlay"></div>
+
+  <!-- ═══ Top Nav ═══ -->
+  <nav class="top-nav">
+    <div class="inner">
+      <span class="brand-link">LaTeXSnipper</span>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme"></button>
+    </div>
+  </nav>
+
+  <div class="spacer-top"></div>
+
+  <!-- ═══ App Container ═══ -->
+  <div id="app">
+
+    <!-- ── Tab 1: OCR ── -->
+    <div class="page active" id="page-ocr">
+      <!-- Status bar -->
+      <div class="status-bar" id="statusBar">
+        <span id="statusIcon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        <span id="statusText">正在加载 OCR 引擎…</span>
+        <div class="spinner show" id="spinner"></div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-label"><span id="progressFile"></span><span id="progressPercent">0%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+
+      <!-- Mode tabs -->
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tabImage">图片</button>
+        <button class="mode-tab" id="tabHandwrite">手写</button>
+      </div>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*,.pdf">
+        <div id="dropContent">
+          <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          <div>拖入公式截图 / PDF · 点击上传 · <kbd>Ctrl+V</kbd> paste</div>
+          <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">所有识别均在本地浏览器完成，图片不会上传</div>
+        </div>
+        <img id="preview" style="display:none;" alt="Preview">
+        <button class="cam-trigger-btn" id="camTrigger" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          拍照识别
+        </button>
+      </div>
+
+      <!-- Camera modal -->
+      <div class="cam-modal" id="camModal">
+        <video id="camVideo" autoplay playsinline></video>
+        <div class="cam-actions">
+          <button class="cam-btn cam-capture" id="cam拍照">拍照</button>
+          <button class="cam-btn cam-close" id="cam关闭">关闭</button>
+          <button class="cam-btn cam-close" id="camSwitch" style="font-size:0.85rem;">Switch</button>
+          <button class="cam-btn cam-close" id="camFlash" style="font-size:0.85rem;">Flash</button>
+        </div>
+      </div>
+
+      <!-- Handwrite panel (shared with OCR tab via mode switch) -->
+      <div class="hw-panel" id="hwPanel">
+        <div class="hw-canvas-wrap" id="hwWrap">
+          <canvas id="hwCanvas" width="800" height="500"></canvas>
+          <div class="hw-resize-handle" id="hwResizeHandle"></div>
+        </div>
+        <div class="hw-toolbar">
+          <button class="hw-tool-btn active" id="hwPen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>笔</button>
+          <button class="hw-tool-btn" id="hwEraser"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.6 1.6c.8-.8 2-.8 2.8 0L21 5.2c.8.8.8 2 0 2.8L12 17"/><line x1="6" y1="20" x2="10" y2="20"/></svg>橡皮</button>
+          <button class="hw-tool-btn" id="hwUndo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>撤销</button>
+          <button class="hw-tool-btn" id="hwRedo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>重做</button>
+          <button class="hw-tool-btn" id="hwClear"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空</button>
+          <button class="hw-recognize-btn" id="hwRecognize">识别</button>
+        </div>
+      </div>
+
+      <!-- Result card -->
+      <div class="result-card" id="resultCard">
+        <div class="result-header">
+          <span class="label">结果</span>
+          <span class="confidence" id="confidence"></span>
+        </div>
+        <pre class="result-code" id="resultCode"></pre>
+        <div class="math-preview" id="mathPreview"></div>
+        <div class="result-actions">
+          <button class="ocr-btn" id="copyBtn" style="display:none;">复制 LaTeX</button>
+          <button class="ocr-btn secondary" id="shareBtn" style="display:none;">分享</button>
+        </div>
+      </div>
+
+      <div class="error-msg" id="errorMsg" style="display:none;"></div>
+
+      <div class="info-note">
+        <strong>Offline OCR:</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF（最多 100 页）、拍照和手写识别。
+      </div>
+    </div>
+
+    <!-- ── Tab 2: Editor ── -->
+    <div class="page" id="page-editor">
+      <div class="editor-wrap">
+        <!-- LaTeX source textarea for manual input -->
+        <textarea id="latexSource" class="latex-source" rows="3"
+          placeholder="在此输入 LaTeX 公式… 例如：&#10;\frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}"
+        ></textarea>
+        <!-- MathLive visual editor (WYSIWYG) -->
+        <mathlive-field id="mathField"></mathlive-field>
+        <div class="snippet-panel" id="snippetPanel">
+          <button class="snippet-btn" data-latex="\frac{}{}">a/b</button>
+          <button class="snippet-btn" data-latex="^{}">xⁿ</button>
+          <button class="snippet-btn" data-latex="_{}">xₙ</button>
+          <button class="snippet-btn" data-latex="\sqrt{}">√</button>
+          <button class="snippet-btn" data-latex="\sqrt[]{}">ⁿ√</button>
+          <button class="snippet-btn" data-latex="\sum_{}^{}">Σ</button>
+          <button class="snippet-btn" data-latex="\prod_{}^{}">Π</button>
+          <button class="snippet-btn" data-latex="\int_{}^{}">∫</button>
+          <button class="snippet-btn" data-latex="\iint_{}^{}">∬</button>
+          <button class="snippet-btn" data-latex="\lim_{x\to\infty}">lim</button>
+          <button class="snippet-btn" data-latex="\begin{pmatrix}a & b \\ c & d\end{pmatrix}">2×2</button>
+          <button class="snippet-btn" data-latex="\begin{pmatrix}a & b & c \\ d & e & f \\ g & h & i\end{pmatrix}">3×3</button>
+        </div>
+        <div class="snippet-symbols">
+          <button class="snippet-btn" data-latex="\alpha">α</button>
+          <button class="snippet-btn" data-latex="\beta">β</button>
+          <button class="snippet-btn" data-latex="\gamma">γ</button>
+          <button class="snippet-btn" data-latex="\delta">δ</button>
+          <button class="snippet-btn" data-latex="\epsilon">ε</button>
+          <button class="snippet-btn" data-latex="\theta">θ</button>
+          <button class="snippet-btn" data-latex="\lambda">λ</button>
+          <button class="snippet-btn" data-latex="\mu">μ</button>
+          <button class="snippet-btn" data-latex="\pi">π</button>
+          <button class="snippet-btn" data-latex="\sigma">σ</button>
+          <button class="snippet-btn" data-latex="\phi">φ</button>
+          <button class="snippet-btn" data-latex="\omega">ω</button>
+          <button class="snippet-btn" data-latex="\infty">∞</button>
+          <button class="snippet-btn" data-latex="\partial">∂</button>
+          <button class="snippet-btn" data-latex="\nabla">∇</button>
+          <button class="snippet-btn" data-latex="\approx">≈</button>
+        </div>
+        <div class="compute-actions">
+          <button class="compute-btn" data-op="simplify">Simplify</button>
+          <button class="compute-btn" data-op="evaluate">Evaluate</button>
+          <button class="compute-btn" data-op="expand">Expand</button>
+          <button class="compute-btn" data-op="factor">Factor</button>
+          <button class="compute-btn" data-op="numeric">N()</button>
+        </div>
+        <div class="compute-result" id="computeResult"></div>
+        <div class="math-preview" id="editorPreview"></div>
+        <div class="result-actions">
+          <button class="ocr-btn" id="editorCopy">复制 LaTeX</button>
+          <button class="ocr-btn secondary" id="editor分享">分享</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 3: Handwrite ── -->
+    <div class="page" id="page-handwrite">
+      <div class="hw-panel show">
+        <div class="hw-canvas-wrap" id="hwWrap2">
+          <canvas id="hwCanvas2" width="800" height="500"></canvas>
+          <div class="hw-resize-handle" id="hwResizeHandle2"></div>
+        </div>
+        <div class="hw-toolbar">
+          <button class="hw-tool-btn active" id="hwPen2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>笔</button>
+          <button class="hw-tool-btn" id="hwEraser2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.6 1.6c.8-.8 2-.8 2.8 0L21 5.2c.8.8.8 2 0 2.8L12 17"/><line x1="6" y1="20" x2="10" y2="20"/></svg>橡皮</button>
+          <button class="hw-tool-btn" id="hwUndo2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>撤销</button>
+          <button class="hw-tool-btn" id="hwRedo2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>重做</button>
+          <button class="hw-tool-btn" id="hwClear2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空</button>
+          <button class="hw-recognize-btn" id="hwRecognize2">识别</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 4: History ── -->
+    <div class="page" id="page-history">
+      <div class="history-toolbar">
+        <button class="active" data-filter="all">All</button>
+        <button data-filter="favorites">Favorites</button>
+        <button id="clearHistory">清空</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">暂无识别记录。<br>上传公式图片开始使用！</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ Bottom Tab Navigation ═══ -->
+  <nav class="bottom-nav">
+    <button class="active" data-page="ocr">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span>识别</span>
+    </button>
+    <button data-page="editor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span>编辑器</span>
+    </button>
+    <button data-page="handwrite">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      <span>手写</span>
+    </button>
+    <button data-page="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>历史</span>
+    </button>
+  </nav>
+
+  <!-- ═══ Install banner ═══ -->
+  <div class="install-banner" id="installBanner">
+    <span>安装到桌面，离线使用</span>
+    <button id="installBtn">安装</button>
+    <button class="close-banner" id="dismissInstall">&times;</button>
+  </div>
+
+  <!-- ═══ Libraries (bundled, local, no CDN) ═══ -->
+  <script src="/vendor/ort.all.min.js"></script>
+  <script src="/vendor/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
+  </script>
+
+  <!-- ═══ MathJax global config ═══ -->
+  <script>
+    MathJax = {
+      tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
+      svg: { fontCache: 'global' },
+      options: { enableMenu: false },
+    };
+  </script>
+  <script src="/vendor/mathjax/tex-svg.js"></script>
+  <script src="/vendor/mathlive/mathlive.min.js"></script>
+
+  <!-- ═══ Entry point ═══ -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

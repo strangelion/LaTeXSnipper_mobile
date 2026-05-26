@@ -1,0 +1,266 @@
+// main.js — Application entry point, wires all modules together
+
+import './styles/base.css';
+import './styles/ocr.css';
+import './styles/handwriting.css';
+import './styles/editor.css';
+import './styles/history.css';
+import './styles/mobile.css';
+
+import { MODEL_BASE } from './constants.js';
+import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
+import { initModels, initUI, processImage, setStatus, copyResult, showResult, onFileProcessed } from './ui/ui.js';
+import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
+import { openCamera, closeCamera, capturePhoto, initCamera, switchFacing, toggleFlash } from './camera/camera.js';
+import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
+import { initMathLive } from './editor/mathlive-config.js';
+
+/* ── Service Worker registration ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+/* ── Tab navigation ── */
+function setupTabs() {
+  const tabs = document.querySelectorAll('.bottom-nav button');
+  const pages = document.querySelectorAll('.page');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.page;
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      pages.forEach(p => p.classList.remove('active'));
+      const page = document.getElementById('page-' + target);
+      if (page) page.classList.add('active');
+    });
+  });
+}
+
+/* ── Install prompt ── */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.classList.add('show');
+});
+
+document.getElementById('installBtn')?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBanner')?.classList.remove('show');
+});
+
+document.getElementById('dismissInstall')?.addEventListener('click', () => {
+  document.getElementById('installBanner')?.classList.remove('show');
+});
+
+// Hide banner if already installed
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  document.getElementById('installBanner')?.classList.remove('show');
+}
+
+/* ── Theme ── */
+const theme = initTheme();
+document.getElementById('themeToggle').innerHTML = getThemeIcon(theme);
+
+window.addEventListener('themechange', (e) => {
+  updateHwTheme(e.detail.theme);
+});
+
+/* ── DOM element map for UI module ── */
+const els = {
+  statusIcon: document.getElementById('statusIcon'),
+  statusText: document.getElementById('statusText'),
+  spinner: document.getElementById('spinner'),
+  errorMsg: document.getElementById('errorMsg'),
+  progressWrap: document.getElementById('progressWrap'),
+  progressFill: document.getElementById('progressFill'),
+  progressFile: document.getElementById('progressFile'),
+  progressPercent: document.getElementById('progressPercent'),
+  dropZone: document.getElementById('dropZone'),
+  fileInput: document.getElementById('fileInput'),
+  preview: document.getElementById('preview'),
+  dropContent: document.getElementById('dropContent'),
+  resultCard: document.getElementById('resultCard'),
+  resultCode: document.getElementById('resultCode'),
+  confidence: document.getElementById('confidence'),
+  copyBtn: document.getElementById('copyBtn'),
+  mathPreview: document.getElementById('mathPreview'),
+  camModal: document.getElementById('camModal'),
+  camVideo: document.getElementById('camVideo'),
+  camTrigger: document.getElementById('camTrigger'),
+  tabImage: document.getElementById('tabImage'),
+  tabHandwrite: document.getElementById('tabHandwrite'),
+  hwPanel: document.getElementById('hwPanel'),
+  themeToggle: document.getElementById('themeToggle'),
+};
+
+initUI(els);
+
+/* ── Camera setup ── */
+initCamera(document.getElementById('camVideo'), document.getElementById('camModal'));
+
+document.getElementById('camTrigger')?.addEventListener('click', () => {
+  openCamera({ facingMode: 'environment' });
+});
+
+document.getElementById('camCapture')?.addEventListener('click', async () => {
+  const file = await capturePhoto();
+  if (file) processImage(file);
+});
+
+document.getElementById('camClose')?.addEventListener('click', closeCamera);
+document.getElementById('camModal')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeCamera();
+});
+
+document.getElementById('camSwitch')?.addEventListener('click', switchFacing);
+document.getElementById('camFlash')?.addEventListener('click', toggleFlash);
+
+window.addEventListener('closecamera', closeCamera);
+
+/* ── Handwriting setup ── */
+const hwCanvas = document.getElementById('hwCanvas');
+const hwWrap = document.getElementById('hwWrap');
+if (hwCanvas && hwWrap) {
+  initHandwrite(hwCanvas, hwWrap);
+  updateHwTheme(getTheme());
+
+  document.getElementById('hwPen')?.addEventListener('click', () => hwSetTool('pen'));
+  document.getElementById('hwEraser')?.addEventListener('click', () => hwSetTool('eraser'));
+  document.getElementById('hwUndo')?.addEventListener('click', hwUndo);
+  document.getElementById('hwRedo')?.addEventListener('click', hwRedo);
+  document.getElementById('hwClear')?.addEventListener('click', hwClear);
+  document.getElementById('hwRecognize')?.addEventListener('click', async () => {
+    const file = await hwExportImage();
+    if (file) processImage(file);
+  });
+}
+
+/* ── Copy / Share buttons ── */
+document.getElementById('shareBtn')?.addEventListener('click', async () => {
+  if (!document.getElementById('resultCode')?.textContent) return;
+  const text = document.getElementById('resultCode').textContent;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'LaTeXSnipper OCR Result', text }); } catch (e) { /* */ }
+  }
+});
+
+/* ── Particle background (disabled — affects UX on mobile) ── */
+// initParticles('mathBg');
+
+/* ── Save OCR results to history ── */
+onFileProcessed(async (result, file) => {
+    if (result && result.latex) {
+      const source = file.type === 'application/pdf' ? 'pdf'
+        : file.name === 'camera.jpg' ? 'camera'
+        : file.name === 'handwrite.png' ? 'handwrite'
+        : 'file';
+      await addResult({
+        latex: result.latex,
+        confidence: result.confidence,
+        type: 'formula',
+        source,
+      });
+      renderHistoryList();
+    }
+  });
+
+async function renderHistoryList(filter = 'all') {
+  const listEl = document.getElementById('historyList');
+  if (!listEl) return;
+  const results = await getAllResults({ filter });
+  if (results.length === 0) {
+    listEl.innerHTML = '<div class="history-empty">No recognition history yet.<br>Start by uploading a formula image!</div>';
+    return;
+  }
+  listEl.innerHTML = results.map(r => `
+    <div class="history-item" data-id="${r.id}">
+      <div class="hi-latex">${escapeHtml(r.latex.substring(0, 120))}${r.latex.length > 120 ? '…' : ''}</div>
+      <div class="hi-meta">
+        <span class="hi-tag">${r.source}</span>
+        <span>${new Date(r.createdAt).toLocaleString()}</span>
+        <span>${(r.confidence * 100).toFixed(0)}%</span>
+        <button class="hi-fav ${r.favorite ? 'active' : ''}" data-action="fav" data-id="${r.id}">★</button>
+        <button class="hi-fav" data-action="del" data-id="${r.id}" style="color:#ef4444;">×</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Click handlers
+  listEl.querySelectorAll('.history-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      const target = e.target;
+      if (target.dataset.action === 'fav') {
+        e.stopPropagation();
+        const id = Number(target.dataset.id);
+        const isFav = await toggleFavorite(id);
+        target.classList.toggle('active', isFav);
+        return;
+      }
+      if (target.dataset.action === 'del') {
+        e.stopPropagation();
+        await deleteResult(Number(target.dataset.id));
+        renderHistoryList(filter);
+        return;
+      }
+      // Load into editor
+      const id = Number(item.dataset.id);
+      const all = await getAllResults();
+      const record = all.find(r => r.id === id);
+      if (record) {
+        document.getElementById('resultCode') && (document.getElementById('resultCode').textContent = record.latex);
+        // Switch to OCR tab to show result
+        document.querySelector('.bottom-nav button[data-page="ocr"]')?.click();
+      }
+    });
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// History toolbar
+document.getElementById('clearHistory')?.addEventListener('click', async () => {
+  await clearHistory();
+  renderHistoryList();
+});
+document.querySelectorAll('.history-toolbar button[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.history-toolbar button[data-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderHistoryList(btn.dataset.filter);
+  });
+});
+
+// Load history when tab is shown
+document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListener('click', () => {
+  renderHistoryList();
+});
+
+/* ── Editor tab — MathLive formula editor ── */
+initMathLive();
+
+/* ── Startup: load models ── */
+async function boot() {
+  try {
+    // Load history initially
+    renderHistoryList();
+    await initModels();
+  } catch (e) {
+    if (!document.getElementById('errorMsg')?.style.display || document.getElementById('errorMsg')?.style.display === 'none') {
+      const errEl = document.getElementById('errorMsg');
+      if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Initialization failed: ' + (e.message || e); }
+    }
+  }
+}
+
+setupTabs();
+boot();

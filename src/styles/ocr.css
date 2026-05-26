@@ -1,0 +1,138 @@
+/* ocr.css — OCR recognition page styles */
+
+/* ── Status bar & progress ── */
+.status-bar {
+  display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+  margin-bottom: 1.5rem; padding: 0.75rem 1rem;
+  background: var(--card-bg); border-radius: 12px;
+  border: 1px solid var(--border-color);
+  font-size: 0.9rem; color: var(--muted);
+}
+.spinner {
+  width: 22px; height: 22px;
+  border: 3px solid var(--border-color); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+  display: none; flex-shrink: 0;
+}
+.spinner.show { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.progress-wrap { width: 100%; max-width: 400px; margin: 0 auto 1.5rem; display: none; }
+.progress-wrap.show { display: block; }
+.progress-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
+.progress-track { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #a78bfa); border-radius: 4px; transition: width 0.3s ease; width: 0%; }
+.error-msg { color: #ef4444; font-size: 0.9rem; text-align: center; padding: 1rem; }
+.info-note { margin-top: 2rem; padding: 1rem; border-radius: 10px; background: var(--card-bg); border: 1px solid var(--border-color); font-size: 0.85rem; color: var(--muted); line-height: 1.7; }
+
+/* ── Drop zone ── */
+.drop-zone {
+  border: 2px dashed var(--border-color); border-radius: 16px;
+  padding: 3rem 2rem; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: var(--card-bg); margin-bottom: 1.5rem;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(37,99,235,0.04); }
+.drop-zone input { display: none; }
+.drop-zone .icon { margin-bottom: 0.5rem; color: var(--muted); }
+.drop-zone img { max-width: 100%; max-height: 300px; border-radius: 8px; display: block; margin: 0 auto; }
+
+/* ── Mode tabs ── */
+.mode-tabs { display: flex; justify-content: center; gap: 0; margin-bottom: 1rem; }
+.mode-tab {
+  padding: 8px 24px; border: 1px solid var(--border-color);
+  background: var(--card-bg); color: var(--muted);
+  cursor: pointer; font-size: 0.9rem; font-weight: 500;
+  transition: all 0.2s; font-family: inherit;
+}
+.mode-tab:first-child { border-radius: 10px 0 0 10px; }
+.mode-tab:last-child { border-radius: 0 10px 10px 0; }
+.mode-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Result card ── */
+.result-card {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 12px; padding: 1.5rem; display: none;
+}
+.result-card.show { display: block; }
+.result-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;
+}
+.result-header .label { font-weight: 700; font-size: 0.95rem; color: var(--fg); }
+.confidence {
+  font-size: 0.8rem; color: var(--muted);
+  background: rgba(34,197,94,0.1); padding: 2px 10px; border-radius: 4px;
+}
+pre.result-code {
+  background: #1e293b; color: #94a3b8; padding: 1rem 1.25rem;
+  border-radius: 8px; overflow: auto; font-size: 0.9rem;
+  font-family: "SF Mono","Cascadia Code","Consolas",monospace;
+  white-space: pre-wrap; word-break: break-all; margin: 0;
+}
+.math-preview {
+  display: none; margin-top: 1rem; padding: 1.25rem;
+  background: #fff; border-radius: 10px; border: 1px solid var(--border-color);
+  overflow-x: auto; text-align: center; min-height: 48px;
+}
+.math-preview.show { display: block; }
+[data-theme="dark"] .math-preview { background: #1a1d28; }
+
+.result-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.ocr-btn {
+  flex: 1; text-align: center;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff; border: none; padding: 10px 16px; border-radius: 8px;
+  cursor: pointer; font-size: 0.9rem; font-weight: 600;
+  transition: opacity 0.2s, transform 0.15s; font-family: inherit;
+}
+.ocr-btn:hover { opacity: 0.9; transform: scale(1.01); }
+.ocr-btn:active { transform: scale(0.98); }
+.ocr-btn.copied { background: #22c55e; }
+.ocr-btn.secondary {
+  background: var(--card-bg); color: var(--fg);
+  border: 1px solid var(--border-color); flex: 0.5;
+}
+
+/* ── Camera ── */
+.cam-trigger-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 0.75rem; padding: 8px 18px; border-radius: 20px;
+  border: 1px solid var(--border-color); background: var(--card-bg);
+  color: var(--fg); cursor: pointer; font-size: 0.85rem;
+  transition: all 0.2s; font-family: inherit;
+}
+.cam-trigger-btn:hover { border-color: var(--accent); background: rgba(37,99,235,0.06); }
+.cam-modal {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.9); flex-direction: column;
+  align-items: center; justify-content: center; gap: 1.25rem;
+}
+.cam-modal.show { display: flex; }
+.cam-modal video { max-width: 95vw; max-height: 70vh; border-radius: 12px; background: #000; }
+.cam-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+.cam-btn {
+  padding: 12px 28px; border-radius: 10px; border: none;
+  cursor: pointer; font-size: 1rem; font-weight: 600;
+  transition: transform 0.15s; font-family: inherit;
+}
+.cam-btn:active { transform: scale(0.96); }
+.cam-capture { background: var(--accent); color: #fff; }
+.cam-close { background: rgba(255,255,255,0.12); color: #fff; }
+
+/* ── Install banner ── */
+.install-banner {
+  display: none; position: fixed; bottom: calc(70px + var(--safe-b)); left: 1rem; right: 1rem; z-index: 90;
+  background: var(--accent); color: #fff; padding: 0.75rem 1rem;
+  border-radius: 12px; font-size: 0.85rem;
+  align-items: center; justify-content: space-between; gap: 0.75rem;
+}
+.install-banner.show { display: flex; }
+.install-banner button {
+  background: #fff; color: var(--accent); border: none;
+  padding: 6px 14px; border-radius: 8px; font-weight: 600;
+  cursor: pointer; font-size: 0.82rem; white-space: nowrap;
+  font-family: inherit;
+}
+.install-banner .close-banner {
+  background: none; color: #fff; padding: 4px 8px; font-size: 1.2rem;
+}

@@ -1,0 +1,45 @@
+/* history.css — History page styles */
+
+.history-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.history-item {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 10px; padding: 1rem;
+  cursor: pointer; transition: all 0.15s;
+}
+.history-item:hover { border-color: var(--accent); }
+.history-item .hi-latex {
+  font-family: "SF Mono","Cascadia Code","Consolas",monospace;
+  font-size: 0.82rem; color: var(--fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 0.35rem;
+}
+.history-item .hi-meta {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.72rem; color: var(--muted);
+}
+.history-item .hi-tag {
+  padding: 1px 8px; border-radius: 4px;
+  font-size: 0.68rem; background: rgba(37,99,235,0.1); color: var(--accent);
+}
+.history-item .hi-fav {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  font-size: 1rem; color: var(--muted); padding: 2px 6px;
+}
+.history-item .hi-fav.active { color: #f59e0b; }
+
+.history-toolbar {
+  display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.history-toolbar button {
+  padding: 6px 14px; border: 1px solid var(--border-color);
+  border-radius: 8px; background: var(--card-bg); color: var(--fg);
+  cursor: pointer; font-size: 0.82rem; font-family: inherit;
+  transition: all 0.15s;
+}
+.history-toolbar button:hover { border-color: var(--accent); }
+.history-toolbar button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.history-empty {
+  text-align: center; color: var(--muted); padding: 3rem 1rem;
+  font-size: 0.9rem;
+}

@@ -1,0 +1,58 @@
+/* handwriting.css — Handwriting page styles */
+
+.hw-panel { display: none; }
+.hw-panel.show { display: block; }
+
+.hw-canvas-wrap {
+  border: 2px dashed var(--border-color); border-radius: 16px;
+  overflow: hidden; margin-bottom: 0.75rem; touch-action: none;
+  position: relative;
+  background-color: #ffffff;
+  background-image: linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+[data-theme="dark"] .hw-canvas-wrap {
+  background-color: #1e293b;
+  background-image: linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
+}
+.hw-canvas-wrap canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+
+.hw-resize-handle {
+  position: absolute; right: 0; bottom: 0;
+  width: 24px; height: 24px; cursor: nwse-resize;
+  opacity: 0.4; transition: opacity 0.2s; z-index: 5;
+}
+.hw-resize-handle:hover { opacity: 0.8; }
+.hw-resize-handle::after {
+  content: ''; position: absolute; right: 4px; bottom: 4px;
+  width: 10px; height: 10px;
+  border-right: 2px solid var(--fg); border-bottom: 2px solid var(--fg);
+}
+
+.hw-toolbar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.5rem; flex-wrap: wrap;
+}
+.hw-tool-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 14px; border-radius: 8px;
+  border: 1px solid var(--border-color); background: var(--card-bg);
+  color: var(--fg); cursor: pointer; font-size: 0.82rem;
+  transition: all 0.15s; font-family: inherit;
+}
+.hw-tool-btn:hover { border-color: var(--accent); }
+.hw-tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hw-recognize-btn {
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff; border: none; padding: 8px 22px; border-radius: 10px;
+  cursor: pointer; font-size: 0.9rem; font-weight: 600;
+  font-family: inherit;
+}
+.hw-expand-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--border-color); background: var(--card-bg);
+  color: var(--fg); cursor: pointer; font-size: 0.82rem;
+  font-family: inherit;
+}
+.hw-expand-btn:hover { border-color: var(--accent); }

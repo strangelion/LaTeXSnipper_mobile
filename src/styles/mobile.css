@@ -1,0 +1,55 @@
+/* mobile.css — Mobile-specific enhancements */
+
+/* ── Safe areas ── */
+.top-nav { padding-top: var(--safe-t); }
+.bottom-nav { padding-bottom: var(--safe-b); }
+
+/* ── PWA standalone mode ── */
+@media (display-mode: standalone) {
+  .top-nav { padding-top: calc(var(--safe-t) + 4px); }
+  .install-banner { display: none !important; }
+}
+
+/* ── Touch devices ── */
+@media (hover: none) {
+  .ocr-btn:hover, .snippet-btn:hover, .hw-tool-btn:hover {
+    transform: none; opacity: 1;
+  }
+  .ocr-btn:active, .snippet-btn:active, .hw-tool-btn:active {
+    transform: scale(0.96);
+  }
+}
+
+/* ── Responsive: tablet ── */
+@media (max-width: 768px) {
+  .page { padding: 1rem 0.75rem calc(5rem + var(--safe-b)); }
+  .snippet-panel { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── Responsive: phone ── */
+@media (max-width: 640px) {
+  .page { padding: 0.75rem 0.5rem calc(5rem + var(--safe-b)); }
+  .mode-tab { padding: 6px 14px; font-size: 0.82rem; }
+  .drop-zone { padding: 2rem 1rem; }
+  .hw-toolbar { gap: 0.3rem; }
+  .hw-tool-btn { padding: 5px 8px; font-size: 0.75rem; }
+  .hw-tool-btn svg { width: 14px; height: 14px; }
+  .hw-recognize-btn { padding: 6px 14px; font-size: 0.82rem; }
+  .result-card { padding: 1rem; }
+  pre.result-code { font-size: 0.78rem; padding: 0.75rem; }
+  .cam-modal video { max-width: 100vw; max-height: 60vh; }
+  .cam-btn { padding: 10px 20px; font-size: 0.9rem; }
+  .math-preview { padding: 0.75rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .snippet-panel { grid-template-columns: repeat(3, 1fr); }
+  .bottom-nav button { font-size: 0.65rem; }
+  .bottom-nav button svg { width: 20px; height: 20px; }
+
+  /* Install banner mobile */
+  .install-banner { left: 0.5rem; right: 0.5rem; bottom: calc(65px + var(--safe-b)); font-size: 0.78rem; }
+}
+
+/* ── Landscape handwriting mode ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .hw-canvas-wrap { max-height: calc(100vh - 180px); }
+  .hw-toolbar { position: sticky; bottom: 0; background: var(--bg); padding: 0.5rem 0; }
+}

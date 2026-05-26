@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.git/
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db
+
+# Capacitor / Android / iOS build artifacts
+android/app/build/
+android/build/
+android/.gradle/
+android/captures/
+android/local.properties
+ios/build/
+ios/Pods/
+ios/*.xcworkspace
+*.apk
+*.ipa
+*.aab

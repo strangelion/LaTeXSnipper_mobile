@@ -1,0 +1,27 @@
+{
+  "name": "latexsnipper-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "LaTeXSnipper Mobile — fully offline PWA formula OCR app",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "idb": "^8.0.0",
+    "mathjax": "^3.2.2",
+    "mathlive": "^0.98.0",
+    "onnxruntime-web": "1.21.0",
+    "pdfjs-dist": "3.11.174"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/ios": "^8.3.4",
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.20.0"
+  }
+}

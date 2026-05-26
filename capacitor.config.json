@@ -1,0 +1,10 @@
+{
+  "appId": "com.latexsnipper.app",
+  "appName": "LaTeXSnipper",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "iosScheme": "http",
+    "hostname": "localhost"
+  }
+}
