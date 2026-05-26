@@ -77,7 +77,7 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath App.xcarchive \
             -exportPath build \
-            -exportOptionsPlist ../ExportOptions.plist \
+            -exportOptionsPlist ExportOptions.plist \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Export requires signing config"
