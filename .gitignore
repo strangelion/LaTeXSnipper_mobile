@@ -24,3 +24,6 @@ ios/*.xcworkspace
 *.apk
 *.ipa
 *.aab
+keystore_b64.txt
+keystore_b64_clean.txt
+RELEASE.md
