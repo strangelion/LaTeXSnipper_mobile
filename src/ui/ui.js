@@ -4,7 +4,7 @@
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
-import { ICONS, COOLDOWN_MS } from '../constants.js';
+import { ICONS } from '../constants.js';
 
 // DOM refs (set by initUI)
 let els = {};
@@ -29,7 +29,7 @@ export function showError(msg) {
   if (!els.errorMsg) return;
   els.errorMsg.style.display = 'block';
   els.errorMsg.textContent = msg;
-  setStatus('error', 'Failed', false);
+  setStatus('error', '加载失败', false);
 }
 
 // ── Progress bar ──
@@ -96,10 +96,10 @@ export function copyResult() {
   if (!els.resultCode) return;
   navigator.clipboard.writeText('$$\n' + els.resultCode.textContent + '\n$$').then(() => {
     if (els.copyBtn) {
-      els.copyBtn.textContent = 'Copied ✓';
+      els.copyBtn.textContent = '已复制 ✓';
       els.copyBtn.classList.add('copied');
       setTimeout(() => {
-        els.copyBtn.textContent = 'Copy LaTeX';
+        els.copyBtn.textContent = '复制 LaTeX';
         els.copyBtn.classList.remove('copied');
       }, 1500);
     }
@@ -124,30 +124,26 @@ export async function shareResult() {
 // ── Image processing entry point ──
 
 export async function processImage(file) {
-  if (!isReady()) { showError('Model not loaded yet, please wait'); return; }
+  if (!isReady()) { showError('模型尚未加载完成，请稍等'); return; }
 
-  const now = Date.now();
-  if (now - lastRecognitionTime < COOLDOWN_MS) {
-    showError('Please wait ' + Math.ceil((COOLDOWN_MS - (now - lastRecognitionTime)) / 1000) + 's before next recognition');
-    return;
-  }
-  if (file.size < 1024) { showError('File too small, minimum 1KB'); return; }
+  // Local inference — no cooldown needed
+  if (file.size < 1024) { showError('文件太小，至少 1KB'); return; }
 
   // PDF branch
   if (file.type === 'application/pdf') {
     hideResult();
     if (els.errorMsg) els.errorMsg.style.display = 'none';
-    setStatus('processing', 'Parsing PDF…', true);
+    setStatus('processing', '正在解析 PDF…', true);
     try {
       const pdfResult = await processPDF(file, (info) => {
-        showProgress('PDF page ' + info.page + '/' + info.total, info.pct);
+        showProgress('PDF 第 ' + info.page + '/' + info.total + ' 页', info.pct);
       });
       hideProgress();
       lastRecognitionTime = Date.now();
-      showResult(pdfResult.latex, pdfResult.confidence, pdfResult.pageCount + ' pages');
-      setStatus('done', 'Recognition complete (' + pdfResult.pageCount + ' pages)', false);
+      showResult(pdfResult.latex, pdfResult.confidence, pdfResult.pageCount + ' 页');
+      setStatus('done', '识别完成（' + pdfResult.pageCount + ' 页）', false);
       return pdfResult;
-    } catch (e) { showError(e.message); setStatus('ready', 'Model ready! Upload a formula image to start', false); return null; }
+    } catch (e) { showError(e.message); setStatus('ready', '模型就绪！拖入公式图片开始识别', false); return null; }
   }
 
   // Image branch: preview → recognize
@@ -159,7 +155,7 @@ export async function processImage(file) {
   if (els.dropContent) els.dropContent.style.display = 'none';
   hideResult();
   if (els.errorMsg) els.errorMsg.style.display = 'none';
-  setStatus('processing', 'Recognizing…', true);
+  setStatus('processing', '正在识别…', true);
 
   return new Promise((resolve) => {
     const img = new Image();
@@ -169,19 +165,19 @@ export async function processImage(file) {
         lastRecognitionTime = Date.now();
         URL.revokeObjectURL(url);
         if (!result.latex) {
-          showError('No formula detected (confidence ' + (result.confidence * 100).toFixed(1) + '% too low)');
-          setStatus('ready', 'Model ready! Please re-upload a formula image', false);
+          showError('未识别到内容（置信度 ' + (result.confidence * 100).toFixed(1) + '% 过低），请重新尝试');
+          setStatus('ready', '模型就绪！请重新上传图片', false);
           resolve(null);
           return;
         }
         showResult(result.latex, result.confidence);
-        setStatus('done', 'Recognition complete', false);
+        setStatus('done', '识别完成', false);
         if (fileInputHandler) fileInputHandler(result, file);
         resolve(result);
       } catch (e) {
         URL.revokeObjectURL(url);
-        showError('Recognition failed: ' + (e.message || e));
-        setStatus('ready', 'Model ready! Upload a formula image to start', false);
+        showError('识别失败: ' + (e.message || e));
+        setStatus('ready', '模型就绪！拖入公式图片开始识别', false);
         resolve(null);
       }
     };
@@ -297,12 +293,12 @@ export async function initModels(onProgress) {
   } else {
     ort.env.wasm.numThreads = 1;
   }
-  setStatus('loading', 'Loading tokenizer…', true);
+  setStatus('loading', '正在加载分词器…', true);
   if (onProgress) onProgress('tokenizer', 0);
   await loadTokenizer();
   if (onProgress) onProgress('tokenizer', 100);
 
-  setStatus('loading', 'Downloading encoder model (84MB)…', true);
+  setStatus('loading', '正在下载编码器模型 (84MB)…', true);
   await loadModels((label, pct) => {
     if (pct < 0) {
       setStatus('loading', label, true);
