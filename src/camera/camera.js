@@ -141,7 +141,22 @@ function cropGetPos(e) {
   const sy = camCropCanvas.height / rect.height;
   const cx = e.touches ? e.touches[0].clientX : e.clientX;
   const cy = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+  return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy, clientY: cy };
+}
+
+function updateBarVisibility(clientY) {
+  const modeBar = document.getElementById('camModeBar');
+  const bottomBar = document.querySelector('.cam-bottom-bar');
+  if (clientY === undefined || clientY < 0) {
+    if (modeBar) modeBar.style.opacity = '1';
+    if (bottomBar) bottomBar.style.opacity = '1';
+    return;
+  }
+  const h = window.innerHeight;
+  // Fade out top bar when finger is near top 15% of screen
+  if (modeBar) modeBar.style.opacity = clientY < h * 0.15 ? '0.15' : '1';
+  // Fade out bottom bar when finger is near bottom 18% of screen
+  if (bottomBar) bottomBar.style.opacity = clientY > h * 0.82 ? '0.15' : '1';
 }
 
 function bindCropEvents() {
@@ -163,6 +178,7 @@ function bindCropEvents() {
   camCropCanvas.addEventListener('pointermove', (e) => {
     if (!camCropDragging) return;
     const p = cropGetPos(e);
+    updateBarVisibility(p.clientY);
     if (camCropMode === 'lasso') {
       camCropPath.push(p);
       const prev = camCropPath[camCropPath.length - 2];
@@ -178,7 +194,10 @@ function bindCropEvents() {
     e.preventDefault();
   });
   ['pointerup', 'pointercancel'].forEach(ev => {
-    camCropCanvas.addEventListener(ev, () => { camCropDragging = false; });
+    camCropCanvas.addEventListener(ev, () => {
+      camCropDragging = false;
+      updateBarVisibility(-1); // reset to full opacity
+    });
   });
 }
 
