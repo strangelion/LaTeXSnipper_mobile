@@ -11,7 +11,7 @@ import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
 import { initModels, initUI, processImage, setStatus, copyResult, showResult, onFileProcessed } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
-import { openCamera, closeCamera, capturePhoto, initCamera, switchFacing, toggleFlash } from './camera/camera.js';
+import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
 import { initMathLive } from './editor/mathlive-config.js';
 
@@ -102,33 +102,42 @@ const els = {
 initUI(els);
 
 /* ── Camera setup ── */
-initCamera(document.getElementById('camVideo'), document.getElementById('camModal'));
+initCamera(
+  document.getElementById('camVideo'),
+  document.getElementById('camModal'),
+  document.getElementById('camCropCanvas'),
+  document.getElementById('camActions'),
+  document.getElementById('camCropActions')
+);
 
-document.getElementById('camTrigger')?.addEventListener('click', () => {
-  openCamera({ facingMode: 'environment' });
+document.getElementById('camTrigger')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openCamera();
 });
 
-document.getElementById('camCapture')?.addEventListener('click', async (e) => {
+document.getElementById('camCapture')?.addEventListener('click', (e) => {
   e.stopPropagation();
-  const file = await capturePhoto();
+  capturePhoto();
+});
+
+document.getElementById('camCropConfirm')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const file = await confirmCrop();
   if (file) processImage(file);
+});
+
+document.getElementById('camCropRetake')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  retakePhoto();
 });
 
 document.getElementById('camClose')?.addEventListener('click', (e) => {
   e.stopPropagation();
   closeCamera();
 });
+
 document.getElementById('camModal')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeCamera();
-});
-
-document.getElementById('camSwitch')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  switchFacing();
-});
-document.getElementById('camFlash')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  toggleFlash();
 });
 
 window.addEventListener('closecamera', closeCamera);

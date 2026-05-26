@@ -1,5 +1,20 @@
 apply plugin: 'com.android.application'
 
+// Load keystore properties from environment (CI) or local file
+def keystoreProperties = new Properties()
+def keystoreFile = file('release.keystore')
+def keystorePropsFile = file('keystore.properties')
+
+if (keystorePropsFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropsFile))
+} else if (System.getenv('KEYSTORE_PASSWORD') != null) {
+    // CI: use environment variables (GitHub Secrets)
+    keystoreProperties['storeFile'] = 'release.keystore'
+    keystoreProperties['storePassword'] = System.getenv('KEYSTORE_PASSWORD')
+    keystoreProperties['keyAlias'] = System.getenv('KEY_ALIAS') ?: 'latexsnipper'
+    keystoreProperties['keyPassword'] = System.getenv('KEY_PASSWORD') ?: System.getenv('KEYSTORE_PASSWORD')
+}
+
 android {
     namespace = "com.latexsnipper.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -11,15 +26,35 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    buildTypes {
+
+    signingConfigs {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystoreProperties.containsKey('storeFile')) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                // V1+V2+V3 signing (all enabled by default in AGP)
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Debug uses auto-generated debug keystore (V1 only by default)
+        }
+        release {
+            minifyEnabled true        // R8 obfuscation (basic hardening)
+            shrinkResources true       // Remove unused resources
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystoreProperties.containsKey('storeFile')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

@@ -68,11 +68,14 @@
       <!-- Camera modal -->
       <div class="cam-modal" id="camModal">
         <video id="camVideo" autoplay playsinline></video>
-        <div class="cam-actions">
-          <button class="cam-btn cam-capture" id="cam拍照">拍照</button>
-          <button class="cam-btn cam-close" id="cam关闭">关闭</button>
-          <button class="cam-btn cam-close" id="camSwitch" style="font-size:0.85rem;">Switch</button>
-          <button class="cam-btn cam-close" id="camFlash" style="font-size:0.85rem;">Flash</button>
+        <canvas id="camCropCanvas" style="display:none;"></canvas>
+        <div class="cam-actions" id="camActions">
+          <button class="cam-btn cam-capture" id="camCapture">拍照</button>
+          <button class="cam-btn cam-close" id="camClose">关闭</button>
+        </div>
+        <div class="cam-actions" id="camCropActions" style="display:none;">
+          <button class="cam-btn cam-capture" id="camCropConfirm">确认</button>
+          <button class="cam-btn cam-close" id="camCropRetake">重拍</button>
         </div>
       </div>
 
@@ -165,7 +168,7 @@
         <div class="math-preview" id="editorPreview"></div>
         <div class="result-actions">
           <button class="ocr-btn" id="editorCopy">复制 LaTeX</button>
-          <button class="ocr-btn secondary" id="editor分享">分享</button>
+          <button class="ocr-btn secondary" id="editorShare">分享</button>
         </div>
       </div>
     </div>
