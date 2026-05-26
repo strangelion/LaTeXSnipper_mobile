@@ -48,6 +48,8 @@
 .mode-tab:last-child { border-radius: 0 10px 10px 0; }
 .mode-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+.recog-mode { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 1rem; }
+
 /* ── Result card ── */
 .result-card {
   background: var(--card-bg); border: 1px solid var(--border-color);
@@ -108,8 +110,10 @@ pre.result-code {
   align-items: center; justify-content: center; gap: 1.25rem;
 }
 .cam-modal.show { display: flex; }
-.cam-modal video { max-width: 95vw; max-height: 70vh; border-radius: 12px; background: #000; }
-.cam-modal canvas { width: 95vw; max-height: 65vh; border-radius: 12px; display: block; object-fit: contain; }
+.cam-modal video { width: 100vw; height: 100vh; object-fit: cover; border-radius: 0; background: #000; }
+.cam-modal canvas { width: 100vw; height: 100vh; border-radius: 0; display: block; object-fit: contain; }
+.cam-modal { position: fixed; inset: 0; z-index: 200; background: #000; flex-direction: column; }
+.cam-modal .cam-actions { position: absolute; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 1rem; z-index: 10; }
 .cam-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
 .cam-btn {
   padding: 12px 28px; border-radius: 10px; border: none;

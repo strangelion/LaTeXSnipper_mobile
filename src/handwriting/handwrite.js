@@ -212,27 +212,23 @@ export function hwGetContentBounds() {
 
 export function hwExportImage() {
   return new Promise((resolve) => {
-    const bounds = hwGetContentBounds();
-    if (!bounds) {
-      resolve(null);
-      return;
-    }
-
-    // Make a square canvas to avoid extreme aspect-ratio distortion
-    // when the model resizes to 384×384 (direct scale, no letterbox)
-    const side = Math.max(bounds.w, bounds.h);
-    const padX = Math.floor((side - bounds.w) / 2);
-    const padY = Math.floor((side - bounds.h) / 2);
-
     const tmp = document.createElement('canvas');
-    tmp.width = side; tmp.height = side;
+    tmp.width = hwCanvas.width; tmp.height = hwCanvas.height;
     const tctx = tmp.getContext('2d');
     tctx.fillStyle = '#ffffff';
-    tctx.fillRect(0, 0, side, side);
-    tctx.drawImage(hwCanvas,
-      bounds.x, bounds.y, bounds.w, bounds.h,
-      padX, padY, bounds.w, bounds.h
-    );
+    tctx.fillRect(0, 0, tmp.width, tmp.height);
+    tctx.drawImage(hwCanvas, 0, 0);
+    // Dark mode: invert non-white pixels to black (for white-text-on-dark)
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) {
+          d[i] = 255 - d[i]; d[i + 1] = 255 - d[i + 1]; d[i + 2] = 255 - d[i + 2];
+        }
+      }
+      tctx.putImageData(imgData, 0, 0);
+    }
     tmp.toBlob((blob) => {
       resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
     }, 'image/png');

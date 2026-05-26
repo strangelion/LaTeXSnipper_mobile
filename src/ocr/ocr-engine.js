@@ -83,32 +83,25 @@ export function isReady() {
 
 export function isImageEmpty(img) {
   const canvas = document.createElement('canvas');
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  const size = Math.max(128, Math.min(384, w, h));
+  let size = Math.min(384, img.naturalWidth || img.width, img.naturalHeight || img.height);
+  if (size < 4) return true;
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, size, size);
   const pixels = ctx.getImageData(0, 0, size, size).data;
   const n = size * size;
-  let sum = 0, min = 255, max = 0;
+  let sum = 0, minVal = 255, maxVal = 0;
   for (let i = 0; i < n; i++) {
-    const v = pixels[i * 4];
-    sum += v;
-    if (v < min) min = v;
-    if (v > max) max = v;
+    const v = pixels[i * 4]; sum += v;
+    if (v < minVal) minVal = v; if (v > maxVal) maxVal = v;
   }
+  const range = maxVal - minVal;
+  if (range <= 20) return true;
   const mean = sum / n;
-  const range = max - min;
-  // Empty = nearly uniform (range <= 20) OR very low foreground density
-  // Use range-based check instead of std — more robust for anti-aliased thin strokes
+  const thr = Math.max(16, range * 0.3);
   let fg = 0;
-  const threshold = Math.max(16, range * 0.3);
-  for (let i = 0; i < n; i++) {
-    if (Math.abs(pixels[i * 4] - mean) >= threshold) fg++;
-  }
-  const fgRatio = fg / n;
-  return range <= 20 || fgRatio < 0.0003;
+  for (let i = 0; i < n; i++) { if (Math.abs(pixels[i * 4] - mean) >= thr) fg++; }
+  return (fg / n) < 0.0001;
 }
 
 export function preprocessImage(img) {
@@ -230,19 +223,14 @@ export function repairLatex(tex) {
 
 // ── Main recognition pipeline ──
 
-export async function recognize(img) {
+export async function recognize(img, mode = 'formula') {
   if (!isReady()) throw new Error('Model not ready');
-  if (running) { log('recognize skip — already running'); return { latex: '', confidence: 0, busy: true }; }
+  if (running) return { latex: '', confidence: 0, busy: true };
   running = true;
 
   try {
+  if (isImageEmpty(img)) return { latex: '', confidence: 0 };
 
-  if (isImageEmpty(img)) {
-    log('recognize skip — image empty');
-    return { latex: '', confidence: 0 };
-  }
-
-  const t0 = performance.now();
   const pixelValues = preprocessImage(img);
   const inputTensor = new ort.Tensor('float32', pixelValues, [1, 3, 384, 384]);
 
@@ -260,6 +248,8 @@ export async function recognize(img) {
   const tokenIds = [], tokenProbs = [];
 
   for (let step = 0; step < maxTokens; step++) {
+    // Yield main thread every 8 steps to keep UI responsive
+    if (step % 8 === 0) await new Promise(r => setTimeout(r, 0));
     const decOut = await decoderSession.run({
       [decName0]: inputIds,
       [decName1]: hiddenStates,
@@ -281,7 +271,8 @@ export async function recognize(img) {
   }
 
   const rawLatex = decodeTokens(tokenIds);
-  let latex = repairLatex(rawLatex);
+  // Apply LaTeX repair only for formula/mixed modes; text mode returns raw output
+  let latex = mode === 'text' ? rawLatex : repairLatex(rawLatex);
 
   const avgConf = tokenProbs.length > 0
     ? tokenProbs.reduce((a, b) => a + b, 0) / tokenProbs.length

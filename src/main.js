@@ -161,6 +161,33 @@ if (hwCanvas && hwWrap) {
   });
 }
 
+/* ── Recognition mode selector ── */
+let recogMode = 'formula';
+document.querySelectorAll('#recogMode .mode-tab').forEach(btn => {
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    document.querySelectorAll('#recogMode .mode-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    recogMode = btn.dataset.mode;
+  });
+});
+// When switching to handwriting, default to mixed mode
+document.getElementById('tabHandwrite')?.addEventListener('pointerdown', () => {
+  document.querySelectorAll('#recogMode .mode-tab').forEach(b => b.classList.remove('active'));
+  const mixedBtn = document.querySelector('#recogMode [data-mode="mixed"]');
+  if (mixedBtn) mixedBtn.classList.add('active');
+  recogMode = 'mixed';
+});
+document.getElementById('tabImage')?.addEventListener('pointerdown', () => {
+  document.querySelectorAll('#recogMode .mode-tab').forEach(b => b.classList.remove('active'));
+  const formulaBtn = document.querySelector('#recogMode [data-mode="formula"]');
+  if (formulaBtn) formulaBtn.classList.add('active');
+  recogMode = 'formula';
+});
+
+// Export recogMode for ui.js to use
+window.__recogMode = () => recogMode;
+
 /* ── Copy / Share / Send to Editor buttons ── */
 document.getElementById('shareBtn')?.addEventListener('click', async () => {
   if (!document.getElementById('resultCode')?.textContent) return;

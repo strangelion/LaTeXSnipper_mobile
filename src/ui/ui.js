@@ -165,7 +165,7 @@ export async function processImage(file) {
     const img = new Image();
     img.onload = async () => {
       try {
-        const result = await recognize(img);
+        const result = await recognize(img, window.__recogMode?.() || 'formula');
         lastRecognitionTime = Date.now();
         URL.revokeObjectURL(url);
         if (!result.latex) {

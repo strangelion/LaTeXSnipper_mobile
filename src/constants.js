@@ -6,7 +6,7 @@ export const MODEL_CACHE = 'ocr-models-v1';
 
 // Image preprocessing
 export const IMG_SIZE = 384;
-export const CONFIDENCE_MIN = 0.05; // Low threshold to allow non-formula text recognition
+export const CONFIDENCE_MIN = 0.15;
 export const DECODER_MAX_TOKENS = 512;
 
 // PDF
