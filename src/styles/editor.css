@@ -1,4 +1,4 @@
-/* editor.css — Simple formula editor (textarea + MathLive preview) */
+/* editor.css — LaTeX source textarea + MathJax preview */
 
 .editor-wrap { display: flex; flex-direction: column; gap: 0.6rem; }
 
@@ -12,41 +12,3 @@
   touch-action: manipulation;
 }
 .latex-source:focus { border-color: var(--accent); }
-
-mathlive-field {
-  display: block; width: 100%; min-height: 60px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px; background: var(--card-bg);
-  padding: 0.5rem; font-size: 1.1rem;
-}
-
-/* Snippet + symbol buttons */
-.snippet-row {
-  display: flex; flex-wrap: wrap; gap: 0.35rem;
-}
-.snip-btn {
-  padding: 5px 10px; border: 1px solid var(--border-color);
-  border-radius: 7px; background: var(--card-bg); color: var(--fg);
-  font-size: 0.8rem; cursor: pointer; font-family: inherit;
-  touch-action: manipulation; user-select: none;
-}
-.snip-btn:active { background: var(--accent); color: #fff; }
-
-/* Compute buttons */
-.compute-row {
-  display: flex; flex-wrap: wrap; gap: 0.35rem;
-}
-.comp-btn {
-  padding: 6px 12px; border: 1px solid var(--accent);
-  border-radius: 7px; background: var(--card-bg); color: var(--accent);
-  font-size: 0.8rem; cursor: pointer; font-family: inherit;
-  touch-action: manipulation; user-select: none;
-}
-.comp-btn:active { background: var(--accent); color: #fff; }
-
-.compute-result {
-  padding: 0.6rem; background: var(--card-bg); border: 1px solid var(--border-color);
-  border-radius: 8px; font-size: 0.9rem; min-height: 36px;
-  font-family: "SF Mono","Cascadia Code","Consolas",monospace;
-  word-break: break-all;
-}

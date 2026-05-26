@@ -13,7 +13,7 @@ import { initModels, initUI, processImage, setStatus, copyResult, showResult, on
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
 import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
-import { initMathLive, setEditorContent } from './editor/mathlive-config.js';
+import { initEditor, setEditorContent } from './editor/mathlive-config.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -267,8 +267,8 @@ document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListe
   renderHistoryList();
 });
 
-/* ── Editor tab — MathLive formula editor ── */
-initMathLive(); // non-blocking, attaches textarea listener immediately
+/* ── Editor tab ── */
+initEditor();
 
 /* ── Startup: load models ── */
 async function boot() {

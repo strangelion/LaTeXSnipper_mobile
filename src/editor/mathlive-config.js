@@ -1,62 +1,115 @@
-// MathLive config — textarea is primary, MathLive + MathJax as previews
-import { getTheme } from '../ui/theme.js';
-
-const DEBUG = true;
-function log(label, data) { if (DEBUG) console.debug('[editor]', label, data); }
+// MathLive editor — native component with Chinese locale (from LaTeXSnipper desktop)
+const MATHLIVE_ZH = {
+  'keyboard.tooltip.symbols': '符号',
+  'keyboard.tooltip.greek': '希腊字母',
+  'keyboard.tooltip.numeric': '数字',
+  'keyboard.tooltip.alphabetic': '罗马字母',
+  'tooltip.copy to clipboard': '复制到剪贴板',
+  'tooltip.cut to clipboard': '剪切到剪贴板',
+  'tooltip.paste from clipboard': '从剪贴板粘贴',
+  'tooltip.redo': '重做',
+  'tooltip.toggle virtual keyboard': '切换虚拟键盘',
+  'tooltip.menu': '菜单',
+  'tooltip.undo': '撤销',
+  'menu.borders': '矩阵边框',
+  'menu.insert matrix': '插入矩阵',
+  'menu.array.add row above': '上方添加行',
+  'menu.array.add row below': '下方添加行',
+  'menu.array.add column after': '右侧添加列',
+  'menu.array.add column before': '左侧添加列',
+  'menu.array.delete row': '删除行',
+  'menu.array.delete rows': '删除选中行',
+  'menu.array.delete column': '删除列',
+  'menu.array.delete columns': '删除选中列',
+  'menu.mode': '模式',
+  'menu.mode-math': '数学',
+  'menu.mode-text': '文本',
+  'menu.mode-latex': 'LaTeX',
+  'menu.insert': '插入',
+  'menu.insert.abs': '绝对值',
+  'menu.insert.nth-root': 'n 次根号',
+  'menu.insert.log-base': '对数 (log)',
+  'menu.insert.heading-calculus': '微积分',
+  'menu.insert.derivative': '导数',
+  'menu.insert.nth-derivative': 'n 阶导数',
+  'menu.insert.integral': '积分',
+  'menu.insert.sum': '求和',
+  'menu.insert.product': '乘积',
+  'menu.insert.heading-complex-numbers': '复数',
+  'menu.insert.modulus': '模',
+  'menu.insert.argument': '辐角',
+  'menu.insert.real-part': '实部',
+  'menu.insert.imaginary-part': '虚部',
+  'menu.insert.conjugate': '共轭',
+  'tooltip.blackboard': '黑板粗体',
+  'tooltip.bold': '粗体',
+  'tooltip.italic': '斜体',
+  'tooltip.fraktur': '哥特体',
+  'tooltip.script': '手写体',
+  'tooltip.caligraphic': '书法体',
+  'tooltip.typewriter': '等宽',
+  'tooltip.roman-upright': '罗马正体',
+  'menu.font-style': '字体风格',
+  'menu.accent': '重音/修饰',
+  'menu.decoration': '装饰',
+  'menu.color': '颜色',
+  'menu.background-color': '背景',
+  'menu.evaluate': '计算',
+  'menu.simplify': '化简',
+  'menu.solve': '求解',
+  'menu.solve-for': '求解 %@',
+  'menu.cut': '剪切',
+  'menu.copy': '复制',
+  'menu.copy-as-latex': '复制为 LaTeX',
+  'menu.copy-as-typst': '复制为 Typst',
+  'menu.copy-as-ascii-math': '复制为 ASCII Math',
+  'menu.copy-as-mathml': '复制为 MathML',
+  'menu.paste': '粘贴',
+  'menu.select-all': '全选',
+  'color.red': '红色', 'color.orange': '橙色',
+  'color.yellow': '黄色', 'color.lime': '青柠色',
+  'color.green': '绿色', 'color.teal': '蓝绿色',
+  'color.cyan': '青色', 'color.blue': '蓝色',
+  'color.indigo': '靛蓝色', 'color.purple': '紫色',
+  'color.magenta': '品红色', 'color.black': '黑色',
+  'color.dark-grey': '深灰色', 'color.grey': '灰色',
+  'color.light-grey': '浅灰色', 'color.white': '白色',
+};
 
 let mathField = null;
-let latexSource = null;
 
-export function initMathLive() {
-  latexSource = document.getElementById('latexSource');
-  if (!latexSource) return log('no latexSource element');
+export async function initEditor() {
+  await customElements.whenDefined('mathlive-field');
 
-  // Attach textarea listener immediately — no dependency on MathLive
-  latexSource.addEventListener('input', () => syncPreviews());
-  log('textarea listener attached');
+  // Chinese locale
+  try { MathfieldElement.strings = { 'zh-CN': MATHLIVE_ZH }; } catch (_) {}
+  try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
+  MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
+
+  mathField = document.getElementById('mathField');
+  if (!mathField) return;
+
+  // Native MathLive keyboard, smart fence, math mode
+  mathField.mathVirtualKeyboardPolicy = 'onfocus';
+  mathField.smartFence = true;
+  mathField.smartMode = false;
+
+  // Sync MathJax preview on input
+  mathField.addEventListener('input', () => syncPreview());
 
   // Copy button
   document.getElementById('editorCopy')?.addEventListener('click', () => {
-    const latex = latexSource.value.trim();
+    const latex = mathField.value?.trim();
     if (!latex) return;
     navigator.clipboard.writeText(latex).then(() => {
       const b = document.getElementById('editorCopy');
       if (b) { b.textContent = '已复制 ✓'; setTimeout(() => b.textContent = '复制 LaTeX', 1500); }
     });
   });
-
-  // Try to init MathLive (non-blocking)
-  initMathLiveAsync();
-
-  syncPreviews();
 }
 
-async function initMathLiveAsync() {
-  try {
-    await customElements.whenDefined('mathlive-field');
-    mathField = document.getElementById('mathField');
-    if (!mathField) return log('no mathField element');
-
-    try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
-    MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
-    mathField.readOnly = true;
-    mathField.mathVirtualKeyboardPolicy = 'manual';
-    const theme = getTheme();
-    mathField.style.color = theme === 'dark' ? '#e2e8f0' : '#1e293b';
-    log('MathLive ready');
-  } catch (e) {
-    log('MathLive init failed', e.message);
-  }
-}
-
-function syncPreviews() {
-  const latex = latexSource.value || '';
-  log('sync', { latex: latex.substring(0, 80), len: latex.length });
-
-  // Update MathLive if available
-  if (mathField) mathField.value = latex;
-
-  // Update MathJax preview
+function syncPreview() {
+  const latex = mathField?.value || '';
   const preview = document.getElementById('editorPreview');
   const copyBtn = document.getElementById('editorCopy');
 
@@ -67,52 +120,20 @@ function syncPreviews() {
   }
   if (copyBtn) copyBtn.style.display = 'block';
 
-  const hasMJ = typeof MathJax !== 'undefined';
-  log('mathjax check', { hasMathJax: hasMJ, hasTex2svg: hasMJ && !!MathJax?.tex2svgPromise });
-
-  if (hasMJ && MathJax.tex2svgPromise) {
-    // Strip display/inline math delimiters — tex2svgPromise expects raw LaTeX
-    let tex = latex.trim();
-    if (tex.startsWith('$$') && tex.endsWith('$$')) tex = tex.slice(2, -2).trim();
-    else if (tex.startsWith('\\[') && tex.endsWith('\\]')) tex = tex.slice(2, -2).trim();
-    else if (tex.startsWith('$') && tex.endsWith('$')) tex = tex.slice(1, -1).trim();
-    else if (tex.startsWith('\\(') && tex.endsWith('\\)')) tex = tex.slice(2, -2).trim();
-    MathJax.tex2svgPromise(tex).then(node => {
-      log('mathjax ok', { tag: node?.nodeName });
-      if (preview) {
-        preview.innerHTML = '';
-        preview.appendChild(node);
-        preview.classList.add('show');
-      }
-    }).catch(err => {
-      log('mathjax fail', err.message || err);
-      if (preview) {
-        preview.innerHTML = '<em style="color:var(--muted)">渲染失败: ' + (err.message || String(err)) + '</em>';
-        preview.classList.add('show');
-      }
-    });
-  } else {
-    log('mathjax missing');
-    if (preview) {
-      preview.innerHTML = '<em style="color:var(--muted)">MathJax 未加载</em>';
-      preview.classList.add('show');
-    }
+  if (typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
+    MathJax.tex2svgPromise(latex).then(node => {
+      if (preview) { preview.innerHTML = ''; preview.appendChild(node); preview.classList.add('show'); }
+    }).catch(() => {});
   }
 }
 
-// Called externally to fill editor (from OCR results, history, etc.)
+// Fill editor from OCR/history
 export function setEditorContent(latex) {
-  if (!latexSource) {
-    latexSource = document.getElementById('latexSource');
-    mathField = document.getElementById('mathField');
-  }
-  if (latexSource) {
-    latexSource.value = latex;
-    latexSource.dispatchEvent(new Event('input', { bubbles: true }));
-    // Switch to editor tab
-    const editorTab = document.querySelector('.bottom-nav button[data-page="editor"]');
-    if (editorTab) editorTab.click();
+  if (!mathField) mathField = document.getElementById('mathField');
+  if (mathField) {
+    mathField.value = latex;
+    mathField.dispatchEvent(new Event('input', { bubbles: true }));
+    const t = document.querySelector('.bottom-nav button[data-page="editor"]');
+    if (t) t.click();
   }
 }
-
-export function getMathField() { return mathField; }
