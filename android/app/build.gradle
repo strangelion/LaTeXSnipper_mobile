@@ -37,9 +37,10 @@ android {
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                // V1+V2+V3 signing (all enabled by default in AGP)
+                // V1+V2+V3 signing
                 v1SigningEnabled true
                 v2SigningEnabled true
+                v3SigningEnabled true
             }
         }
     }
@@ -49,8 +50,11 @@ android {
             // Debug uses auto-generated debug keystore (V1 only by default)
         }
         release {
-            minifyEnabled true        // R8 obfuscation (basic hardening)
+            debuggable false           // Block debugger
+            minifyEnabled true         // R8 code shrinking + obfuscation
             shrinkResources true       // Remove unused resources
+            crunchPngs true            // PNG optimization
+            zipAlignEnabled true       // APK alignment
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (keystoreProperties.containsKey('storeFile')) {
                 signingConfig signingConfigs.release

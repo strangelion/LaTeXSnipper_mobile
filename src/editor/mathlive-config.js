@@ -84,9 +84,20 @@ export function initEditor() {
   mathField.mathVirtualKeyboardPolicy = 'onfocus';
   mathField.smartFence = true;
   mathField.smartMode = false;
-  mathField.style.minHeight = '100px';
-  mathField.style.fontSize = '1.1rem';
+  mathField.style.minHeight = '160px';
+  mathField.style.fontSize = '1.4rem';
+  mathField.style.width = '100%';
+  mathField.style.border = '1px solid var(--border-color)';
+  mathField.style.borderRadius = '10px';
+  mathField.style.background = 'var(--card-bg)';
+  mathField.style.padding = '0.5rem';
+  mathField.style.touchAction = 'manipulation';
   mathField.id = 'mathField';
+
+  // Fix toolbar flash on tap — use document.body as keyboard container
+  if (window.mathVirtualKeyboard) {
+    window.mathVirtualKeyboard.container = document.body;
+  }
 
   // Append to editor page
   hostEl = document.getElementById('page-editor')?.querySelector('.editor-wrap');
