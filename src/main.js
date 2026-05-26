@@ -172,24 +172,24 @@ if (hwCanvas && hwWrap) {
 
 /* ── Recognition mode selector ── */
 let recogMode = 'formula';
-document.querySelectorAll('#recogMode .mode-tab').forEach(btn => {
+document.querySelectorAll('.recog-tabs .mode-tab').forEach(btn => {
   btn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    document.querySelectorAll('#recogMode .mode-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.recog-tabs .mode-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     recogMode = btn.dataset.mode;
   });
 });
 // When switching to handwriting, default to mixed mode
 document.getElementById('tabHandwrite')?.addEventListener('pointerdown', () => {
-  document.querySelectorAll('#recogMode .mode-tab').forEach(b => b.classList.remove('active'));
-  const mixedBtn = document.querySelector('#recogMode [data-mode="mixed"]');
+  document.querySelectorAll('.recog-tabs .mode-tab').forEach(b => b.classList.remove('active'));
+  const mixedBtn = document.querySelector('.recog-tabs [data-mode="mixed"]');
   if (mixedBtn) mixedBtn.classList.add('active');
   recogMode = 'mixed';
 });
 document.getElementById('tabImage')?.addEventListener('pointerdown', () => {
-  document.querySelectorAll('#recogMode .mode-tab').forEach(b => b.classList.remove('active'));
-  const formulaBtn = document.querySelector('#recogMode [data-mode="formula"]');
+  document.querySelectorAll('.recog-tabs .mode-tab').forEach(b => b.classList.remove('active'));
+  const formulaBtn = document.querySelector('.recog-tabs [data-mode="formula"]');
   if (formulaBtn) formulaBtn.classList.add('active');
   recogMode = 'formula';
 });
