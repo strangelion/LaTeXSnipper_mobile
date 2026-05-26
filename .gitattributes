@@ -1,3 +1,1 @@
 # Git LFS for large ONNX model files
-public/models/**/*.onnx filter=lfs diff=lfs merge=lfs -text
-public/models/**/*.onnx !text !filter !merge !diff
