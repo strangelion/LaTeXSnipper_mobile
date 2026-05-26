@@ -80,13 +80,26 @@ let mathField = null;
 
 export async function initEditor() {
   console.debug('[editor] initEditor called');
+  console.debug('[editor] MathfieldElement global:', typeof window.MathfieldElement);
+  console.debug('[editor] mathlive-field defined:', !!customElements.get('mathlive-field'));
+
+  // Check if script actually loaded
+  if (typeof window.MathfieldElement === 'undefined') {
+    console.debug('[editor] MathLive script not loaded — waiting 5s then retry...');
+    await new Promise(r => setTimeout(r, 5000));
+    console.debug('[editor] after wait, MathfieldElement:', typeof window.MathfieldElement);
+    if (typeof window.MathfieldElement === 'undefined') {
+      console.debug('[editor] MathLive still not loaded, giving up');
+      return;
+    }
+  }
+
+  console.debug('[editor] MathLive OK, waiting for custom element...');
   try {
-    console.debug('[editor] waiting for mathlive-field...');
     await customElements.whenDefined('mathlive-field');
     console.debug('[editor] mathlive-field defined');
   } catch(e) {
-    console.debug('[editor] mathlive-field failed', e.message);
-    return;
+    console.debug('[editor] mathlive-field whenDefined failed', e.message);
   }
 
   console.debug('[editor] MathfieldElement:', typeof MathfieldElement);
