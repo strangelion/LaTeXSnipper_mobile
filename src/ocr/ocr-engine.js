@@ -1,19 +1,6 @@
 // OCR Engine — ONNX model loading, image preprocessing, greedy decode, LaTeX repair
-// Extracted from ocr_demo.html, logic preserved 100%
 
 import { MODEL_BASE, MODEL_CACHE, IMG_SIZE, CONFIDENCE_MIN, DECODER_MAX_TOKENS } from '../constants.js';
-
-// ── Debug logging ──
-const DEBUG = true;
-function log(label, data) {
-  if (!DEBUG) return;
-  const ts = new Date().toISOString().slice(11, 23);
-  if (data !== undefined) {
-    console.debug(`[ocr ${ts}] ${label}`, data);
-  } else {
-    console.debug(`[ocr ${ts}] ${label}`);
-  }
-}
 
 let encoderSession = null;
 let decoderSession = null;
@@ -121,21 +108,12 @@ export function isImageEmpty(img) {
     if (Math.abs(pixels[i * 4] - mean) >= threshold) fg++;
   }
   const fgRatio = fg / n;
-  const empty = range <= 20 || fgRatio < 0.0003;
-  log('isImageEmpty', {
-    w, h, sampleSize: size,
-    mean: mean.toFixed(1), min, max, range,
-    threshold: threshold.toFixed(1),
-    fgRatio: fgRatio.toFixed(6),
-    empty,
-  });
-  return empty;
+  return range <= 20 || fgRatio < 0.0003;
 }
 
 export function preprocessImage(img) {
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
-  log('preprocessImage input', { iw, ih });
   const canvas = document.createElement('canvas');
   canvas.width = IMG_SIZE; canvas.height = IMG_SIZE;
   const ctx = canvas.getContext('2d');
@@ -151,7 +129,6 @@ export function preprocessImage(img) {
     floatData[hw + i] = pixels[p + 1] * scl - 1.0;
     floatData[2 * hw + i] = pixels[p + 2] * scl - 1.0;
   }
-  log('preprocessImage output', { shape: [1, 3, IMG_SIZE, IMG_SIZE], range: `[${floatData[0].toFixed(3)}, ${floatData[1].toFixed(3)}]` });
   return floatData;
 }
 
@@ -259,7 +236,6 @@ export async function recognize(img) {
   running = true;
 
   try {
-  log('recognize start', { naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
 
   if (isImageEmpty(img)) {
     log('recognize skip — image empty');
@@ -276,7 +252,6 @@ export async function recognize(img) {
   const encName = encoderSession.inputNames[0];
   const encOut = await encoderSession.run({ [encName]: inputTensor });
   const hiddenStates = encOut[encoderSession.outputNames[0]];
-  log('encoder done', { duration: (performance.now() - t0).toFixed(0) + 'ms', hiddenShape: hiddenStates.dims });
 
   const decName0 = decoderSession.inputNames[0];
   const decName1 = decoderSession.inputNames[1];
@@ -311,16 +286,6 @@ export async function recognize(img) {
   const avgConf = tokenProbs.length > 0
     ? tokenProbs.reduce((a, b) => a + b, 0) / tokenProbs.length
     : 0;
-
-  log('decoder done', {
-    duration: (performance.now() - t0).toFixed(0) + 'ms',
-    tokenCount: tokenIds.length,
-    avgConf: avgConf.toFixed(4),
-    CONFIDENCE_MIN,
-    rawLatex: rawLatex.substring(0, 120),
-    repaired: latex.substring(0, 120),
-    discarded: avgConf < CONFIDENCE_MIN,
-  });
 
   if (avgConf < CONFIDENCE_MIN) latex = '';
   return { latex, confidence: avgConf };

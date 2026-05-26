@@ -1,6 +1,12 @@
 // MathLive config — minimal: textarea input, MathLive + MathJax dual preview
 import { getTheme } from '../ui/theme.js';
 
+const DEBUG = true;
+function log(label, data) {
+  if (!DEBUG) return;
+  console.debug('[editor]', label, data);
+}
+
 let mathField = null;
 let latexSource = null;
 
@@ -41,32 +47,44 @@ export async function initMathLive() {
 
 function syncPreviews() {
   const latex = latexSource.value || '';
+  log('sync', { latex: latex.substring(0, 80), len: latex.length });
+
   // Update MathLive
-  mathField.value = latex;
+  if (mathField) mathField.value = latex;
 
   // Update MathJax SVG preview
   const preview = document.getElementById('editorPreview');
   const copyBtn = document.getElementById('editorCopy');
   if (!latex.trim()) {
-    preview.classList.remove('show');
-    preview.innerHTML = '';
+    if (preview) { preview.classList.remove('show'); preview.innerHTML = ''; }
     if (copyBtn) copyBtn.style.display = 'none';
     return;
   }
   if (copyBtn) copyBtn.style.display = 'block';
 
+  log('mathjax check', { hasMathJax: typeof MathJax !== 'undefined', hasTex2svg: typeof MathJax !== 'undefined' && !!MathJax.tex2svgPromise });
+
   if (typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
     MathJax.tex2svgPromise(latex).then(node => {
-      preview.innerHTML = '';
-      preview.appendChild(node);
-      preview.classList.add('show');
-    }).catch(() => {
-      preview.innerHTML = '<em style="color:var(--muted)">预览渲染失败，请检查 LaTeX 语法</em>';
-      preview.classList.add('show');
+      log('mathjax ok', { nodeType: node?.nodeName, html: node?.innerHTML?.substring(0, 60) });
+      if (preview) {
+        preview.innerHTML = '';
+        preview.appendChild(node);
+        preview.classList.add('show');
+      }
+    }).catch(err => {
+      log('mathjax error', err.message || err);
+      if (preview) {
+        preview.innerHTML = '<em style="color:var(--muted)">渲染失败: ' + (err.message || err) + '</em>';
+        preview.classList.add('show');
+      }
     });
   } else {
-    preview.innerHTML = '<em style="color:var(--muted)">MathJax 未加载</em>';
-    preview.classList.add('show');
+    log('mathjax missing');
+    if (preview) {
+      preview.innerHTML = '<em style="color:var(--muted)">MathJax 未加载</em>';
+      preview.classList.add('show');
+    }
   }
 }
 
