@@ -46,21 +46,18 @@ jobs:
 
       - name: Setup iOS platform
         run: |
-          cd ios/App
-          # Create minimal Podfile if missing
-          if [ ! -f Podfile ]; then
-            cat > Podfile << 'PODEOF'
-          platform :ios, '14.0'
-          use_frameworks!
-          target 'App' do
-            capacitor_pods
-          end
-          PODEOF
-          fi
-          pod install --repo-update || echo "Pod install needs manual CocoaPods setup"
+          # Remove stale partial ios/ so cap add creates a fresh one
+          rm -rf ios/App
+          npx cap add ios
+          # Copy ExportOptions back
+          cp .github/ExportOptions.plist ios/App/ExportOptions.plist
 
       - name: Sync Capacitor iOS
         run: npx cap sync ios
+
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: pod install --repo-update 2>&1 || echo "Pods skipped"
 
       - name: Build iOS archive
         working-directory: ios/App
@@ -82,7 +79,7 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath App.xcarchive \
             -exportPath build \
-            -exportOptionsPlist ExportOptions.plist \
+            -exportOptionsPlist ../ExportOptions.plist \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Export requires signing config"
