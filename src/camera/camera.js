@@ -74,20 +74,20 @@ export function capturePhoto() {
 }
 
 // ── Overlay ──
-function drawCropOverlay() {
+function drawCropOverlay(hoverCorner = -1, hoverEdge = -1, hovering = false) {
   if (!camCropImg) return;
   camCropCtx.drawImage(camCropImg, 0, 0);
   if (!camCropRect) {
     camCropCtx.fillStyle = 'rgba(0,0,0,0.25)';
     camCropCtx.fillRect(0, 0, camCropCanvas.width, camCropCanvas.height);
     camCropCtx.fillStyle = 'rgba(255,255,255,0.9)';
-    const fs = Math.max(14, Math.min(24, camCropCanvas.width / 20));
-    camCropCtx.font = fs + 'px "Segoe UI","Microsoft YaHei",sans-serif';
+    const fs = Math.max(32, Math.min(52, camCropCanvas.width / 10));
+    camCropCtx.font = 'bold ' + fs + 'px "Segoe UI","Microsoft YaHei",sans-serif';
     camCropCtx.textAlign = 'center'; camCropCtx.textBaseline = 'middle';
     camCropCtx.fillText('拖拽框选要识别的区域', camCropCanvas.width / 2, camCropCanvas.height / 2);
     camCropCtx.fillStyle = 'rgba(255,255,255,0.5)';
-    camCropCtx.font = (fs * 0.6) + 'px "Segoe UI","Microsoft YaHei",sans-serif';
-    camCropCtx.fillText('不框选则识别整张图片', camCropCanvas.width / 2, camCropCanvas.height / 2 + fs * 1.4);
+    camCropCtx.font = (fs * 0.55) + 'px "Segoe UI","Microsoft YaHei",sans-serif';
+    camCropCtx.fillText('不框选则识别整张图片', camCropCanvas.width / 2, camCropCanvas.height / 2 + fs * 1.3);
     return;
   }
   const r = camCropRect;
@@ -96,7 +96,8 @@ function drawCropOverlay() {
   camCropCtx.fillRect(0, r.y, r.x, r.h);
   camCropCtx.fillRect(r.x + r.w, r.y, camCropCanvas.width - r.x - r.w, r.h);
   camCropCtx.fillRect(0, r.y + r.h, camCropCanvas.width, camCropCanvas.height - r.y - r.h);
-  camCropCtx.strokeStyle = '#60a5fa'; camCropCtx.lineWidth = 2;
+  const lineW = hovering ? 3.5 : 2;
+  camCropCtx.strokeStyle = hovering ? '#93c5fd' : '#60a5fa'; camCropCtx.lineWidth = lineW;
   camCropCtx.strokeRect(r.x, r.y, r.w, r.h);
   if (camCropPath && camCropPath.length > 1) {
     camCropCtx.beginPath(); camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2;
@@ -105,21 +106,34 @@ function drawCropOverlay() {
     camCropCtx.stroke();
   }
   const corners = [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]];
-  const hR = Math.max(6, Math.min(14, r.w / 20, r.h / 20));
-  camCropCtx.fillStyle = '#60a5fa';
-  for (let i = 0; i < 4; i++) { camCropCtx.beginPath(); camCropCtx.arc(corners[i][0], corners[i][1], hR, 0, Math.PI * 2); camCropCtx.fill(); }
+  const baseR = Math.max(8, Math.min(16, r.w / 18, r.h / 18));
+  for (let i = 0; i < 4; i++) {
+    const isHovered = (i === hoverCorner);
+    const hR = isHovered ? baseR * 2 : baseR;
+    camCropCtx.fillStyle = isHovered ? '#93c5fd' : '#60a5fa';
+    camCropCtx.beginPath();
+    camCropCtx.arc(corners[i][0], corners[i][1], hR, 0, Math.PI * 2);
+    camCropCtx.fill();
+    if (isHovered) {
+      camCropCtx.fillStyle = 'rgba(147,197,253,0.3)';
+      camCropCtx.beginPath();
+      camCropCtx.arc(corners[i][0], corners[i][1], hR * 1.8, 0, Math.PI * 2);
+      camCropCtx.fill();
+    }
+  }
 }
 
 // ── Hit testing ──
 function cornerHit(p, r) {
   if (!r || r.w < 20) return -1;
   const cs = [[r.x, r.y], [r.x+r.w, r.y], [r.x, r.y+r.h], [r.x+r.w, r.y+r.h]];
-  const thr = Math.max(12, Math.min(30, r.w / 8, r.h / 8));
+  const thr = Math.max(32, Math.min(60, r.w / 5, r.h / 5)); // Larger touch target
   for (let i = 0; i < 4; i++) { const dx = p.x - cs[i][0], dy = p.y - cs[i][1]; if (Math.sqrt(dx*dx+dy*dy) < thr) return i; }
   return -1;
 }
 function edgeHit(p, r) {
-  if (!r || r.w < 30 || r.h < 30) return -1; const m = 14;
+  if (!r || r.w < 30 || r.h < 30) return -1;
+  const m = Math.max(24, Math.min(r.w, r.h) * 0.12); // Proportional edge zone
   if (Math.abs(p.y - r.y) < m && p.x > r.x + m && p.x < r.x + r.w - m) return 0;
   if (Math.abs(p.x - (r.x + r.w)) < m && p.y > r.y + m && p.y < r.y + r.h - m) return 1;
   if (Math.abs(p.y - (r.y + r.h)) < m && p.x > r.x + m && p.x < r.x + r.w - m) return 2;
@@ -167,8 +181,16 @@ function bindCropEvents() {
     camCropCanvas.setPointerCapture(e.pointerId); e.preventDefault();
   });
   camCropCanvas.addEventListener('pointermove', (e) => {
-    if (!camCropDragging) return;
-    const p = cropGetPos(e); updateBarVisibility(p.clientY);
+    const p = cropGetPos(e);
+    if (!camCropDragging) {
+      if (camCropRect && camCropMode === 'rect') {
+        const ci = cornerHit(p, camCropRect);
+        const ei = ci < 0 ? edgeHit(p, camCropRect) : -1;
+        if (ci >= 0 || ei >= 0 || insideRect(p, camCropRect)) drawCropOverlay(ci, ei, true);
+      }
+      return;
+    }
+    updateBarVisibility(p.clientY);
     if (camCropMode === 'lasso') {
       camCropPath.push(p); const prev = camCropPath[camCropPath.length-2];
       camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2; camCropCtx.lineCap = 'round';
