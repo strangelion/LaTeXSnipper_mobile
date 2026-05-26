@@ -68,9 +68,22 @@ export function closeCamera() {
 export function capturePhoto() {
   if (!camStream) return;
   camCropImg = document.createElement('canvas');
-  camCropImg.width = camVideo.videoWidth;
-  camCropImg.height = camVideo.videoHeight;
-  camCropImg.getContext('2d').drawImage(camVideo, 0, 0);
+  // Auto-rotate: phone camera sensor is landscape, rotate if user holds portrait
+  const isPortrait = window.innerHeight > window.innerWidth;
+  const videoLandscape = camVideo.videoWidth > camVideo.videoHeight;
+  if (isPortrait && videoLandscape) {
+    camCropImg.width = camVideo.videoHeight;
+    camCropImg.height = camVideo.videoWidth;
+    const ctx = camCropImg.getContext('2d');
+    ctx.translate(camCropImg.width / 2, camCropImg.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(camVideo, -camVideo.videoWidth / 2, -camVideo.videoHeight / 2);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  } else {
+    camCropImg.width = camVideo.videoWidth;
+    camCropImg.height = camVideo.videoHeight;
+    camCropImg.getContext('2d').drawImage(camVideo, 0, 0);
+  }
   // Stop live stream
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   camVideo.srcObject = null;
