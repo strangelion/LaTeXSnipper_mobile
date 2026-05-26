@@ -1,35 +1,19 @@
-// MathLive config — minimal: textarea input, MathLive + MathJax dual preview
+// MathLive config — textarea is primary, MathLive + MathJax as previews
 import { getTheme } from '../ui/theme.js';
 
 const DEBUG = true;
-function log(label, data) {
-  if (!DEBUG) return;
-  console.debug('[editor]', label, data);
-}
+function log(label, data) { if (DEBUG) console.debug('[editor]', label, data); }
 
 let mathField = null;
 let latexSource = null;
 
-export async function initMathLive() {
-  await customElements.whenDefined('mathlive-field');
-
-  try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
-  MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
-
-  mathField = document.getElementById('mathField');
+export function initMathLive() {
   latexSource = document.getElementById('latexSource');
-  if (!mathField || !latexSource) return;
+  if (!latexSource) return log('no latexSource element');
 
-  // MathLive is read-only visual preview
-  mathField.readOnly = true;
-  mathField.mathVirtualKeyboardPolicy = 'manual';
-
-  // Apply initial theme
-  const theme = getTheme();
-  mathField.style.color = theme === 'dark' ? '#e2e8f0' : '#1e293b';
-
-  // textarea input → update MathLive + MathJax
+  // Attach textarea listener immediately — no dependency on MathLive
   latexSource.addEventListener('input', () => syncPreviews());
+  log('textarea listener attached');
 
   // Copy button
   document.getElementById('editorCopy')?.addEventListener('click', () => {
@@ -41,20 +25,41 @@ export async function initMathLive() {
     });
   });
 
-  // Initial sync (in case textarea has pre-filled content)
+  // Try to init MathLive (non-blocking)
+  initMathLiveAsync();
+
   syncPreviews();
+}
+
+async function initMathLiveAsync() {
+  try {
+    await customElements.whenDefined('mathlive-field');
+    mathField = document.getElementById('mathField');
+    if (!mathField) return log('no mathField element');
+
+    try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
+    MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
+    mathField.readOnly = true;
+    mathField.mathVirtualKeyboardPolicy = 'manual';
+    const theme = getTheme();
+    mathField.style.color = theme === 'dark' ? '#e2e8f0' : '#1e293b';
+    log('MathLive ready');
+  } catch (e) {
+    log('MathLive init failed', e.message);
+  }
 }
 
 function syncPreviews() {
   const latex = latexSource.value || '';
   log('sync', { latex: latex.substring(0, 80), len: latex.length });
 
-  // Update MathLive
+  // Update MathLive if available
   if (mathField) mathField.value = latex;
 
-  // Update MathJax SVG preview
+  // Update MathJax preview
   const preview = document.getElementById('editorPreview');
   const copyBtn = document.getElementById('editorCopy');
+
   if (!latex.trim()) {
     if (preview) { preview.classList.remove('show'); preview.innerHTML = ''; }
     if (copyBtn) copyBtn.style.display = 'none';
@@ -62,20 +67,21 @@ function syncPreviews() {
   }
   if (copyBtn) copyBtn.style.display = 'block';
 
-  log('mathjax check', { hasMathJax: typeof MathJax !== 'undefined', hasTex2svg: typeof MathJax !== 'undefined' && !!MathJax.tex2svgPromise });
+  const hasMJ = typeof MathJax !== 'undefined';
+  log('mathjax check', { hasMathJax: hasMJ, hasTex2svg: hasMJ && !!MathJax?.tex2svgPromise });
 
-  if (typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
+  if (hasMJ && MathJax.tex2svgPromise) {
     MathJax.tex2svgPromise(latex).then(node => {
-      log('mathjax ok', { nodeType: node?.nodeName, html: node?.innerHTML?.substring(0, 60) });
+      log('mathjax ok', { tag: node?.nodeName });
       if (preview) {
         preview.innerHTML = '';
         preview.appendChild(node);
         preview.classList.add('show');
       }
     }).catch(err => {
-      log('mathjax error', err.message || err);
+      log('mathjax fail', err.message || err);
       if (preview) {
-        preview.innerHTML = '<em style="color:var(--muted)">渲染失败: ' + (err.message || err) + '</em>';
+        preview.innerHTML = '<em style="color:var(--muted)">渲染失败: ' + (err.message || String(err)) + '</em>';
         preview.classList.add('show');
       }
     });
@@ -88,7 +94,7 @@ function syncPreviews() {
   }
 }
 
-// Called externally to fill the editor with LaTeX (from OCR results, history, etc.)
+// Called externally to fill editor (from OCR results, history, etc.)
 export function setEditorContent(latex) {
   if (!latexSource) {
     latexSource = document.getElementById('latexSource');

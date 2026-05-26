@@ -268,7 +268,7 @@ document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListe
 });
 
 /* ── Editor tab — MathLive formula editor ── */
-initMathLive();
+initMathLive(); // non-blocking, attaches textarea listener immediately
 
 /* ── Startup: load models ── */
 async function boot() {
