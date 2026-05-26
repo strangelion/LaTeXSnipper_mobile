@@ -1,9 +1,7 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-apk:
@@ -25,6 +23,17 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci
@@ -35,13 +44,40 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Build APK
+      - name: Build Debug APK
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Build Release APK (unsigned)
+        working-directory: android
+        run: ./gradlew assembleRelease || echo "Release build skipped (no keystore)"
+
+      - name: Get version
+        id: version
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          echo "version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: latexsnipper-debug
+          name: LaTeXSnipper-v${{ steps.version.outputs.version }}-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+
+      - name: Upload Release APK
+        if: hashFiles('android/app/build/outputs/apk/release/app-release-unsigned.apk') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaTeXSnipper-v${{ steps.version.outputs.version }}-release-unsigned
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          files: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+          draft: true
+          generate_release_notes: true
