@@ -45,9 +45,9 @@ jobs:
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > release.keystore
             echo "storeFile=release.keystore" > keystore.properties
-            echo "storePassword=$KEYSTORE_PASSWORD" >> keystore.properties
-            echo "keyAlias=$KEY_ALIAS" >> keystore.properties
-            echo "keyPassword=$KEY_PASSWORD" >> keystore.properties
+            echo "storePassword=${KEYSTORE_PASSWORD}" >> keystore.properties
+            echo "keyAlias=${KEY_ALIAS:-latexsnipper}" >> keystore.properties
+            echo "keyPassword=${KEY_PASSWORD:-${KEYSTORE_PASSWORD}}" >> keystore.properties
             echo "Using user-provided keystore"
           else
             keytool -genkey -v -keystore release.keystore \
@@ -58,7 +58,7 @@ jobs:
             echo "storePassword=latexsnipper" >> keystore.properties
             echo "keyAlias=latexsnipper" >> keystore.properties
             echo "keyPassword=latexsnipper" >> keystore.properties
-            echo "Using CI-generated keystore"
+            echo "Using CI-generated keystore (no Secrets set)"
           fi
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
