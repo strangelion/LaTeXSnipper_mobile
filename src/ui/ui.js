@@ -312,5 +312,5 @@ export async function initModels(onProgress) {
     }
     if (onProgress) onProgress(label, pct);
   });
-  setStatus('ready', 'Model ready! Upload a formula image or Ctrl+V paste', false);
+  setStatus('ready', '模型就绪！拖入公式图片或 Ctrl+V 粘贴', false);
 }

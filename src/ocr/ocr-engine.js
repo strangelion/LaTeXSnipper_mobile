@@ -45,15 +45,15 @@ export async function downloadWithProgress(url, label, onProgress) {
 // ── Model loading ──
 
 export async function loadModels(onProgress) {
-  const encoderBuf = await downloadWithProgress(MODEL_BASE + '/encoder_model.onnx', 'Encoder model', onProgress);
-  if (onProgress) onProgress('Loading encoder into memory…', -1);
+  const encoderBuf = await downloadWithProgress(MODEL_BASE + '/encoder_model.onnx', '编码器模型', onProgress);
+  if (onProgress) onProgress('正在加载编码器到内存…', -1);
   encoderSession = await ort.InferenceSession.create(encoderBuf, {
     executionProviders: ['webgpu', 'wasm'],
     graphOptimizationLevel: 'all',
   });
 
-  const decoderBuf = await downloadWithProgress(MODEL_BASE + '/decoder_model.onnx', 'Decoder model', onProgress);
-  if (onProgress) onProgress('Loading decoder into memory…', -1);
+  const decoderBuf = await downloadWithProgress(MODEL_BASE + '/decoder_model.onnx', '解码器模型', onProgress);
+  if (onProgress) onProgress('正在加载解码器到内存…', -1);
   decoderSession = await ort.InferenceSession.create(decoderBuf, {
     executionProviders: ['webgpu', 'wasm'],
     graphOptimizationLevel: 'all',
