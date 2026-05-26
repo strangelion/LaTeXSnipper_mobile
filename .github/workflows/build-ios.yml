@@ -57,42 +57,26 @@ jobs:
         working-directory: ios/App
         run: pod install --repo-update 2>&1 || echo "Pods skipped"
 
-      - name: Build iOS archive
+      - name: Build for Simulator (no account needed)
         working-directory: ios/App
         run: |
-          xcodebuild archive \
+          xcodebuild build \
             -workspace App.xcworkspace \
             -scheme App \
-            -archivePath App.xcarchive \
-            -destination 'generic/platform=iOS' \
-            -allowProvisioningUpdates \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Archive requires Apple Developer setup"
+            CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Build failed"
 
-      - name: Export IPA
-        if: success()
+      - name: Package Simulator App
         working-directory: ios/App
         run: |
-          xcodebuild -exportArchive \
-            -archivePath App.xcarchive \
-            -exportPath build \
-            -exportOptionsPlist ExportOptions.plist \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Export requires signing config"
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "App.app" -path "*/Build/Products/*" 2>/dev/null | head -1)
+          if [ -n "$APP" ]; then mkdir -p build && cp -r "$APP" build/ && echo "Packaged: $APP"; fi
 
-      - name: Upload IPA
-        if: hashFiles('ios/App/build/App.ipa') != ''
+      - name: Upload Simulator App
+        if: hashFiles('ios/App/build/App.app') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: LaTeXSnipper-v${{ inputs.version }}-iOS
-          path: ios/App/build/App.ipa
-
-      - name: Create GitHub Release
-        if: ${{ inputs.create_release }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ inputs.version }}
-          name: v${{ inputs.version }}
-          files: ios/App/build/App.ipa
+          name: LaTeXSnipper-v${{ inputs.version }}-iOS-simulator
+          path: ios/App/build/App.app
