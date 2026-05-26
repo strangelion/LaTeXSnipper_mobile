@@ -71,7 +71,13 @@ function syncPreviews() {
   log('mathjax check', { hasMathJax: hasMJ, hasTex2svg: hasMJ && !!MathJax?.tex2svgPromise });
 
   if (hasMJ && MathJax.tex2svgPromise) {
-    MathJax.tex2svgPromise(latex).then(node => {
+    // Strip display/inline math delimiters — tex2svgPromise expects raw LaTeX
+    let tex = latex.trim();
+    if (tex.startsWith('$$') && tex.endsWith('$$')) tex = tex.slice(2, -2).trim();
+    else if (tex.startsWith('\\[') && tex.endsWith('\\]')) tex = tex.slice(2, -2).trim();
+    else if (tex.startsWith('$') && tex.endsWith('$')) tex = tex.slice(1, -1).trim();
+    else if (tex.startsWith('\\(') && tex.endsWith('\\)')) tex = tex.slice(2, -2).trim();
+    MathJax.tex2svgPromise(tex).then(node => {
       log('mathjax ok', { tag: node?.nodeName });
       if (preview) {
         preview.innerHTML = '';
