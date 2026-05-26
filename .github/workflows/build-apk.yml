@@ -46,11 +46,15 @@ jobs:
 
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
 
       - name: Build Release APK (unsigned)
         working-directory: android
-        run: ./gradlew assembleRelease || echo "Release build skipped (no keystore)"
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease || echo "Release build skipped (no keystore)"
 
       - name: Get version
         id: version
