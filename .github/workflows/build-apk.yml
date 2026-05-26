@@ -26,6 +26,14 @@ jobs:
         with:
           packages: 'platforms;android-35 build-tools;35.0.0'
 
+      - name: Generate debug keystore
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "Debug keystore ready"
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -49,6 +57,16 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug
+
+      - name: Verify APK signature
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK" ]; then
+            echo "APK size: $(du -sh "$APK" | cut -f1)"
+            unzip -l "$APK" | tail -5
+            # Check if signed
+            jarsigner -verify -verbose "$APK" 2>&1 | head -3 || true
+          fi
 
       - name: Build Release APK (unsigned)
         working-directory: android
