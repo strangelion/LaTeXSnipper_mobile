@@ -46,10 +46,8 @@ jobs:
 
       - name: Setup iOS platform
         run: |
-          # Remove stale partial ios/ so cap add creates a fresh one
-          rm -rf ios/App
+          rm -rf ios
           npx cap add ios
-          # Copy ExportOptions back
           cp .github/ExportOptions.plist ios/App/ExportOptions.plist
 
       - name: Sync Capacitor iOS
