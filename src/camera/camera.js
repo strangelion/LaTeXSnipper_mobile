@@ -127,13 +127,13 @@ function drawCropOverlay(hoverCorner = -1, hoverEdge = -1, hovering = false) {
 function cornerHit(p, r) {
   if (!r || r.w < 20) return -1;
   const cs = [[r.x, r.y], [r.x+r.w, r.y], [r.x, r.y+r.h], [r.x+r.w, r.y+r.h]];
-  const thr = Math.max(40, Math.min(72, r.w / 4, r.h / 4));
+  const thr = Math.max(44, Math.min(80, r.w / 3, r.h / 3));
   for (let i = 0; i < 4; i++) { const dx = p.x - cs[i][0], dy = p.y - cs[i][1]; if (Math.sqrt(dx*dx+dy*dy) < thr) return i; }
   return -1;
 }
 function edgeHit(p, r) {
   if (!r || r.w < 30 || r.h < 30) return -1;
-  const m = Math.max(24, Math.min(r.w, r.h) * 0.12); // Proportional edge zone
+  const m = Math.max(28, Math.min(r.w, r.h) * 0.12);
   if (Math.abs(p.y - r.y) < m && p.x > r.x + m && p.x < r.x + r.w - m) return 0;
   if (Math.abs(p.x - (r.x + r.w)) < m && p.y > r.y + m && p.y < r.y + r.h - m) return 1;
   if (Math.abs(p.y - (r.y + r.h)) < m && p.x > r.x + m && p.x < r.x + r.w - m) return 2;

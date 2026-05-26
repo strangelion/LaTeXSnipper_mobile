@@ -202,6 +202,11 @@ window.__recogMode = () => recogMode;
   try {
     const { App } = await import('@capacitor/app');
     App.addListener('backButton', ({ canGoBack }) => {
+      // Camera modal open → close camera, don't exit
+      if (document.getElementById('camModal')?.classList.contains('show')) {
+        window.dispatchEvent(new CustomEvent('closecamera'));
+        return;
+      }
       const activeTab = document.querySelector('.bottom-nav button.active');
       const ocrTab = document.querySelector('.bottom-nav button[data-page="ocr"]');
       if (activeTab && activeTab !== ocrTab) {
@@ -325,9 +330,27 @@ initEditor();
 (function initSettings() {
   const eng = document.getElementById('setEngine');
   const extDiv = document.getElementById('extSettings');
+  const preset = document.getElementById('setPreset');
   const saveBtn = document.getElementById('settingsSave');
   const testBtn = document.getElementById('setTestConn');
   const testResult = document.getElementById('setTestResult');
+
+  const PRESETS = {
+    'glm': { engine:'ollama', baseUrl:'http://localhost:11434/v1', model:'glm-ocr' },
+    'paddle': { engine:'openai', baseUrl:'http://localhost:8080/v1', model:'paddleocr-vl' },
+    'qwen': { engine:'ollama', baseUrl:'http://localhost:11434/v1', model:'qwen2.5-vl' },
+    'silicon': { engine:'openai', baseUrl:'https://api.siliconflow.cn/v1', model:'Qwen/Qwen2.5-VL-72B-Instruct' },
+    'deepseek': { engine:'openai', baseUrl:'https://api.deepseek.com/v1', model:'deepseek-vl2' },
+    'mineru-native': { engine:'mineru', baseUrl:'http://localhost:8888', model:'mineru' },
+  };
+
+  preset?.addEventListener('change', () => {
+    const p = PRESETS[preset.value];
+    if (!p) return;
+    eng.value = p.engine; eng.dispatchEvent(new Event('change'));
+    document.getElementById('setBaseUrl').value = p.baseUrl || '';
+    document.getElementById('setModel').value = p.model || '';
+  });
   try {
     const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
     if (saved.engine) eng.value = saved.engine;

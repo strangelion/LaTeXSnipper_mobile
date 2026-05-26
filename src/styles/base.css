@@ -120,23 +120,4 @@ a:hover { color: var(--accent-hover); }
 }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-/* ── Settings modal ── */
-.settings-overlay {
-  display: none; position: fixed; inset: 0; z-index: 300;
-  background: rgba(0,0,0,0.5); align-items: center; justify-content: center;
-}
-.settings-overlay.show { display: flex; }
-.settings-modal {
-  background: var(--card-bg); border-radius: 14px; width: 90vw; max-width: 420px;
-  max-height: 85vh; overflow-y: auto; border: 1px solid var(--border-color);
-}
-.settings-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); }
-.settings-header h3 { margin: 0; font-size: 1.1rem; }
-.settings-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); }
-.settings-body { padding: 1rem 1.25rem; }
-.settings-footer { display: flex; gap: 0.75rem; padding: 1rem 1.25rem; border-top: 1px solid var(--border-color); }
-.set-label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0.75rem 0 0.25rem; }
-.set-input, .set-select { width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg); color: var(--fg); font-size: 0.9rem; font-family: inherit; outline: none; }
-.set-input:focus, .set-select:focus { border-color: var(--accent); }
-#page-settings { padding: 1rem; }
 #page-settings .settings-body { padding: 0; }
