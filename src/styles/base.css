@@ -120,4 +120,16 @@ a:hover { color: var(--accent-hover); }
 }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-#page-settings .settings-body { padding: 0; }
+/* ── Settings page ── */
+#page-settings { padding: 1rem 1.25rem; }
+#page-settings .settings-body { max-width: 480px; padding: 0; }
+.set-label { display: block; font-size: 0.8rem; color: var(--muted); margin: 0.85rem 0 0.2rem; }
+.set-label:first-child { margin-top: 0; }
+.set-input, .set-select {
+  width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border-color);
+  border-radius: 10px; background: var(--bg); color: var(--fg);
+  font-size: 0.9rem; font-family: inherit; outline: none;
+  transition: border-color 0.2s; appearance: none;
+}
+.set-input:focus, .set-select:focus { border-color: var(--accent); }
+.set-hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; line-height: 1.5; }

@@ -222,53 +222,6 @@
     </button>
   </nav>
 
-  <!-- ═══ Settings Modal ═══ -->
-  <div class="settings-overlay" id="settingsOverlay">
-    <div class="settings-modal">
-      <div class="settings-header">
-        <h3>设置</h3>
-        <button class="settings-close" id="settingsClose">&times;</button>
-      </div>
-      <div class="settings-body">
-        <label class="set-label">识别引擎</label>
-        <select class="set-select" id="setEngine">
-          <option value="builtin">内置 ONNX（离线）</option>
-          <option value="openai">OpenAI 兼容 API</option>
-          <option value="ollama">Ollama 本地</option>
-          <option value="mineru">MinerU 文档解析</option>
-        </select>
-
-        <div id="extSettings" style="display:none;">
-          <label class="set-label">Base URL</label>
-          <input class="set-input" id="setBaseUrl" placeholder="https://api.openai.com/v1">
-
-          <label class="set-label">模型名称</label>
-          <input class="set-input" id="setModel" placeholder="gpt-4o">
-
-          <label class="set-label">API Key</label>
-          <input class="set-input" type="password" id="setApiKey" placeholder="sk-...">
-
-          <label class="set-label">超时（秒）</label>
-          <input class="set-input" type="number" id="setTimeout" value="30" min="5" max="300">
-
-          <label class="set-label">输出格式</label>
-          <select class="set-select" id="setOutputFormat">
-            <option value="latex">LaTeX</option>
-            <option value="markdown">Markdown</option>
-            <option value="text">纯文本</option>
-          </select>
-
-          <button class="ocr-btn" id="setTestConn" style="width:100%;margin-top:0.5rem;">测试连接</button>
-          <span id="setTestResult" style="font-size:0.8rem;"></span>
-        </div>
-      </div>
-      <div class="settings-footer">
-        <button class="ocr-btn secondary" id="settingsCancel">取消</button>
-        <button class="ocr-btn" id="settingsSave">保存</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ═══ Install banner ═══ -->
   <div class="install-banner" id="installBanner">
     <span>安装到桌面，离线使用</span>
