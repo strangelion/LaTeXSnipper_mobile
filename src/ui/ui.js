@@ -287,11 +287,12 @@ function bindGlobalEvents() {
 
 export async function initModels(onProgress) {
   ort.env.wasm.wasmPaths = '/ort/';
+  // Multi-threading: use up to 4 cores + SIMD when SharedArrayBuffer available
   if (crossOriginIsolated) {
     ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 4);
     ort.env.wasm.simd = true;
   } else {
-    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.numThreads = 1; // Fallback for browsers without COOP/COEP
   }
   setStatus('loading', '正在加载分词器…', true);
   if (onProgress) onProgress('tokenizer', 0);

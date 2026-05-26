@@ -134,69 +134,147 @@ function drawCropOverlay() {
   }
 }
 
-// ── Crop touch/mouse events ──
-function cropGetPos(e) {
-  const rect = camCropCanvas.getBoundingClientRect();
-  const sx = camCropCanvas.width / rect.width;
-  const sy = camCropCanvas.height / rect.height;
-  const cx = e.touches ? e.touches[0].clientX : e.clientX;
-  const cy = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy, clientY: cy };
-}
-
-function updateBarVisibility(clientY) {
-  const modeBar = document.getElementById('camModeBar');
-  const bottomBar = document.querySelector('.cam-bottom-bar');
-  if (clientY === undefined || clientY < 0) {
-    if (modeBar) modeBar.style.opacity = '1';
-    if (bottomBar) bottomBar.style.opacity = '1';
+function drawCropOverlay() {
+  camCropCtx.drawImage(camCropImg, 0, 0);
+  if (!camCropRect) {
+    camCropCtx.fillStyle = 'rgba(0,0,0,0.25)';
+    camCropCtx.fillRect(0, 0, camCropCanvas.width, camCropCanvas.height);
+    camCropCtx.fillStyle = 'rgba(255,255,255,0.9)';
+    const fs = Math.max(14, Math.min(24, camCropCanvas.width / 20));
+    camCropCtx.font = fs + 'px "Segoe UI","Microsoft YaHei",sans-serif';
+    camCropCtx.textAlign = 'center'; camCropCtx.textBaseline = 'middle';
+    camCropCtx.fillText('拖拽框选要识别的区域', camCropCanvas.width / 2, camCropCanvas.height / 2);
+    camCropCtx.fillStyle = 'rgba(255,255,255,0.5)';
+    camCropCtx.font = (fs * 0.6) + 'px "Segoe UI","Microsoft YaHei",sans-serif';
+    camCropCtx.fillText('不框选则识别整张图片', camCropCanvas.width / 2, camCropCanvas.height / 2 + fs * 1.4);
     return;
   }
-  const h = window.innerHeight;
-  // Fade out top bar when finger is near top 15% of screen
-  if (modeBar) modeBar.style.opacity = clientY < h * 0.15 ? '0.15' : '1';
-  // Fade out bottom bar when finger is near bottom 18% of screen
-  if (bottomBar) bottomBar.style.opacity = clientY > h * 0.82 ? '0.15' : '1';
+  const r = camCropRect;
+  camCropCtx.fillStyle = 'rgba(0,0,0,0.35)';
+  camCropCtx.fillRect(0, 0, camCropCanvas.width, r.y);
+  camCropCtx.fillRect(0, r.y, r.x, r.h);
+  camCropCtx.fillRect(r.x + r.w, r.y, camCropCanvas.width - r.x - r.w, r.h);
+  camCropCtx.fillRect(0, r.y + r.h, camCropCanvas.width, camCropCanvas.height - r.y - r.h);
+  camCropCtx.strokeStyle = '#60a5fa'; camCropCtx.lineWidth = 2;
+  camCropCtx.strokeRect(r.x, r.y, r.w, r.h);
+  // Lasso path
+  if (camCropPath && camCropPath.length > 1) {
+    camCropCtx.beginPath(); camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2;
+    camCropCtx.moveTo(camCropPath[0].x, camCropPath[0].y);
+    for (let i = 1; i < camCropPath.length; i++) camCropCtx.lineTo(camCropPath[i].x, camCropPath[i].y);
+    camCropCtx.stroke();
+  }
+  // Corner handles
+  const corners = [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]];
+  const handleR = Math.max(6, Math.min(14, r.w / 20, r.h / 20));
+  camCropCtx.fillStyle = '#60a5fa';
+  for (let i = 0; i < 4; i++) {
+    camCropCtx.beginPath();
+    camCropCtx.arc(corners[i][0], corners[i][1], handleR, 0, Math.PI * 2);
+    camCropCtx.fill();
+  }
 }
+
+// ── Crop hit testing ──
+function cornerHit(p, r) {
+  if (!r || r.w < 20) return -1;
+  const corners = [[r.x, r.y], [r.x+r.w, r.y], [r.x, r.y+r.h], [r.x+r.w, r.y+r.h]];
+  const thr = Math.max(12, Math.min(30, r.w / 8, r.h / 8));
+  for (let i = 0; i < 4; i++) {
+    const dx = p.x - corners[i][0], dy = p.y - corners[i][1];
+    if (Math.sqrt(dx*dx + dy*dy) < thr) return i;
+  }
+  return -1;
+}
+function edgeHit(p, r) {
+  if (!r || r.w < 30 || r.h < 30) return -1;
+  const m = 14;
+  if (Math.abs(p.y - r.y) < m && p.x > r.x + m && p.x < r.x + r.w - m) return 0; // top
+  if (Math.abs(p.x - (r.x + r.w)) < m && p.y > r.y + m && p.y < r.y + r.h - m) return 1; // right
+  if (Math.abs(p.y - (r.y + r.h)) < m && p.x > r.x + m && p.x < r.x + r.w - m) return 2; // bottom
+  if (Math.abs(p.x - r.x) < m && p.y > r.y + m && p.y < r.y + r.h - m) return 3; // left
+  return -1;
+}
+function insideRect(p, r) {
+  return r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+}
+
+// ── Crop events with corner/edge/move/draw ──
+let camCropAction = ''; // '', 'drawing', 'moving', 'resizing', 'edge-resizing'
+let camCropCorner = -1, camCropEdge = -1;
+let camCropMoveBase = null, camCropMoveOff = null;
 
 function bindCropEvents() {
   camCropCanvas.style.touchAction = 'none';
+
   camCropCanvas.addEventListener('pointerdown', (e) => {
     const p = cropGetPos(e);
     if (camCropMode === 'lasso') {
-      camCropStart = { x: p.x, y: p.y };
+      camCropAction = 'drawing'; camCropStart = {x: p.x, y: p.y};
       camCropDragging = true; camCropPath = [p];
-      camCropCanvas.setPointerCapture(e.pointerId);
-      e.preventDefault();
-      return;
+      camCropCanvas.setPointerCapture(e.pointerId); e.preventDefault(); return;
     }
-    camCropStart = { x: p.x, y: p.y };
-    camCropDragging = true;
+    const r = camCropRect;
+    const ci = cornerHit(p, r);
+    if (ci >= 0) {
+      camCropAction = 'resizing'; camCropCorner = ci;
+      camCropMoveBase = {x: r.x, y: r.y, w: r.w, h: r.h};
+      camCropDragging = true;
+    } else if (edgeHit(p, r) >= 0) {
+      camCropAction = 'edge-resizing'; camCropEdge = edgeHit(p, r);
+      camCropMoveBase = {x: r.x, y: r.y, w: r.w, h: r.h};
+      camCropDragging = true;
+    } else if (insideRect(p, r)) {
+      camCropAction = 'moving';
+      camCropMoveBase = {x: r.x, y: r.y, w: r.w, h: r.h};
+      camCropMoveOff = {x: p.x - r.x, y: p.y - r.y};
+      camCropDragging = true;
+    } else {
+      camCropAction = 'drawing'; camCropStart = {x: p.x, y: p.y};
+      camCropDragging = true; camCropPath = [];
+    }
     camCropCanvas.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
+
   camCropCanvas.addEventListener('pointermove', (e) => {
     if (!camCropDragging) return;
     const p = cropGetPos(e);
     updateBarVisibility(p.clientY);
     if (camCropMode === 'lasso') {
-      camCropPath.push(p);
-      const prev = camCropPath[camCropPath.length - 2];
+      camCropPath.push(p); const prev = camCropPath[camCropPath.length-2];
       camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2; camCropCtx.lineCap = 'round';
       camCropCtx.beginPath(); camCropCtx.moveTo(prev.x, prev.y); camCropCtx.lineTo(p.x, p.y); camCropCtx.stroke();
-    } else {
-      camCropRect = {
-        x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y),
-        w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y),
-      };
+    } else if (camCropAction === 'drawing') {
+      camCropRect = { x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y), w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y) };
+      drawCropOverlay();
+    } else if (camCropAction === 'moving') {
+      const b = camCropMoveBase;
+      camCropRect = { x: Math.max(0, Math.min(p.x - camCropMoveOff.x, camCropCanvas.width - b.w)), y: Math.max(0, Math.min(p.y - camCropMoveOff.y, camCropCanvas.height - b.h)), w: b.w, h: b.h };
+      drawCropOverlay();
+    } else if (camCropAction === 'resizing') {
+      const rb = camCropMoveBase; const ci2 = camCropCorner;
+      const x1 = ci2 === 0 || ci2 === 2 ? p.x : rb.x;
+      const y1 = ci2 === 0 || ci2 === 1 ? p.y : rb.y;
+      const x2 = ci2 === 1 || ci2 === 3 ? p.x : rb.x + rb.w;
+      const y2 = ci2 === 2 || ci2 === 3 ? p.y : rb.y + rb.h;
+      camCropRect = { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+      drawCropOverlay();
+    } else if (camCropAction === 'edge-resizing') {
+      const eb = camCropMoveBase, ei2 = camCropEdge;
+      if (ei2 === 0) camCropRect = { x: eb.x, y: Math.min(p.y, eb.y + eb.h - 30), w: eb.w, h: Math.max(30, eb.y + eb.h - p.y) };
+      else if (ei2 === 1) camCropRect = { x: eb.x, y: eb.y, w: Math.max(30, p.x - eb.x), h: eb.h };
+      else if (ei2 === 2) camCropRect = { x: eb.x, y: eb.y, w: eb.w, h: Math.max(30, p.y - eb.y) };
+      else if (ei2 === 3) camCropRect = { x: Math.min(p.x, eb.x + eb.w - 30), y: eb.y, w: Math.max(30, eb.x + eb.w - p.x), h: eb.h };
       drawCropOverlay();
     }
     e.preventDefault();
   });
+
   ['pointerup', 'pointercancel'].forEach(ev => {
     camCropCanvas.addEventListener(ev, () => {
-      camCropDragging = false;
-      updateBarVisibility(-1); // reset to full opacity
+      camCropDragging = false; camCropAction = '';
+      updateBarVisibility(-1);
     });
   });
 }

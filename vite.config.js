@@ -17,14 +17,10 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    // COOP/COEP headers removed — enables SharedArrayBuffer but multi-threaded
-    // WASM times out on large ONNX model inference in Firefox.
-    // Single-thread WASM is stable; enable these headers only if deploying
-    // to a server that can handle long-running WASM threads.
-    // headers: {
-    //   'Cross-Origin-Opener-Policy': 'same-origin',
-    //   'Cross-Origin-Embedder-Policy': 'require-corp',
-    // },
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
   },
   optimizeDeps: {
     exclude: ['onnxruntime-web'],
