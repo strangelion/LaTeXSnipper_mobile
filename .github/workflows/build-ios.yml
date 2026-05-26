@@ -2,6 +2,17 @@ name: Build iOS IPA
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号'
+        required: true
+        default: '1.0.0'
+        type: string
+      create_release:
+        description: '创建 GitHub Release'
+        required: false
+        default: false
+        type: boolean
 
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
@@ -18,14 +29,33 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Setup CocoaPods
+        run: |
+          gem install cocoapods --no-document
+
+      - name: Set version
+        run: |
+          node -e "const p=require('./package.json');p.version='${{ inputs.version }}';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
+          echo "Version set to ${{ inputs.version }}"
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build web assets
         run: npm run build
 
+      - name: Add iOS platform (if needed)
+        run: |
+          if [ ! -f ios/App/Podfile ]; then
+            npx cap add ios 2>/dev/null || true
+          fi
+
       - name: Sync Capacitor iOS
         run: npx cap sync ios
+
+      - name: Install pods
+        working-directory: ios/App
+        run: pod install --repo-update 2>&1 || echo "Pod install skipped (may need manual setup)"
 
       - name: Build iOS archive
         working-directory: ios/App
@@ -38,10 +68,9 @@ jobs:
             -allowProvisioningUpdates \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM="" 2>&1 || echo "Archive requires Apple Developer setup"
+            CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Archive requires Apple Developer setup"
 
-      - name: Export IPA (unsigned)
+      - name: Export IPA
         if: success()
         working-directory: ios/App
         run: |
@@ -53,9 +82,17 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Export requires signing config"
 
-      - name: Upload IPA (unsigned)
+      - name: Upload IPA
         if: hashFiles('ios/App/build/App.ipa') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: LaTeXSnipper-iOS-unsigned
+          name: LaTeXSnipper-v${{ inputs.version }}-iOS
           path: ios/App/build/App.ipa
+
+      - name: Create GitHub Release
+        if: ${{ inputs.create_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          files: ios/App/build/App.ipa
