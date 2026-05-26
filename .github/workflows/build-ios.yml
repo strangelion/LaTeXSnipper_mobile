@@ -44,18 +44,23 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Add iOS platform (if needed)
+      - name: Setup iOS platform
         run: |
-          if [ ! -f ios/App/Podfile ]; then
-            npx cap add ios 2>/dev/null || true
+          cd ios/App
+          # Create minimal Podfile if missing
+          if [ ! -f Podfile ]; then
+            cat > Podfile << 'PODEOF'
+          platform :ios, '14.0'
+          use_frameworks!
+          target 'App' do
+            capacitor_pods
+          end
+          PODEOF
           fi
+          pod install --repo-update || echo "Pod install needs manual CocoaPods setup"
 
       - name: Sync Capacitor iOS
         run: npx cap sync ios
-
-      - name: Install pods
-        working-directory: ios/App
-        run: pod install --repo-update 2>&1 || echo "Pod install skipped (may need manual setup)"
 
       - name: Build iOS archive
         working-directory: ios/App
