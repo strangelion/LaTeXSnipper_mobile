@@ -10,6 +10,8 @@ let camCropImg = null;
 let camCropRect = null;
 let camCropDragging = false;
 let camCropStart = null;
+let camCropPath = [];
+let camCropMode = 'rect';
 let camActions = null;
 let camCropActions = null;
 let onPhotoCallback = null;
@@ -79,6 +81,7 @@ export function capturePhoto() {
   camCropCanvas.height = camCropImg.height;
   camCropCtx.drawImage(camCropImg, 0, 0);
   camCropRect = null;
+  camCropPath = [];
   camCropDragging = false;
   drawCropOverlay();
   camActions.style.display = 'none';

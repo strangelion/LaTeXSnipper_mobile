@@ -82,8 +82,14 @@
           <button class="cam-btn cam-close" id="camClose">关闭</button>
         </div>
         <div class="cam-actions" id="camCropActions" style="display:none;">
-          <button class="cam-btn cam-capture" id="camCropConfirm">确认</button>
-          <button class="cam-btn cam-close" id="camCropRetake">重拍</button>
+          <div class="cam-mode-bar" id="camModeBar">
+            <button class="cam-mode-btn active" id="camCropModeRect">框选</button>
+            <button class="cam-mode-btn" id="camCropModeLasso">套索</button>
+          </div>
+          <div class="cam-bottom-bar">
+            <button class="cam-btn cam-close" id="camCropRetake">重拍</button>
+            <button class="cam-btn cam-capture" id="camCropConfirm">确认</button>
+          </div>
         </div>
       </div>
 
