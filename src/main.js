@@ -110,29 +110,30 @@ initCamera(
   document.getElementById('camCropActions')
 );
 
-document.getElementById('camTrigger')?.addEventListener('click', (e) => {
+document.getElementById('camTrigger')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
   e.stopPropagation();
   openCamera();
 });
 
-document.getElementById('camCapture')?.addEventListener('click', (e) => {
-  e.stopPropagation();
+document.getElementById('camCapture')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
   capturePhoto();
 });
 
-document.getElementById('camCropConfirm')?.addEventListener('click', async (e) => {
-  e.stopPropagation();
+document.getElementById('camCropConfirm')?.addEventListener('pointerdown', async (e) => {
+  e.preventDefault(); e.stopPropagation();
   const file = await confirmCrop();
   if (file) processImage(file);
 });
 
-document.getElementById('camCropRetake')?.addEventListener('click', (e) => {
-  e.stopPropagation();
+document.getElementById('camCropRetake')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
   retakePhoto();
 });
 
-document.getElementById('camClose')?.addEventListener('click', (e) => {
-  e.stopPropagation();
+document.getElementById('camClose')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
   closeCamera();
 });
 

@@ -86,6 +86,20 @@ LaTeXSnipper_mobile/
 - 输入: 384×384 RGB
 - 模型来源: [MathCraft-Models](https://github.com/SakuraMathcraft/MathCraft-Models)
 
+## 致谢
+
+本项目基于以下优秀的开源项目构建：
+
+- **[LaTeXSnipper](https://github.com/SakuraMathcraft/LaTeXSnipper)** — 桌面端数学公式 OCR 与编辑工具，提供了 OCR 引擎设计、MathLive 中文翻译和完整的公式识别工作流参考
+- **[MathCraft OCR](https://github.com/SakuraMathcraft/MathCraft-Models)** — ONNX 公式识别模型（formula-rec），基于 DeiT + TrOCR 架构
+- **[ONNX Runtime Web](https://github.com/microsoft/onnxruntime)** — 浏览器端 ONNX 推理引擎，支持 WebGPU/WASM 后端
+- **[MathLive](https://cortexjs.io/mathlive/)** — 所见即所得数学公式编辑器，提供虚拟键盘和计算引擎
+- **[MathJax](https://www.mathjax.org/)** — LaTeX 公式 SVG 渲染
+- **[PDF.js](https://mozilla.github.io/pdf.js/)** — PDF 文档解析与渲染
+- **[Capacitor](https://capacitorjs.com/)** — 跨平台 WebView 原生打包
+- **[Vite](https://vitejs.dev/)** — 前端构建工具
+- **[idb](https://github.com/jakearchibald/idb)** — IndexedDB 异步封装
+
 ## 许可证
 
 MIT
