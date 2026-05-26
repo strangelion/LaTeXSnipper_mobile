@@ -2,6 +2,17 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号'
+        required: true
+        default: '1.0.0'
+        type: string
+      create_release:
+        description: '创建 GitHub Release'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-apk:
@@ -72,6 +83,16 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      - name: Set version
+        run: |
+          # Update package.json
+          node -e "const p=require('./package.json');p.version='${{ inputs.version }}';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
+          # Update Android version
+          VER_CODE=$(echo ${{ inputs.version }} | tr -d '.')
+          sed -i "s/versionCode .*/versionCode $VER_CODE/" android/app/build.gradle
+          sed -i "s/versionName .*/versionName \"${{ inputs.version }}\"/" android/app/build.gradle
+          echo "Version set to ${{ inputs.version }} (code: $VER_CODE)"
+
       - name: Install dependencies
         run: npm ci
 
@@ -98,12 +119,20 @@ jobs:
 
       - name: Get version
         id: version
-        run: |
-          VER=$(node -p "require('./package.json').version")
-          echo "version=$VER" >> $GITHUB_OUTPUT
+        run: echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: LaTeXSnipper-v${{ steps.version.outputs.version }}-release
+          name: LaTeXSnipper-v${{ inputs.version }}-release
           path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Create GitHub Release
+        if: ${{ inputs.create_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          files: android/app/build/outputs/apk/release/app-release.apk
+          draft: false
+          generate_release_notes: true

@@ -1,0 +1,58 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build iOS archive
+        working-directory: ios/App
+        run: |
+          xcodebuild archive \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -archivePath App.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" 2>&1 || echo "Archive requires Apple Developer setup"
+
+      - name: Export IPA (unsigned)
+        if: success()
+        working-directory: ios/App
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath App.xcarchive \
+            -exportPath build \
+            -exportOptionsPlist ExportOptions.plist \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Export requires signing config"
+
+      - name: Upload IPA (unsigned)
+        if: hashFiles('ios/App/build/App.ipa') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaTeXSnipper-iOS-unsigned
+          path: ios/App/build/App.ipa
