@@ -11,7 +11,7 @@ import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
 import { initModels, initUI, processImage, setStatus, copyResult, showResult, onFileProcessed } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
-import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, initCamera } from './camera/camera.js';
+import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
 import { initEditor, setEditorContent } from './editor/mathlive-config.js';
 
@@ -130,6 +130,15 @@ document.getElementById('camCropConfirm')?.addEventListener('pointerdown', async
 document.getElementById('camCropRetake')?.addEventListener('pointerdown', (e) => {
   e.preventDefault(); e.stopPropagation();
   retakePhoto();
+});
+
+document.getElementById('camCropModeRect')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  setCropMode('rect');
+});
+document.getElementById('camCropModeLasso')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  setCropMode('lasso');
 });
 
 document.getElementById('camClose')?.addEventListener('pointerdown', (e) => {

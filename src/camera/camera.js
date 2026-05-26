@@ -112,6 +112,13 @@ function drawCropOverlay() {
   camCropCtx.fillRect(0, r.y + r.h, camCropCanvas.width, camCropCanvas.height - r.y - r.h);
   camCropCtx.strokeStyle = '#60a5fa'; camCropCtx.lineWidth = 2;
   camCropCtx.strokeRect(r.x, r.y, r.w, r.h);
+  // Lasso path overlay
+  if (camCropPath && camCropPath.length > 1) {
+    camCropCtx.beginPath(); camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2;
+    camCropCtx.moveTo(camCropPath[0].x, camCropPath[0].y);
+    for (let i = 1; i < camCropPath.length; i++) camCropCtx.lineTo(camCropPath[i].x, camCropPath[i].y);
+    camCropCtx.stroke();
+  }
 }
 
 // ── Crop touch/mouse events ──
@@ -128,6 +135,13 @@ function bindCropEvents() {
   camCropCanvas.style.touchAction = 'none';
   camCropCanvas.addEventListener('pointerdown', (e) => {
     const p = cropGetPos(e);
+    if (camCropMode === 'lasso') {
+      camCropStart = { x: p.x, y: p.y };
+      camCropDragging = true; camCropPath = [p];
+      camCropCanvas.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
     camCropStart = { x: p.x, y: p.y };
     camCropDragging = true;
     camCropCanvas.setPointerCapture(e.pointerId);
@@ -136,11 +150,18 @@ function bindCropEvents() {
   camCropCanvas.addEventListener('pointermove', (e) => {
     if (!camCropDragging) return;
     const p = cropGetPos(e);
-    camCropRect = {
-      x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y),
-      w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y),
-    };
-    drawCropOverlay();
+    if (camCropMode === 'lasso') {
+      camCropPath.push(p);
+      const prev = camCropPath[camCropPath.length - 2];
+      camCropCtx.strokeStyle = '#f97316'; camCropCtx.lineWidth = 2; camCropCtx.lineCap = 'round';
+      camCropCtx.beginPath(); camCropCtx.moveTo(prev.x, prev.y); camCropCtx.lineTo(p.x, p.y); camCropCtx.stroke();
+    } else {
+      camCropRect = {
+        x: Math.min(camCropStart.x, p.x), y: Math.min(camCropStart.y, p.y),
+        w: Math.abs(p.x - camCropStart.x), h: Math.abs(p.y - camCropStart.y),
+      };
+      drawCropOverlay();
+    }
     e.preventDefault();
   });
   ['pointerup', 'pointercancel'].forEach(ev => {
@@ -148,22 +169,52 @@ function bindCropEvents() {
   });
 }
 
+// ── Mode + path utilities ──
+
+export function setCropMode(mode) {
+  camCropMode = mode;
+  document.getElementById('camCropModeRect')?.classList.toggle('active', mode === 'rect');
+  document.getElementById('camCropModeLasso')?.classList.toggle('lasso-active', mode === 'lasso');
+  camCropRect = null; camCropPath = []; drawCropOverlay();
+}
+
+function pathBounds() {
+  if (!camCropPath || camCropPath.length < 2) return null;
+  let minX = camCropPath[0].x, minY = camCropPath[0].y, maxX = minX, maxY = minY;
+  for (let i = 1; i < camCropPath.length; i++) {
+    const p = camCropPath[i];
+    if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
 // ── Confirm crop → produce cropped file ──
 export function confirmCrop() {
   if (!camCropImg) return null;
-  const sx = camCropRect && camCropRect.w > 10 ? camCropRect.x : 0;
-  const sy = camCropRect && camCropRect.h > 10 ? camCropRect.y : 0;
-  const sw = camCropRect && camCropRect.w > 10 ? camCropRect.w : camCropImg.width;
-  const sh = camCropRect && camCropRect.h > 10 ? camCropRect.h : camCropImg.height;
-  const out = document.createElement('canvas');
-  out.width = sw; out.height = sh;
-  out.getContext('2d').drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+  const rect = camCropRect || pathBounds();
+  const sx = rect && rect.w > 10 ? rect.x : 0;
+  const sy = rect && rect.h > 10 ? rect.y : 0;
+  const sw = rect && rect.w > 10 ? rect.w : camCropImg.width;
+  const sh = rect && rect.h > 10 ? rect.h : camCropImg.height;
+  const out = document.createElement('canvas'); out.width = sw; out.height = sh;
+  const octx = out.getContext('2d');
+  // Lasso: fill outside the path with white
+  if (camCropPath && camCropPath.length > 2) {
+    octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, sw, sh);
+    octx.save();
+    octx.beginPath(); octx.moveTo(camCropPath[0].x - sx, camCropPath[0].y - sy);
+    for (let i = 1; i < camCropPath.length; i++) octx.lineTo(camCropPath[i].x - sx, camCropPath[i].y - sy);
+    octx.closePath(); octx.clip();
+    octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+    octx.restore();
+  } else {
+    octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+  }
   camCropCanvas.style.display = 'none';
   camCropActions.style.display = 'none';
   camModal.classList.remove('show');
-  const img = camCropImg;
-  camCropImg = null;
-  camCropRect = null;
+  camCropImg = null; camCropRect = null; camCropPath = [];
   return new Promise((resolve) => {
     out.toBlob((blob) => {
       resolve(new File([blob], 'camera.jpg', { type: 'image/jpeg' }));
@@ -177,5 +228,6 @@ export function retakePhoto() {
   camCropActions.style.display = 'none';
   camCropImg = null;
   camCropRect = null;
+  camCropPath = [];
   openCamera();
 }
