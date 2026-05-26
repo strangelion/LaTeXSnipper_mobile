@@ -114,6 +114,8 @@ pre.result-code {
   padding: 12px 28px; border-radius: 10px; border: none;
   cursor: pointer; font-size: 1rem; font-weight: 600;
   transition: transform 0.15s; font-family: inherit;
+  touch-action: manipulation;
+  pointer-events: auto;
 }
 .cam-btn:active { transform: scale(0.96); }
 .cam-capture { background: var(--accent); color: #fff; }

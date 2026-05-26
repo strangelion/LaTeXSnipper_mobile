@@ -34,13 +34,20 @@ html, body {
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  touch-action: manipulation; /* Fix button click in WebView */
+}
+
+button, .snippet-btn, .compute-btn, .ocr-btn, .hw-tool-btn, .cam-trigger-btn {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-hover); }
 
 /* ── Top nav ── */
-.spacer-top { height: 56px; }
+.spacer-top { height: calc(56px + var(--safe-t)); }
 .top-nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   background: var(--hdr-bg);

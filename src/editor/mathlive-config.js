@@ -109,41 +109,53 @@ export async function initMathLive() {
   mathField = document.getElementById('mathField');
   if (!mathField) return;
 
-  // Configure the editor
+  // Configure MathLive with built-in virtual keyboard (works in WebView)
   mathField.mathVirtualKeyboardPolicy = 'onfocus';
   mathField.smartFence = true;
   mathField.smartMode = false;
 
-  // ── Two-way sync: LaTeX source textarea ↔ MathLive visual editor ──
+  // ── Two-way sync: textarea ↔ MathLive ──
   const latexSource = document.getElementById('latexSource');
-  let syncing = false; // prevent infinite loop
-
-  function syncSourceToMathLive() {
-    if (syncing) return;
-    syncing = true;
-    mathField.value = latexSource.value;
-    syncing = false;
-  }
-
-  function syncMathLiveToSource() {
-    if (syncing) return;
-    syncing = true;
-    latexSource.value = mathField.value;
-    syncing = false;
-  }
+  let syncing = false;
 
   if (latexSource) {
-    latexSource.addEventListener('input', syncSourceToMathLive);
-    mathField.addEventListener('input', syncMathLiveToSource);
+    // textarea → MathLive
+    latexSource.addEventListener('input', () => {
+      if (syncing) return;
+      syncing = true;
+      mathField.value = latexSource.value;
+      syncing = false;
+      updatePreview(latexSource.value);
+    });
+
+    // MathLive → textarea + preview
+    mathField.addEventListener('input', () => {
+      if (syncing) return;
+      syncing = true;
+      latexSource.value = mathField.value;
+      syncing = false;
+      updatePreview(mathField.value);
+    });
   }
 
-  // Snippet buttons — insert LaTeX via MathLive API
+  function updatePreview(latex) {
+    const preview = document.getElementById('editorPreview');
+    if (preview && typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
+      MathJax.tex2svgPromise(latex || '').then(node => {
+        preview.innerHTML = '';
+        preview.appendChild(node);
+        preview.classList.add('show');
+      }).catch(() => {});
+    }
+  }
+
+  // Snippet buttons — insert into MathLive, which syncs to textarea
   document.querySelectorAll('.snippet-btn[data-latex]').forEach(btn => {
     btn.addEventListener('click', () => {
-      mathField.insert(btn.dataset.latex);
       mathField.focus();
-      // Also update the source textarea
-      if (latexSource) latexSource.value = mathField.value;
+      mathField.insert(btn.dataset.latex);
+      // Trigger sync to textarea
+      mathField.dispatchEvent(new Event('input', { bubbles: true }));
       if (navigator.vibrate) navigator.vibrate(10);
     });
   });
@@ -182,19 +194,6 @@ export async function initMathLive() {
         resultEl.textContent = '计算出错: ' + (e.message || e);
       }
     });
-  });
-
-  // Live MathJax preview
-  mathField.addEventListener('input', () => {
-    const latex = mathField.value || '';
-    const preview = document.getElementById('editorPreview');
-    if (preview && typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
-      MathJax.tex2svgPromise(latex).then(node => {
-        preview.innerHTML = '';
-        preview.appendChild(node);
-        preview.classList.add('show');
-      }).catch(() => {});
-    }
   });
 
   // Copy button

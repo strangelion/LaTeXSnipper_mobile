@@ -108,18 +108,28 @@ document.getElementById('camTrigger')?.addEventListener('click', () => {
   openCamera({ facingMode: 'environment' });
 });
 
-document.getElementById('camCapture')?.addEventListener('click', async () => {
+document.getElementById('camCapture')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
   const file = await capturePhoto();
   if (file) processImage(file);
 });
 
-document.getElementById('camClose')?.addEventListener('click', closeCamera);
+document.getElementById('camClose')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeCamera();
+});
 document.getElementById('camModal')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeCamera();
 });
 
-document.getElementById('camSwitch')?.addEventListener('click', switchFacing);
-document.getElementById('camFlash')?.addEventListener('click', toggleFlash);
+document.getElementById('camSwitch')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  switchFacing();
+});
+document.getElementById('camFlash')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleFlash();
+});
 
 window.addEventListener('closecamera', closeCamera);
 

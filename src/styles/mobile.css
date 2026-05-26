@@ -28,7 +28,12 @@
 
 /* ── Responsive: phone ── */
 @media (max-width: 640px) {
-  .page { padding: 0.75rem 0.5rem calc(5rem + var(--safe-b)); }
+  .page { padding: 0.5rem 0.5rem calc(5rem + var(--safe-b)); }
+  .spacer-top { height: calc(48px + var(--safe-t)); }
+  .top-nav .inner { height: 40px; padding: 0 0.75rem; }
+  .top-nav .brand-link { font-size: 0.9rem; }
+  .top-nav a { font-size: 0.78rem; }
+  .status-bar { position: sticky; top: calc(48px + var(--safe-t)); z-index: 10; }
   .mode-tab { padding: 6px 14px; font-size: 0.82rem; }
   .drop-zone { padding: 2rem 1rem; }
   .hw-toolbar { gap: 0.3rem; }

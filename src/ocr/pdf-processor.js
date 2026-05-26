@@ -2,16 +2,12 @@
 // Extracted from ocr_demo.html, logic preserved 100%
 
 import { recognize } from './ocr-engine.js';
-import { MAX_PDF_PAGES } from '../constants.js';
 
 export async function processPDF(file, onProgress) {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const totalPages = pdf.numPages;
-    if (totalPages > MAX_PDF_PAGES) {
-      throw new Error('PDF pages (' + totalPages + ') exceeds ' + MAX_PDF_PAGES + ' page limit');
-    }
 
     // First page preview
     let previewDataUrl = null;
