@@ -56,15 +56,23 @@ export function showResult(latex, confidence, extra) {
   renderMathPreview(latex);
   const confPct = (confidence * 100).toFixed(1);
   if (els.confidence) els.confidence.textContent = extra
-    ? 'Confidence ' + confPct + '% | ' + extra
-    : 'Confidence ' + confPct + '%';
+    ? '置信度 ' + confPct + '% | ' + extra
+    : '置信度 ' + confPct + '%';
   els.resultCard.classList.add('show');
   if (els.copyBtn) els.copyBtn.style.display = 'block';
+  const shareBtn = document.getElementById('shareBtn');
+  const sendBtn = document.getElementById('sendToEditorBtn');
+  if (shareBtn) shareBtn.style.display = 'block';
+  if (sendBtn) sendBtn.style.display = 'block';
 }
 
 export function hideResult() {
   if (els.resultCard) els.resultCard.classList.remove('show');
   if (els.copyBtn) els.copyBtn.style.display = 'none';
+  const shareBtn = document.getElementById('shareBtn');
+  const sendBtn = document.getElementById('sendToEditorBtn');
+  if (shareBtn) shareBtn.style.display = 'none';
+  if (sendBtn) sendBtn.style.display = 'none';
 }
 
 function renderMathPreview(latex) {

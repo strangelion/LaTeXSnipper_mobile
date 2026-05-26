@@ -13,7 +13,7 @@ import { initModels, initUI, processImage, setStatus, copyResult, showResult, on
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
 import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
-import { initMathLive } from './editor/mathlive-config.js';
+import { initMathLive, setEditorContent } from './editor/mathlive-config.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -160,13 +160,18 @@ if (hwCanvas && hwWrap) {
   });
 }
 
-/* ── Copy / Share buttons ── */
+/* ── Copy / Share / Send to Editor buttons ── */
 document.getElementById('shareBtn')?.addEventListener('click', async () => {
   if (!document.getElementById('resultCode')?.textContent) return;
   const text = document.getElementById('resultCode').textContent;
   if (navigator.share) {
     try { await navigator.share({ title: 'LaTeXSnipper OCR Result', text }); } catch (e) { /* */ }
   }
+});
+
+document.getElementById('sendToEditorBtn')?.addEventListener('click', () => {
+  const latex = document.getElementById('resultCode')?.textContent;
+  if (latex) setEditorContent(latex);
 });
 
 /* ── Particle background (disabled — affects UX on mobile) ── */
@@ -232,9 +237,7 @@ async function renderHistoryList(filter = 'all') {
       const all = await getAllResults();
       const record = all.find(r => r.id === id);
       if (record) {
-        document.getElementById('resultCode') && (document.getElementById('resultCode').textContent = record.latex);
-        // Switch to OCR tab to show result
-        document.querySelector('.bottom-nav button[data-page="ocr"]')?.click();
+        setEditorContent(record.latex);
       }
     });
   });
