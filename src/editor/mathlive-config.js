@@ -45,6 +45,7 @@ const MATHLIVE_ZH = {
   'tooltip.italic': '斜体', 'tooltip.fraktur': '哥特体',
   'tooltip.script': '手写体', 'tooltip.caligraphic': '书法体',
   'tooltip.typewriter': '等宽', 'tooltip.roman-upright': '罗马正体',
+  'tooltip.row-by-col': '%@ × %@',
   'menu.font-style': '字体风格',
   'menu.accent': '重音/修饰', 'menu.decoration': '装饰',
   'menu.color': '颜色', 'menu.background-color': '背景',
