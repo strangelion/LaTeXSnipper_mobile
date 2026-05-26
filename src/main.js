@@ -321,6 +321,59 @@ document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListe
 /* ── Editor tab ── */
 initEditor();
 
+/* ── Settings page ── */
+(function initSettings() {
+  const eng = document.getElementById('setEngine');
+  const extDiv = document.getElementById('extSettings');
+  const saveBtn = document.getElementById('settingsSave');
+  const testBtn = document.getElementById('setTestConn');
+  const testResult = document.getElementById('setTestResult');
+  try {
+    const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
+    if (saved.engine) eng.value = saved.engine;
+    if (saved.baseUrl) document.getElementById('setBaseUrl').value = saved.baseUrl;
+    if (saved.model) document.getElementById('setModel').value = saved.model;
+    if (saved.apiKey) document.getElementById('setApiKey').value = saved.apiKey;
+    if (saved.timeout) document.getElementById('setTimeout').value = saved.timeout;
+    if (saved.outputFormat) document.getElementById('setOutputFormat').value = saved.outputFormat;
+    if (eng.value !== 'builtin' && extDiv) extDiv.style.display = '';
+  } catch (_) {}
+  eng?.addEventListener('change', () => {
+    if (extDiv) extDiv.style.display = eng.value === 'builtin' ? 'none' : '';
+  });
+  saveBtn?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const settings = {
+      engine: eng?.value || 'builtin',
+      baseUrl: document.getElementById('setBaseUrl')?.value || '',
+      model: document.getElementById('setModel')?.value || '',
+      apiKey: document.getElementById('setApiKey')?.value || '',
+      timeout: document.getElementById('setTimeout')?.value || 30,
+      outputFormat: document.getElementById('setOutputFormat')?.value || 'latex',
+    };
+    try { localStorage.setItem('ls_settings', JSON.stringify(settings)); } catch (_) {}
+    saveBtn.textContent = '已保存 ✓';
+    setTimeout(() => saveBtn.textContent = '保存设置', 1500);
+  });
+  testBtn?.addEventListener('pointerdown', async (e) => {
+    e.preventDefault();
+    if (!testResult) return;
+    testResult.textContent = '测试中…';
+    const baseUrl = document.getElementById('setBaseUrl')?.value || '';
+    const apiKey = document.getElementById('setApiKey')?.value || '';
+    if (!baseUrl) { testResult.textContent = '请填写 Base URL'; return; }
+    try {
+      const resp = await fetch(baseUrl.replace(/\/+$/, '') + '/models', {
+        headers: apiKey ? { Authorization: 'Bearer ' + apiKey } : {},
+        signal: AbortSignal.timeout(10000),
+      });
+      testResult.textContent = resp.ok ? '✓ 连接成功' : '✗ HTTP ' + resp.status;
+    } catch (err) {
+      testResult.textContent = '✗ ' + (err.message || '连接失败');
+    }
+  });
+})();
+
 /* ── Startup: load models ── */
 async function boot() {
   try {

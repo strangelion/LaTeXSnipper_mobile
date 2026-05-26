@@ -106,20 +106,20 @@ function drawCropOverlay(hoverCorner = -1, hoverEdge = -1, hovering = false) {
     camCropCtx.stroke();
   }
   const corners = [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]];
-  const baseR = Math.max(8, Math.min(16, r.w / 18, r.h / 18));
+  const baseR = Math.max(14, Math.min(24, r.w / 10, r.h / 10));
   for (let i = 0; i < 4; i++) {
     const isHovered = (i === hoverCorner);
-    const hR = isHovered ? baseR * 2 : baseR;
+    const hR = isHovered ? baseR * 2.5 : baseR;
+    // Outer glow
+    camCropCtx.fillStyle = isHovered ? 'rgba(147,197,253,0.35)' : 'rgba(96,165,250,0.15)';
+    camCropCtx.beginPath();
+    camCropCtx.arc(corners[i][0], corners[i][1], hR * 1.6, 0, Math.PI * 2);
+    camCropCtx.fill();
+    // Core dot
     camCropCtx.fillStyle = isHovered ? '#93c5fd' : '#60a5fa';
     camCropCtx.beginPath();
     camCropCtx.arc(corners[i][0], corners[i][1], hR, 0, Math.PI * 2);
     camCropCtx.fill();
-    if (isHovered) {
-      camCropCtx.fillStyle = 'rgba(147,197,253,0.3)';
-      camCropCtx.beginPath();
-      camCropCtx.arc(corners[i][0], corners[i][1], hR * 1.8, 0, Math.PI * 2);
-      camCropCtx.fill();
-    }
   }
 }
 
@@ -127,7 +127,7 @@ function drawCropOverlay(hoverCorner = -1, hoverEdge = -1, hovering = false) {
 function cornerHit(p, r) {
   if (!r || r.w < 20) return -1;
   const cs = [[r.x, r.y], [r.x+r.w, r.y], [r.x, r.y+r.h], [r.x+r.w, r.y+r.h]];
-  const thr = Math.max(32, Math.min(60, r.w / 5, r.h / 5)); // Larger touch target
+  const thr = Math.max(40, Math.min(72, r.w / 4, r.h / 4));
   for (let i = 0; i < 4; i++) { const dx = p.x - cs[i][0], dy = p.y - cs[i][1]; if (Math.sqrt(dx*dx+dy*dy) < thr) return i; }
   return -1;
 }

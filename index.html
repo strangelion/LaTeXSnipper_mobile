@@ -20,7 +20,7 @@
   <nav class="top-nav">
     <div class="inner">
       <span class="brand-link">LaTeXSnipper</span>
-      <button class="theme-toggle" id="themeToggle" title="Toggle theme"></button>
+      <button class="theme-toggle" id="themeToggle" title="切换主题"></button>
     </div>
   </nav>
 
@@ -157,6 +157,49 @@
       </div>
     </div>
 
+    <!-- ── Tab 4: Settings ── -->
+    <div class="page" id="page-settings">
+      <div class="settings-body">
+        <label class="set-label">识别引擎</label>
+        <select class="set-select" id="setEngine">
+          <option value="builtin">内置 ONNX（离线）</option>
+          <option value="openai">OpenAI 兼容</option>
+          <option value="ollama">Ollama 本地</option>
+          <option value="mineru">MinerU 文档解析</option>
+        </select>
+
+        <div id="extSettings" style="display:none;">
+          <label class="set-label">预设</label>
+          <select class="set-select" id="setPreset">
+            <option value="">自定义</option>
+            <option value="glm">GLM-OCR (Ollama)</option>
+            <option value="paddle">PaddleOCR-VL</option>
+            <option value="qwen">Qwen2.5-VL (Ollama)</option>
+            <option value="silicon">SiliconFlow (GLM-OCR)</option>
+            <option value="deepseek">DeepSeek VL2</option>
+            <option value="mineru-native">MinerU Native</option>
+          </select>
+
+          <label class="set-label">Base URL</label>
+          <input class="set-input" id="setBaseUrl" placeholder="https://api.openai.com/v1">
+
+          <label class="set-label">模型名称</label>
+          <input class="set-input" id="setModel" placeholder="gpt-4o">
+
+          <label class="set-label">API Key</label>
+          <input class="set-input" type="password" id="setApiKey" placeholder="sk-...">
+
+          <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.5rem;">测试连接</button>
+          <span id="setTestResult" style="font-size:0.82rem;display:block;margin-top:0.4rem;"></span>
+        </div>
+
+        <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:1rem;">保存设置</button>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;">
+          外部模型可将图片发送到云端 API 进行识别，适合复杂公式或需要更高精度的场景。内置 ONNX 模型完全离线运行，无需网络。
+        </p>
+      </div>
+    </div>
+
   </div>
 
   <!-- ═══ Bottom Tab Navigation ═══ -->
@@ -173,7 +216,58 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <span>历史</span>
     </button>
+    <button data-page="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>设置</span>
+    </button>
   </nav>
+
+  <!-- ═══ Settings Modal ═══ -->
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h3>设置</h3>
+        <button class="settings-close" id="settingsClose">&times;</button>
+      </div>
+      <div class="settings-body">
+        <label class="set-label">识别引擎</label>
+        <select class="set-select" id="setEngine">
+          <option value="builtin">内置 ONNX（离线）</option>
+          <option value="openai">OpenAI 兼容 API</option>
+          <option value="ollama">Ollama 本地</option>
+          <option value="mineru">MinerU 文档解析</option>
+        </select>
+
+        <div id="extSettings" style="display:none;">
+          <label class="set-label">Base URL</label>
+          <input class="set-input" id="setBaseUrl" placeholder="https://api.openai.com/v1">
+
+          <label class="set-label">模型名称</label>
+          <input class="set-input" id="setModel" placeholder="gpt-4o">
+
+          <label class="set-label">API Key</label>
+          <input class="set-input" type="password" id="setApiKey" placeholder="sk-...">
+
+          <label class="set-label">超时（秒）</label>
+          <input class="set-input" type="number" id="setTimeout" value="30" min="5" max="300">
+
+          <label class="set-label">输出格式</label>
+          <select class="set-select" id="setOutputFormat">
+            <option value="latex">LaTeX</option>
+            <option value="markdown">Markdown</option>
+            <option value="text">纯文本</option>
+          </select>
+
+          <button class="ocr-btn" id="setTestConn" style="width:100%;margin-top:0.5rem;">测试连接</button>
+          <span id="setTestResult" style="font-size:0.8rem;"></span>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button class="ocr-btn secondary" id="settingsCancel">取消</button>
+        <button class="ocr-btn" id="settingsSave">保存</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ Install banner ═══ -->
   <div class="install-banner" id="installBanner">
