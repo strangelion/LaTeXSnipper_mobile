@@ -124,11 +124,11 @@ jobs:
         id: version
         run: echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
 
-      - name: Upload Release APK
+      - name: Upload Release APKs
         uses: actions/upload-artifact@v4
         with:
           name: LaTeXSnipper-v${{ inputs.version }}-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: android/app/build/outputs/apk/release/*.apk
 
       - name: Create GitHub Release
         if: ${{ inputs.create_release }}
@@ -136,6 +136,6 @@ jobs:
         with:
           tag_name: v${{ inputs.version }}
           name: v${{ inputs.version }}
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: android/app/build/outputs/apk/release/*.apk
           draft: false
           generate_release_notes: true

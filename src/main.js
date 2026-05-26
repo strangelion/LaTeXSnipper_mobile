@@ -197,7 +197,21 @@ document.getElementById('tabImage')?.addEventListener('pointerdown', () => {
 // Export recogMode for ui.js to use
 window.__recogMode = () => recogMode;
 
-/* ── Copy / Share / Send to Editor buttons ── */
+/* ── Back button / swipe-back ── */
+(async () => {
+  try {
+    const { App } = await import('@capacitor/app');
+    App.addListener('backButton', ({ canGoBack }) => {
+      const activeTab = document.querySelector('.bottom-nav button.active');
+      const ocrTab = document.querySelector('.bottom-nav button[data-page="ocr"]');
+      if (activeTab && activeTab !== ocrTab) {
+        ocrTab?.click();
+      } else {
+        App.exitApp();
+      }
+    });
+  } catch (_) { /* browser dev mode, Capacitor not available */ }
+})();
 document.getElementById('shareBtn')?.addEventListener('click', async () => {
   if (!document.getElementById('resultCode')?.textContent) return;
   const text = document.getElementById('resultCode').textContent;

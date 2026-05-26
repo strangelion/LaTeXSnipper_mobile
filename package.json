@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "idb": "^8.0.0",
     "mathjax": "^3.2.2",
     "mathlive": "^0.98.0",
