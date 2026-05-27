@@ -20,9 +20,11 @@ export async function loadTextRecModel(onProgress) {
   }
 
   setStatus('loading', '正在加载文字识别模型…', true);
-  const buf = await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
-  console.debug('[text-rec] Model loaded, creating session...');
-  textRecSession = await ort.InferenceSession.create(buf, {
+  console.debug('[text-rec] Creating session...');
+  // Fetch model file for ORT session
+  const modelResp = await fetch(modelUrl);
+  const modelBuf = await modelResp.arrayBuffer();
+  textRecSession = await ort.InferenceSession.create(modelBuf, {
     executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
   });
