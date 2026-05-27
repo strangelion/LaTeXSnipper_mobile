@@ -69,7 +69,12 @@ export function rotateImage() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   camCropImg = rotated;
   camCropCanvas.width = h; camCropCanvas.height = w;
-  camCropRect = null; camCropPath = []; drawCropOverlay();
+  // Reset CSS display to ensure proper scaling after dimension swap
+  camCropCanvas.style.width = '95vw';
+  camCropCanvas.style.maxHeight = '65vh';
+  camCropRect = null; camCropPath = [];
+  camCropDragging = false; camCropAction = '';
+  drawCropOverlay();
 }
 
 export function closeCamera() {
