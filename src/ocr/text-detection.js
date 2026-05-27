@@ -46,7 +46,7 @@ function preprocessDetText(img) {
     floatData[n + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5;
     floatData[2 * n + i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5;
   }
-  return { data: floatData, width: finalW, scaleX: finalW / w, scaleY: finalH / h };
+  return { data: floatData, width: finalW, height: finalH, scaleX: finalW / w, scaleY: finalH / h };
 }
 
 // Simple contour-based text detection from DB probability map
@@ -119,9 +119,9 @@ function detectTextBoxes(probMap, thresh, origW, origH, scaleX, scaleY) {
 // Full text detection pipeline
 export async function detectText(img) {
   if (!isTextDetReady()) throw new Error('Text det model not ready');
-  const { data, width, scaleX, scaleY } = preprocessDetText(img);
-  console.debug('[text-det] input shape:', [1, 3, finalH, finalW]);
-  const inputTensor = new ort.Tensor('float32', data, [1, 3, finalH, finalW]);
+  const { data, width, height, scaleX, scaleY } = preprocessDetText(img);
+  console.debug('[text-det] input shape:', [1, 3, height, width]);
+  const inputTensor = new ort.Tensor('float32', data, [1, 3, height, width]);
   const t0 = performance.now();
   let results;
   try {
