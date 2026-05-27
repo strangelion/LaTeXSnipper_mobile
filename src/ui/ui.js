@@ -425,12 +425,6 @@ export async function initModels(onProgress) {
     else if (pct === 100) hideProgress();
     else showProgress(label, pct);
   }).catch(() => {});
-  loadFormulaDetModel((label, pct) => {
-    if (pct < 0) { /* cached */ }
-    else if (pct === 0) showProgress(label, 0);
-    else if (pct === 100) hideProgress();
-    else showProgress(label, pct);
-  }).catch(() => {});
 
   setStatus('ready', '模型就绪！拖入公式图片或 Ctrl+V 粘贴', false);
 }
