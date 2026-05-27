@@ -33,5 +33,10 @@ export async function recognizeText(img) {
   ctx.drawImage(img, 0, 0);
 
   const result = await worker.recognize(canvas);
-  return result.data.text.trim();
+  const text = result.data.text.trim();
+  // Wrap text in LaTeX format: \text{...}
+  if (text) {
+    return '\\text{' + text.replace(/[{}]/g, '\\$&') + '}';
+  }
+  return text;
 }
