@@ -71,7 +71,7 @@ function ctcDecode(logits, keyList) {
 export async function recognizeText(img) {
   if (!isTextRecReady()) throw new Error('Text rec model not ready');
   const { data, width } = preprocessText(img);
-  const inputTensor = new ort.Tensor('float32', data, [1, 3, 32, width]);
+  const inputTensor = new ort.Tensor('float32', data, [1, 3, targetH, width]);
   const outName = textRecSession.outputNames[0];
   const results = await textRecSession.run({ [textRecSession.inputNames[0]]: inputTensor });
   return ctcDecode(results[outName], keys);
