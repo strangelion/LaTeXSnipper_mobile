@@ -2,18 +2,29 @@
 import { downloadWithProgress } from './ocr-engine.js';
 
 const TEXT_REC_BASE = '/models/mathcraft-text-rec';
-const TARGET_HEIGHT = 48; // PP-OCRv5 expects 48px height
 let textRecSession = null;
 let keys = [];
 
 export async function loadTextRecModel(onProgress) {
-  const buf = await downloadWithProgress(TEXT_REC_BASE + '/ppocrv5_mobile_rec.onnx', '文本识别模型', onProgress);
+  // Try official PP-OCRv5 ONNX model first, fallback to MathCraft v5
+  let modelUrl = TEXT_REC_BASE + '/ppocrv5_official_rec.onnx';
+  let keysUrl = TEXT_REC_BASE + '/ppocrv5_keys.txt';
+  try {
+    await downloadWithProgress(modelUrl, '文字识别模型 (PP-OCRv5)', onProgress);
+  } catch (e) {
+    console.debug('[text-rec] Official model not found, using MathCraft v5');
+    modelUrl = TEXT_REC_BASE + '/ppocrv5_mobile_rec.onnx';
+    await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
+  }
+
+  setStatus('loading', '正在加载文字识别模型…', true);
+  const buf = await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
   textRecSession = await ort.InferenceSession.create(buf, {
     executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
   });
-  // Load character keys
-  const resp = await fetch(TEXT_REC_BASE + '/ppocrv5_keys.txt');
+
+  const resp = await fetch(keysUrl);
   const text = await resp.text();
   keys = text.split('\n').filter(l => l.trim());
 }
@@ -22,33 +33,37 @@ export function isTextRecReady() {
   return textRecSession !== null && keys.length > 0;
 }
 
-// Preprocess: fixed 48x320 (from config: rec_img_shape [3, 48, 320])
+// Preprocess: match rapidocr ch_ppocr_rec exactly
+// Resize to height 48, width = min(ceil(48 * aspect_ratio), 320)
+// Pad with zeros (black) to [3, 48, 320]
 function preprocessText(img) {
   const targetH = 48;
+  const maxW = 320;
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
-  const ratio = targetH / h;
-  const targetW = Math.min(Math.round(w * ratio), 320);
+  const ratio = w / h;
+  let targetW = Math.ceil(targetH * ratio);
+  if (targetW > maxW) targetW = maxW;
   if (targetW < 4) targetW = 4;
 
   const canvas = document.createElement('canvas');
-  canvas.width = 320; canvas.height = targetH;
+  canvas.width = maxW; canvas.height = targetH;
   const ctx = canvas.getContext('2d');
-  // Fill with BLACK (zero value) — matches rapidocr preprocessing
+  // Black background (matches rapidocr np.zeros padding)
   ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, 320, targetH);
+  ctx.fillRect(0, 0, maxW, targetH);
   ctx.drawImage(img, 0, 0, targetW, targetH);
 
-  const pixels = ctx.getImageData(0, 0, 320, targetH).data;
-  const floatData = new Float32Array(3 * targetH * 320);
-  const n = 320 * targetH;
+  const pixels = ctx.getImageData(0, 0, maxW, targetH).data;
+  const floatData = new Float32Array(3 * targetH * maxW);
+  const n = maxW * targetH;
   for (let i = 0; i < n; i++) {
     const p = i * 4;
     floatData[i] = (pixels[p] / 255.0 - 0.5) / 0.5;
     floatData[n + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5;
     floatData[2 * n + i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5;
   }
-  return { data: floatData, width: 320 };
+  return { data: floatData, width: maxW };
 }
 
 // CTC greedy decode
