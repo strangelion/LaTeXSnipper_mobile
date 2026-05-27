@@ -1,4 +1,4 @@
-// Formula detection engine — YOLO-style math formula detector
+// Formula detection engine — based on MathCraft formula-det (mfd) model
 import { downloadWithProgress } from './ocr-engine.js';
 
 const DET_BASE = '/models/mathcraft-formula-det';
@@ -12,13 +12,11 @@ export async function loadFormulaDetModel(onProgress) {
   });
 }
 
-export function isDetReady() {
-  return detSession !== null;
-}
+export function isDetReady() { return detSession !== null; }
 
-// Preprocess image for detection (640x640 letterbox)
+// Letterbox: pad image to 768x768 (matching desktop implementation)
 function preprocessDet(img) {
-  const targetSize = 640;
+  const targetSize = 768;
   const canvas = document.createElement('canvas');
   canvas.width = targetSize; canvas.height = targetSize;
   const ctx = canvas.getContext('2d');
@@ -26,114 +24,123 @@ function preprocessDet(img) {
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
   const scale = Math.min(targetSize / iw, targetSize / ih);
-  const dw = Math.round(iw * scale);
-  const dh = Math.round(ih * scale);
-  const dx = (targetSize - dw) >> 1;
-  const dy = (targetSize - dh) >> 1;
+  const newW = Math.round(iw * scale);
+  const newH = Math.round(ih * scale);
+  const padX = Math.round((targetSize - newW) / 2 - 0.1);
+  const padY = Math.round((targetSize - newH) / 2 - 0.1);
 
-  ctx.fillStyle = '#808080';
+  ctx.fillStyle = '#72'; // gray 114
   ctx.fillRect(0, 0, targetSize, targetSize);
-  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.drawImage(img, padX, padY, newW, newH);
 
   const pixels = ctx.getImageData(0, 0, targetSize, targetSize).data;
   const floatData = new Float32Array(3 * targetSize * targetSize);
   const n = targetSize * targetSize;
-  const scl = 2.0 / 255.0;
   for (let i = 0; i < n; i++) {
     const p = i * 4;
-    floatData[i] = pixels[p] * scl - 1.0;
-    floatData[n + i] = pixels[p + 1] * scl - 1.0;
-    floatData[2 * n + i] = pixels[p + 2] * scl - 1.0;
+    floatData[i] = pixels[p] / 255.0;
+    floatData[n + i] = pixels[p + 1] / 255.0;
+    floatData[2 * n + i] = pixels[p + 2] / 255.0;
   }
-  return { data: floatData, scale, padX: dx, padY: dy, origW: iw, origH: ih };
+  return { data: floatData, scale, padX: padX, padY: padY, origW: iw, origH: ih };
 }
 
-// Parse YOLO output → bounding boxes in original image coordinates
-function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0.6) {
-  const data = output.data; // [1, 6, 8400]
+// NMS (matching desktop implementation)
+function nms(boxes, scores, iouThreshold) {
+  if (boxes.length === 0) return [];
+  const areas = boxes.map(b => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]));
+  const order = scores.map((s, i) => s).map((s, i) => i).sort((a, b) => scores[b] - scores[a]);
+  const keep = [];
+  while (order.length > 0) {
+    const current = order[0];
+    keep.push(current);
+    if (order.length === 1) break;
+    const rest = order.slice(1);
+    const xx1 = rest.map(i => Math.max(boxes[current][0], boxes[i][0]));
+    const yy1 = rest.map(i => Math.max(boxes[current][1], boxes[i][1]));
+    const xx2 = rest.map(i => Math.min(boxes[current][2], boxes[i][2]));
+    const yy2 = rest.map(i => Math.min(boxes[current][3], boxes[i][3]));
+    const interW = xx2.map((v, i) => Math.max(0, v - xx1[i]));
+    const interH = yy2.map((v, i) => Math.max(0, v - yy1[i]));
+    const intersection = interW.map((v, i) => v * interH[i]);
+    const union = rest.map(i => areas[current] + areas[i] - intersection[rest.indexOf(i)]);
+    const iou = intersection.map((v, i) => union[i] > 0 ? v / union[i] : 0);
+    order.length = 0;
+    rest.forEach((idx, i) => { if (iou[i] <= 0.45) order.push(idx); });
+  }
+  return keep;
+}
+
+// Parse model output → bounding boxes (matching desktop implementation)
+function parseDetections(output, origW, origH, scale, padX, padY) {
+  // Desktop: preds = np.asarray(output[0]).T  → [8400, 6]
+  // Our output is [1, 6, 8400] → transpose to [8400, 6]
+  const raw = output.data; // [1, 6, 8400]
   const numAnchors = 8400;
-  const boxes = [];
+  const channels = 6;
+
+  // Transpose: raw[c * numAnchors + i] → transposed[i * channels + c]
+  const preds = new Float32Array(numAnchors * channels);
+  for (let i = 0; i < numAnchors; i++) {
+    for (let c = 0; c < channels; c++) {
+      preds[i * channels + c] = raw[c * numAnchors + i];
+    }
+  }
+
+  const confThresh = 0.25;
+  const boxes = [], scores = [], classIds = [];
 
   for (let i = 0; i < numAnchors; i++) {
-    // Channels: [cx, cy, w, h, obj1, obj2] — apply sigmoid to confidence
-    const obj1 = 1 / (1 + Math.exp(-data[4 * numAnchors + i]));
-    const obj2 = 1 / (1 + Math.exp(-data[5 * numAnchors + i]));
-    const conf = Math.max(obj1, obj2);
-    if (conf < confThresh) continue;
+    const classScores = [preds[i * channels + 4], preds[i * channels + 5]];
+    const classId = classScores[0] >= classScores[1] ? 0 : 1;
+    const score = Math.max(classScores[0], classScores[1]);
+    if (score < confThresh) continue;
 
-    const cx = data[0 * numAnchors + i];
-    const cy = data[1 * numAnchors + i];
-    const w = data[2 * numAnchors + i];
-    const h = data[3 * numAnchors + i];
+    const cx = preds[i * channels + 0];
+    const cy = preds[i * channels + 1];
+    const w = preds[i * channels + 2];
+    const h = preds[i * channels + 3];
 
-    // Denormalize from 640x640 letterbox space
-    const x1 = ((cx - w / 2) - padX) / scale;
-    const y1 = ((cy - h / 2) - padY) / scale;
-    const x2 = ((cx + w / 2) - padX) / scale;
-    const y2 = ((cy + h / 2) - padY) / scale;
+    const x1 = (cx - w / 2 - padX) / scale;
+    const y1 = (cy - h / 2 - padY) / scale;
+    const x2 = (cx + w / 2 - padX) / scale;
+    const y2 = (cy + h / 2 - padY) / scale;
 
-    const bw = Math.min(origW, x2) - Math.max(0, x1);
-    const bh = Math.min(origH, y2) - Math.max(0, y1);
-    // Skip tiny boxes
-    if (bw < 10 || bh < 10) continue;
-
-    boxes.push({
-      x: Math.max(0, x1), y: Math.max(0, y1),
-      w: bw, h: bh,
-      confidence: conf,
-    });
+    boxes.push([Math.max(0, x1), Math.max(0, y1), Math.min(origW, x2), Math.min(origH, y2)]);
+    scores.push(score);
+    classIds.push(classId);
   }
-  return boxes;
+
+  return { boxes, scores, classIds };
 }
 
-// Detect formula regions in an image
+// Detect formula regions
 export async function detectFormulas(img) {
   if (!isDetReady()) throw new Error('Detection model not ready');
   const { data, scale, padX, padY, origW, origH } = preprocessDet(img);
-  console.debug('[formula-det] input shape:', [1, 3, 640, 640], 'origSize:', origW, 'x', origH);
-  const inputTensor = new ort.Tensor('float32', data, [1, 3, 640, 640]);
+  const inputTensor = new ort.Tensor('float32', data, [1, 3, 768, 768]);
   const result = await detSession.run({ [detSession.inputNames[0]]: inputTensor });
   const output = result[detSession.outputNames[0]];
-  console.debug('[formula-det] output shape:', output.dims);
 
-  // Check probability distribution
-  let max = 0, min = 1, sum = 0, above05 = 0;
-  for (let i = 0; i < output.data.length; i++) {
-    const v = output.data[i];
-    if (v > max) max = v;
-    if (v < min) min = v;
-    sum += v;
-    if (v > 0.5) above05++;
-  }
-  console.debug('[formula-det] prob stats:', { min: min.toFixed(4), max: max.toFixed(4), avg: (sum / output.data.length).toFixed(4), above05 });
+  const { boxes, scores, classIds } = parseDetections(output, origW, origH, scale, padX, padY);
+  console.debug('[formula-det] boxes after threshold:', boxes.length);
 
-  const boxes = parseDetections(output, origW, origH, scale, padX, padY);
-  console.debug('[formula-det] raw boxes:', boxes.length);
+  // NMS
+  const keep = nms(boxes, scores, 0.45);
+  console.debug('[formula-det] after NMS:', keep.length, 'boxes');
 
-  // Sort by reading order (top to bottom, left to right)
-  boxes.sort((a, b) => {
-    const rowDiff = a.y - b.y;
-    if (Math.abs(rowDiff) < a.h * 0.5) return a.x - b.x;
-    return rowDiff;
-  });
-
-  // NMS: remove overlapping boxes
-  const nms = [];
-  for (const box of boxes) {
-    let keep = true;
-    for (const kept of nms) {
-      const ix = Math.max(0, Math.min(box.x + box.w, kept.x + kept.w) - Math.max(box.x, kept.x));
-      const iy = Math.max(0, Math.min(box.y + box.h, kept.y + kept.h) - Math.max(box.y, kept.y));
-      const iou = (ix * iy) / Math.min(box.w * box.h, kept.w * kept.h);
-      if (iou > 0.5) { keep = false; break; }
-    }
-    if (keep) nms.push(box);
-  }
-  console.debug('[formula-det] after NMS:', nms.length, 'boxes', nms.slice(0, 5));
-  return nms;
+  const labels = ['embedding', 'isolated'];
+  return keep.map(idx => ({
+    x: Math.max(0, Math.round(boxes[idx][0])),
+    y: Math.max(0, Math.round(boxes[idx][1])),
+    w: Math.round(boxes[idx][2] - boxes[idx][0]),
+    h: Math.round(boxes[idx][3] - boxes[idx][1]),
+    confidence: scores[idx],
+    label: classIds[idx] < labels.length ? labels[classIds[idx]] : String(classIds[idx]),
+  }));
 }
 
-// Crop image region to a canvas
+// Crop image region
 export function cropRegion(img, box) {
   const canvas = document.createElement('canvas');
   canvas.width = box.w; canvas.height = box.h;
