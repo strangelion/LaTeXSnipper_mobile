@@ -22,28 +22,23 @@ export function isTextRecReady() {
   return textRecSession !== null && keys.length > 0;
 }
 
-// Preprocess: resize to 48px height (PP-OCRv5 expects 48), keep aspect ratio,
-// pad width to multiple of 32, normalize to [-1, 1]
+// Preprocess: fixed 48x320 (from config: rec_img_shape [3, 48, 320])
 function preprocessText(img) {
   const targetH = 48;
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  const ratio = targetH / h;
-  const rawW = Math.max(8, Math.round(w * ratio));
-  // PP-OCRv5 expects width divisible by 32, pad with white if needed
-  const targetW = Math.ceil(rawW / 32) * 32;
-  const offsetX = Math.floor((targetW - rawW) / 2);
+  const targetW = 320;
 
   const canvas = document.createElement('canvas');
   canvas.width = targetW; canvas.height = targetH;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, targetW, targetH);
-  // Draw centered, maintaining aspect ratio
-  const drawScale = Math.min(targetW / w, targetH / h);
-  const dw = Math.round(w * drawScale);
-  const dh = Math.round(h * drawScale);
-  ctx.drawImage(img, (targetW - dw) / 2, (targetH - dh) / 2, dw, dh);
+  // Scale to fill, center-crop
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const scale = Math.max(targetW / w, targetH / h);
+  const sw = Math.round(w * scale);
+  const sh = Math.round(h * scale);
+  ctx.drawImage(img, (targetW - sw) / 2, (targetH - sh) / 2, sw, sh);
 
   const pixels = ctx.getImageData(0, 0, targetW, targetH).data;
   const floatData = new Float32Array(3 * targetH * targetW);
@@ -80,7 +75,7 @@ function ctcDecode(logits, keyList) {
 export async function recognizeText(img) {
   if (!isTextRecReady()) throw new Error('Text rec model not ready');
   const { data, width } = preprocessText(img);
-  const inputTensor = new ort.Tensor('float32', data, [1, 3, TARGET_HEIGHT, width]);
+  const inputTensor = new ort.Tensor('float32', data, [1, 3, 48, 320]);
   const t0 = performance.now();
   const results = await textRecSession.run({ [textRecSession.inputNames[0]]: inputTensor });
   const output = results[textRecSession.outputNames[0]];
