@@ -35,6 +35,9 @@ export async function openCamera() {
     camVideo.style.display = ''; camCropCanvas.style.display = 'none';
     camActions.style.display = 'flex'; camCropActions.style.display = 'none';
     camModal.classList.add('show');
+    // Hide bottom nav during camera
+    const nav = document.querySelector('.bottom-nav');
+    if (nav) nav.style.display = 'none';
     // Reset flash state
     document.getElementById('camFlash')?.classList.remove('active');
   } catch (e) { throw new Error('Camera access denied: ' + (e.message || e)); }
@@ -45,9 +48,12 @@ export async function toggleFlash() {
   const track = camStream.getVideoTracks()[0];
   if (!track) return;
   try {
-    const current = track.getCapabilities?.()?.torch || false;
+    const caps = track.getCapabilities ? track.getCapabilities() : null;
+    if (!caps || !caps.torch) return; // No torch support
+    const current = track.getSettings().torch || false;
     await track.applyConstraints({ advanced: [{ torch: !current }] });
-    document.getElementById('camFlash')?.classList.toggle('active');
+    const btn = document.getElementById('camFlash');
+    if (btn) btn.classList.toggle('active', !current);
   } catch (_) { /* torch not supported */ }
 }
 
@@ -73,6 +79,9 @@ export function closeCamera() {
   camActions.style.display = 'flex'; camCropActions.style.display = 'none';
   camCropImg = null; camCropRect = null; camCropPath = [];
   camModal.classList.remove('show');
+  // Restore bottom nav
+  const nav = document.querySelector('.bottom-nav');
+  if (nav) nav.style.display = '';
 }
 
 export function capturePhoto() {
