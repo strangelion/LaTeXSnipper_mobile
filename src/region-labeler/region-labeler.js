@@ -162,34 +162,53 @@ function redraw() {
   for (const r of regions) {
     const rx = r.x * scale, ry = r.y * scale, rw = r.w * scale, rh = r.h * scale;
     const isFormula = r.type === 'formula';
-    ctx.strokeStyle = isFormula ? '#ef4444' : '#3b82f6';
-    ctx.lineWidth = 2;
+    const color = isFormula ? '#ff4444' : '#4488ff';
+
+    // White outline for contrast
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(rx - 1, ry - 1, rw + 2, rh + 2);
+
+    // Colored border
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
     ctx.strokeRect(rx, ry, rw, rh);
-    ctx.fillStyle = isFormula ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)';
+
+    // Semi-transparent fill
+    ctx.fillStyle = isFormula ? 'rgba(255,68,68,0.25)' : 'rgba(68,136,255,0.25)';
     ctx.fillRect(rx, ry, rw, rh);
-    ctx.fillStyle = isFormula ? '#ef4444' : '#3b82f6';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(isFormula ? '公式' : '文字', rx + 3, ry + 15);
+
+    // Label with background
+    const labelText = isFormula ? '公式' : '文字';
+    ctx.font = 'bold 14px sans-serif';
+    const labelW = ctx.measureText(labelText).width + 8;
+    ctx.fillStyle = color;
+    ctx.fillRect(rx, ry, labelW, 20);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(labelText, rx + 4, ry + 15);
+
+    // Result preview
     if (r.result) {
-      const tw = Math.min(rw - 4, 140);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillRect(rx + 2, ry + rh - 16, tw, 14);
-      ctx.fillStyle = '#333';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(r.result.substring(0, 20), rx + 4, ry + rh - 5);
+      const preview = r.result.substring(0, 20);
+      ctx.font = '11px sans-serif';
+      const pw = ctx.measureText(preview).width + 6;
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(rx + 2, ry + rh - 18, pw, 16);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(preview, rx + 5, ry + rh - 6);
     }
   }
 
   if (regions.length > 0) {
     const fc = regions.filter(r => r.type === 'formula').length;
     const tc = regions.filter(r => r.type === 'text').length;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
     const label = `${fc} 公式 + ${tc} 文字`;
-    const tw = ctx.measureText(label).width + 12;
-    ctx.fillRect(0, canvas.height - 24, tw, 24);
+    ctx.font = 'bold 12px sans-serif';
+    const tw = ctx.measureText(label).width + 16;
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(0, canvas.height - 26, tw, 26);
     ctx.fillStyle = '#fff';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(label, 6, canvas.height - 8);
+    ctx.fillText(label, 8, canvas.height - 9);
   }
 }
 
