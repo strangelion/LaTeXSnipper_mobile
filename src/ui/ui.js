@@ -3,6 +3,7 @@
 
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
 import { isTextRecReady, recognizeText, loadTextRecModel } from '../ocr/text-recognition.js';
+import { isDetReady, detectFormulas, cropRegion, loadFormulaDetModel } from '../ocr/formula-detection.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
 import { ICONS } from '../constants.js';
@@ -174,9 +175,31 @@ export async function processImage(file) {
         const mode = window.__recogMode?.() || 'formula';
         let result;
         if (mode === 'text' && isTextRecReady()) {
-          // Use PP-OCRv5 for text recognition
           const text = await recognizeText(img);
           result = { latex: text, confidence: 1.0 };
+        } else if ((mode === 'formula' || mode === 'mixed') && isDetReady()) {
+          // Detection pipeline: detect regions → recognize each
+          const regions = await detectFormulas(img);
+          if (regions.length === 0) {
+            // Fallback to direct recognition
+            result = await recognize(img, mode);
+          } else {
+            const parts = [];
+            let totalConf = 0;
+            for (const region of regions) {
+              const crop = cropRegion(img, region);
+              const r = await recognize(crop, 'formula');
+              if (r.latex) {
+                const isDisplay = region.w > img.naturalWidth * 0.5;
+                parts.push(isDisplay ? '$$\n' + r.latex + '\n$$' : '$' + r.latex + '$');
+              }
+              totalConf += r.confidence;
+            }
+            result = {
+              latex: parts.join('\n'),
+              confidence: regions.length > 0 ? totalConf / regions.length : 0,
+            };
+          }
         } else {
           result = await recognize(img, mode);
         }
@@ -388,8 +411,14 @@ export async function initModels(onProgress) {
     if (onProgress) onProgress(label, pct);
   });
 
-  // Load text recognition model (PP-OCRv5) in background
+  // Load text rec + formula det models in background
   loadTextRecModel((label, pct) => {
+    if (pct < 0) { /* cached */ }
+    else if (pct === 0) showProgress(label, 0);
+    else if (pct === 100) hideProgress();
+    else showProgress(label, pct);
+  }).catch(() => {});
+  loadFormulaDetModel((label, pct) => {
     if (pct < 0) { /* cached */ }
     else if (pct === 0) showProgress(label, 0);
     else if (pct === 100) hideProgress();

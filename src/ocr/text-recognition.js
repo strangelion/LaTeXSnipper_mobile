@@ -21,9 +21,9 @@ export function isTextRecReady() {
   return textRecSession !== null && keys.length > 0;
 }
 
-// Preprocess: resize to 32px height, keep aspect ratio, normalize
+// Preprocess: resize to 48px height (PP-OCRv5 expects 48), keep aspect ratio, normalize
 function preprocessText(img) {
-  const targetH = 32;
+  const targetH = 48;
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
   const ratio = targetH / h;
