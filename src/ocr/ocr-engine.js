@@ -68,7 +68,7 @@ export async function loadModels(onProgress) {
   const decoderBuf = await downloadWithProgress(MODEL_BASE + '/decoder_model.onnx', '解码器模型', onProgress);
   if (onProgress) onProgress('正在加载解码器到内存…', -1);
   decoderSession = await ort.InferenceSession.create(decoderBuf, {
-    executionProviders: ['webgpu', 'wasm'],
+    executionProviders: ['wasm'], // WASM only for decoder to avoid JSEP hangs
     graphOptimizationLevel: 'all',
   });
 }
