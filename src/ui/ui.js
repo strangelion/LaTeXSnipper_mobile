@@ -180,29 +180,22 @@ export async function processImage(file) {
           // Text mode: tesseract.js
           const text = await recognizeText(img);
           result = { latex: '\\text{' + text + '}', confidence: 0.8 };
-        } else if (mode === 'mixed') {
-          // Mixed: try formula-rec first, fallback to tesseract
-          let formulaResult = null;
-          try {
-            formulaResult = await recognize(img, 'formula');
-          } catch (e) {}
-          if (formulaResult && formulaResult.latex && formulaResult.confidence > 0.3 && formulaResult.tokens > 3) {
-            // Formula recognized — also get text with tesseract if available
-            let fullText = '';
-            if (isTesseractReady()) {
-              try { fullText = await recognizeText(img); } catch (e) {}
-            }
-            result = {
-              latex: formulaResult.latex + (fullText ? '\n\\text{' + fullText + '}' : ''),
-              confidence: formulaResult.confidence
-            };
-          } else if (isTesseractReady()) {
-            // Formula failed or too few tokens, use tesseract
-            const text = await recognizeText(img);
-            result = { latex: text, confidence: 0.6 };
-          } else {
-            result = { latex: formulaResult?.latex || '', confidence: formulaResult?.confidence || 0 };
-          }
+        } else if (mode === 'mixed' && isTesseractReady()) {
+          // Mixed: tesseract.js + post-process math patterns
+          const rawText = await recognizeText(img);
+          // Post-process: convert common math patterns to LaTeX
+          let processed = rawText
+            .replace(/e\^[\(（]([^)）]+)[\)）]/g, 'e^{$1}') // e^(iπ) → e^{iπ}
+            .replace(/([a-zA-Z])\^[\(（]([^)）]+)[\)）]/g, '$1^{$2}') // x^(2) → x^{2}
+            .replace(/([a-zA-Z])_([\w])/g, '$1_{$2}') // x_n → x_{n}
+            .replace(/\*/g, '\\times ') // * → \times
+            .replace(/≈/g, '\\approx ')
+            .replace(/≠/g, '\\neq ')
+            .replace(/±/g, '\\pm ')
+            .replace(/≤/g, '\\leq ')
+            .replace(/≥/g, '\\geq ');
+          // Wrap in \text{} for display
+          result = { latex: '\\text{' + processed + '}', confidence: 0.7 };
         } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Fallback: text-det + text-rec pipeline
           const boxes = await detectText(img);
