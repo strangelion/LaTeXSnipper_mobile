@@ -177,23 +177,32 @@ export async function processImage(file) {
         if (mode === 'text' && isTextRecReady()) {
           const text = await recognizeText(img);
           result = { latex: text, confidence: 1.0 };
-        } else if ((mode === 'formula' || mode === 'mixed') && isDetReady()) {
-          // Detection pipeline: detect regions → recognize each
+        } else if (isDetReady()) {
+          // Detection pipeline for formula/mixed modes
           const regions = await detectFormulas(img);
           if (regions.length === 0) {
-            // Fallback to direct recognition
             result = await recognize(img, mode);
           } else {
             const parts = [];
             let totalConf = 0;
             for (const region of regions) {
-              const crop = cropRegion(img, region);
-              const r = await recognize(crop, 'formula');
-              if (r.latex) {
+              // For mixed mode: try formula first, fallback to text if confidence is low
+              const r = await recognize(cropRegion(img, region), 'formula');
+              if (r.latex && r.confidence >= 0.3) {
                 const isDisplay = region.w > img.naturalWidth * 0.5;
                 parts.push(isDisplay ? '$$\n' + r.latex + '\n$$' : '$' + r.latex + '$');
+                totalConf += r.confidence;
+              } else if (mode === 'mixed' && isTextRecReady()) {
+                // Fallback to text recognition for low-confidence formula regions
+                const text = await recognizeText(cropRegion(img, region));
+                if (text) {
+                  parts.push(text);
+                  totalConf += 0.5;
+                }
+              } else if (r.latex) {
+                parts.push(r.latex);
+                totalConf += r.confidence;
               }
-              totalConf += r.confidence;
             }
             result = {
               latex: parts.join('\n'),
