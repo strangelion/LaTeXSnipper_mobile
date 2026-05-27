@@ -126,7 +126,16 @@ export async function shareResult() {
 export async function processImage(file) {
   if (!isReady()) { showError('模型尚未加载完成，请稍等'); return; }
 
-  // Local inference — no cooldown needed
+  // Check external model config
+  let settings = {};
+  try { settings = JSON.parse(localStorage.getItem('ls_settings') || '{}'); } catch (_) {}
+
+  if (settings.engine && settings.engine !== 'builtin' && settings.baseUrl) {
+    return processImageExternal(file, settings);
+  }
+
+  // Local ONNX inference
+
   if (file.size < 1024) { showError('文件太小，至少 1KB'); return; }
 
   // PDF branch
@@ -183,6 +192,63 @@ export async function processImage(file) {
     };
     img.src = url;
   });
+}
+
+// ── Drop zone ──
+
+// ── External API recognition ──
+async function processImageExternal(file, settings) {
+  hideResult();
+  if (els.errorMsg) els.errorMsg.style.display = 'none';
+  setStatus('processing', '正在调用云端模型…', true);
+
+  try {
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+
+    const body = {
+      model: settings.model || 'gpt-4o',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } },
+          { type: 'text', text: 'Please convert the formula in this image to LaTeX code. Output ONLY the LaTeX code, no explanation.' },
+        ],
+      }],
+      max_tokens: 1024,
+    };
+
+    const resp = await fetch(settings.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + (settings.apiKey || ''),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!resp.ok) throw new Error('API error: HTTP ' + resp.status);
+    const data = await resp.json();
+    let latex = data.choices?.[0]?.message?.content || '';
+    // Clean up markdown code fences
+    latex = latex.replace(/```latex\n?/g, '').replace(/```\n?/g, '').trim();
+    lastRecognitionTime = Date.now();
+    if (latex) {
+      showResult(latex, 1.0);
+      setStatus('done', '云端识别完成', false);
+      if (fileInputHandler) fileInputHandler({ latex, confidence: 1.0 }, file);
+    } else {
+      showError('云端未返回有效结果');
+      setStatus('ready', '模型就绪！拖入公式图片开始识别', false);
+    }
+  } catch (e) {
+    showError('云端识别失败: ' + (e.message || e));
+    setStatus('ready', '模型就绪！拖入公式图片开始识别', false);
+  }
 }
 
 // ── Drop zone ──

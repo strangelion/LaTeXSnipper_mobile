@@ -338,9 +338,7 @@ initEditor();
 
 /* ── Settings page ── */
 (function initSettings() {
-  const eng = document.getElementById('setEngine');
   const extDiv = document.getElementById('extSettings');
-  const preset = document.getElementById('setPreset');
   const saveBtn = document.getElementById('settingsSave');
   const testBtn = document.getElementById('setTestConn');
   const testResult = document.getElementById('setTestResult');
@@ -352,40 +350,73 @@ initEditor();
     'mineru-native': { engine:'mineru', baseUrl:'http://localhost:8888', model:'mineru' },
   };
 
-  preset?.addEventListener('change', () => {
-    const p = PRESETS[preset.value];
-    if (!p) return;
-    eng.value = p.engine; eng.dispatchEvent(new Event('change'));
-    document.getElementById('setBaseUrl').value = p.baseUrl || '';
-    document.getElementById('setModel').value = p.model || '';
+  function getEngineVal() {
+    return document.querySelector('input[name="engine"]:checked')?.value || 'builtin';
+  }
+  function getPresetVal() {
+    return document.querySelector('input[name="preset"]:checked')?.value || '';
+  }
+  function setEngineVal(v) {
+    document.querySelectorAll('input[name="engine"]').forEach(r => r.checked = r.value === v);
+    document.querySelectorAll('.set-radio-group .set-radio').forEach(l => {
+      l.classList.toggle('active', l.querySelector('input')?.checked);
+    });
+    if (extDiv) extDiv.style.display = v === 'builtin' ? 'none' : '';
+  }
+  function setPresetVal(v) {
+    document.querySelectorAll('input[name="preset"]').forEach(r => r.checked = r.value === v);
+    document.querySelectorAll('.set-radio-group .set-radio').forEach(l => {
+      l.classList.toggle('active', l.querySelector('input')?.checked);
+    });
+  }
+
+  // Engine radio click
+  document.querySelectorAll('input[name="engine"]').forEach(r => {
+    r.addEventListener('change', () => setEngineVal(r.value));
   });
+  // Make labels clickable
+  document.querySelectorAll('.set-radio').forEach(label => {
+    label.addEventListener('pointerdown', (e) => {
+      const radio = label.querySelector('input');
+      if (radio) {
+        radio.checked = true;
+        if (radio.name === 'engine') setEngineVal(radio.value);
+        if (radio.name === 'preset') {
+          setPresetVal(radio.value);
+          const p = PRESETS[radio.value];
+          if (p) {
+            setEngineVal(p.engine);
+            document.getElementById('setBaseUrl').value = p.baseUrl || '';
+            document.getElementById('setModel').value = p.model || '';
+          }
+        }
+      }
+    });
+  });
+
+  // Load saved
   try {
     const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
-    if (saved.engine) eng.value = saved.engine;
+    if (saved.engine) setEngineVal(saved.engine);
+    if (saved.preset) setPresetVal(saved.preset);
     if (saved.baseUrl) document.getElementById('setBaseUrl').value = saved.baseUrl;
     if (saved.model) document.getElementById('setModel').value = saved.model;
     if (saved.apiKey) document.getElementById('setApiKey').value = saved.apiKey;
-    if (saved.timeout) document.getElementById('setTimeout').value = saved.timeout;
-    if (saved.outputFormat) document.getElementById('setOutputFormat').value = saved.outputFormat;
-    if (eng.value !== 'builtin' && extDiv) extDiv.style.display = '';
   } catch (_) {}
-  eng?.addEventListener('change', () => {
-    if (extDiv) extDiv.style.display = eng.value === 'builtin' ? 'none' : '';
-  });
+
   saveBtn?.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const settings = {
-      engine: eng?.value || 'builtin',
+      engine: getEngineVal(),
       baseUrl: document.getElementById('setBaseUrl')?.value || '',
       model: document.getElementById('setModel')?.value || '',
       apiKey: document.getElementById('setApiKey')?.value || '',
-      timeout: document.getElementById('setTimeout')?.value || 30,
-      outputFormat: document.getElementById('setOutputFormat')?.value || 'latex',
     };
     try { localStorage.setItem('ls_settings', JSON.stringify(settings)); } catch (_) {}
     saveBtn.textContent = '已保存 ✓';
     setTimeout(() => saveBtn.textContent = '保存设置', 1500);
   });
+
   testBtn?.addEventListener('pointerdown', async (e) => {
     e.preventDefault();
     if (!testResult) return;
@@ -394,9 +425,16 @@ initEditor();
     const apiKey = document.getElementById('setApiKey')?.value || '';
     if (!baseUrl) { testResult.textContent = '请填写 Base URL'; return; }
     try {
-      const resp = await fetch(baseUrl.replace(/\/+$/, '') + '/models', {
+      const resp = await fetch(baseUrl.replace(/\/+$/, '') + (getEngineVal() === 'mineru' ? '/health' : '/models'), {
         headers: apiKey ? { Authorization: 'Bearer ' + apiKey } : {},
         signal: AbortSignal.timeout(10000),
+      });
+      testResult.textContent = resp.ok ? '✓ 连接成功' : '✗ HTTP ' + resp.status;
+    } catch (err) {
+      testResult.textContent = '✗ ' + (err.message || '连接失败');
+    }
+  });
+})();
       });
       testResult.textContent = resp.ok ? '✓ 连接成功' : '✗ HTTP ' + resp.status;
     } catch (err) {

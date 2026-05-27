@@ -164,40 +164,39 @@
     <!-- ── Tab 4: Settings ── -->
     <div class="page" id="page-settings">
       <div class="settings-body">
-        <label class="set-label">识别引擎</label>
-        <select class="set-select" id="setEngine">
-          <option value="builtin">内置 ONNX（离线）</option>
-          <option value="openai">OpenAI 兼容</option>
-          <option value="mineru">MinerU 文档解析</option>
-        </select>
-
-        <div id="extSettings" style="display:none;">
-          <label class="set-label">预设</label>
-          <select class="set-select" id="setPreset">
-            <option value="">自定义</option>
-            <option value="paddle">PaddleOCR-VL</option>
-            <option value="silicon">SiliconFlow</option>
-            <option value="deepseek">DeepSeek VL2</option>
-            <option value="mineru-native">MinerU Native</option>
-          </select>
-
-          <label class="set-label">Base URL</label>
-          <input class="set-input" id="setBaseUrl" placeholder="https://api.openai.com/v1">
-
-          <label class="set-label">模型名称</label>
-          <input class="set-input" id="setModel" placeholder="gpt-4o">
-
-          <label class="set-label">API Key</label>
-          <input class="set-input" type="password" id="setApiKey" placeholder="sk-...">
-
-          <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.5rem;">测试连接</button>
-          <span id="setTestResult" style="font-size:0.82rem;display:block;margin-top:0.4rem;"></span>
+        <div class="set-section">
+          <div class="set-section-title">识别引擎</div>
+          <div class="set-radio-group" id="setEngineGroup">
+            <label class="set-radio active"><input type="radio" name="engine" value="builtin" checked> 内置 ONNX</label>
+            <label class="set-radio"><input type="radio" name="engine" value="openai"> OpenAI 兼容</label>
+            <label class="set-radio"><input type="radio" name="engine" value="mineru"> MinerU</label>
+          </div>
         </div>
 
-        <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:1rem;">保存设置</button>
-        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;">
-          外部模型可将图片发送到云端 API 进行识别，适合复杂公式或需要更高精度的场景。内置 ONNX 模型完全离线运行，无需网络。
-        </p>
+        <div id="extSettings" style="display:none;">
+          <div class="set-section">
+            <div class="set-section-title">预设</div>
+            <div class="set-radio-group" id="setPresetGroup">
+              <label class="set-radio"><input type="radio" name="preset" value=""> 自定义</label>
+              <label class="set-radio"><input type="radio" name="preset" value="paddle"> PaddleOCR</label>
+              <label class="set-radio"><input type="radio" name="preset" value="silicon"> SiliconFlow</label>
+              <label class="set-radio"><input type="radio" name="preset" value="deepseek"> DeepSeek</label>
+              <label class="set-radio"><input type="radio" name="preset" value="mineru-native"> MinerU</label>
+            </div>
+          </div>
+
+          <div class="set-section">
+            <div class="set-section-title">连接配置</div>
+            <input class="set-input" id="setBaseUrl" placeholder="https://api.openai.com/v1">
+            <input class="set-input" id="setModel" placeholder="模型名称，如 gpt-4o" style="margin-top:0.5rem;">
+            <input class="set-input" type="password" id="setApiKey" placeholder="API Key（sk-...）" style="margin-top:0.5rem;">
+            <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.6rem;">测试连接</button>
+            <span id="setTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
+          </div>
+        </div>
+
+        <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;">保存设置</button>
+        <p class="set-hint">外部模型通过云端 API 识别，需网络和 API Key。内置 ONNX 完全离线运行。</p>
       </div>
     </div>
 
