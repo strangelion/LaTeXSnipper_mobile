@@ -49,13 +49,16 @@ function preprocessDet(img) {
 }
 
 // Parse YOLO output → bounding boxes in original image coordinates
-function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0.25) {
+function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0.5) {
   const data = output.data; // [1, 6, 8400]
   const numAnchors = 8400;
   const boxes = [];
 
   for (let i = 0; i < numAnchors; i++) {
-    const conf = data[4 * numAnchors + i]; // Objectness at index 4
+    // Channels: [cx, cy, w, h, obj1, obj2] — apply sigmoid to confidence channels
+    const obj1 = 1 / (1 + Math.exp(-data[4 * numAnchors + i]));
+    const obj2 = 1 / (1 + Math.exp(-data[5 * numAnchors + i]));
+    const conf = Math.max(obj1, obj2);
     if (conf < confThresh) continue;
 
     const cx = data[0 * numAnchors + i];
