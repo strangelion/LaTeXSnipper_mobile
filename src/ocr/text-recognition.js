@@ -7,32 +7,43 @@ let keys = [];
 
 export async function loadTextRecModel(onProgress) {
   console.debug('[text-rec] Starting model load...');
-  // Try official PP-OCRv5 ONNX model first, fallback to MathCraft v5
   let modelUrl = TEXT_REC_BASE + '/ppocrv5_official_rec.onnx';
   let keysUrl = TEXT_REC_BASE + '/ppocrv5_keys.txt';
+
+  // Download model
   try {
-    console.debug('[text-rec] Loading official model:', modelUrl);
+    console.debug('[text-rec] Step 1: download official model');
     await downloadWithProgress(modelUrl, '文字识别模型 (PP-OCRv5)', onProgress);
+    console.debug('[text-rec] Step 1 done');
   } catch (e) {
-    console.debug('[text-rec] Official model failed:', e.message);
+    console.debug('[text-rec] Official failed:', e.message, '→ fallback');
     modelUrl = TEXT_REC_BASE + '/ppocrv5_mobile_rec.onnx';
     await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
   }
 
   setStatus('loading', '正在加载文字识别模型…', true);
-  console.debug('[text-rec] Creating session...');
-  // Fetch model file for ORT session
+
+  // Create ORT session
+  console.debug('[text-rec] Step 2: fetch for ORT session');
   const modelResp = await fetch(modelUrl);
+  console.debug('[text-rec] Step 2: fetch done, status:', modelResp.status);
   const modelBuf = await modelResp.arrayBuffer();
+  console.debug('[text-rec] Step 2: arrayBuffer done, size:', modelBuf.byteLength);
+
+  console.debug('[text-rec] Step 3: create ORT session');
   textRecSession = await ort.InferenceSession.create(modelBuf, {
     executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
   });
+  console.debug('[text-rec] Step 3 done');
 
+  // Load keys
+  console.debug('[text-rec] Step 4: fetch keys');
   const resp = await fetch(keysUrl);
   const text = await resp.text();
   keys = text.split('\n').filter(l => l.trim());
-  console.debug('[text-rec] Ready, keys:', keys.length);
+  console.debug('[text-rec] Step 4 done, keys:', keys.length);
+  console.debug('[text-rec] READY');
 }
 
 export function isTextRecReady() {
