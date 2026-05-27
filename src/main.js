@@ -439,6 +439,7 @@ initEditor();
   const devCheck = document.getElementById('setDevMode');
   const devOpts = document.getElementById('devOptions');
   const devLogs = document.getElementById('devShowLogs');
+  const devClearLogs = document.getElementById('devClearLogs');
   const devOutput = document.getElementById('devLogOutput');
   const devClear = document.getElementById('devClearCache');
 
@@ -464,8 +465,14 @@ initEditor();
     devOutput.style.display = 'block';
     try {
       const logs = JSON.parse(localStorage.getItem('ls_ocr_logs') || '[]');
-      devOutput.textContent = logs.slice(-50).join('\n') || '(无日志)';
+      devOutput.textContent = logs.join('\n') || '(无日志)';
     } catch (_) { devOutput.textContent = '(日志读取失败)'; }
+  });
+
+  devClearLogs?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try { localStorage.removeItem('ls_ocr_logs'); } catch (_) {}
+    if (devOutput) devOutput.textContent = '(日志已清空)';
   });
 
   devClear?.addEventListener('pointerdown', async (e) => {

@@ -255,7 +255,9 @@ export async function recognize(img, mode = 'formula') {
   await new Promise(r => setTimeout(r, 50));
 
   const encName = encoderSession.inputNames[0];
+  const encT0 = performance.now();
   const encOut = await encoderSession.run({ [encName]: inputTensor });
+  devLog(`[编码器] ${(performance.now() - encT0).toFixed(0)}ms`);
   const hiddenStates = encOut[encoderSession.outputNames[0]];
 
   const decName0 = decoderSession.inputNames[0];
@@ -296,7 +298,7 @@ export async function recognize(img, mode = 'formula') {
     : 0;
 
   if (mode !== 'text' && mode !== 'mixed' && avgConf < CONFIDENCE_MIN) latex = '';
-  devLog(`done mode=${mode} tokens=${tokenIds.length} conf=${avgConf.toFixed(4)} latex=${latex.substring(0,60)}`);
+  devLog(`[完成] mode=${mode} tokens=${tokenIds.length} conf=${avgConf.toFixed(4)} total=${(performance.now()-t0).toFixed(0)}ms ${latex?'✓':'(低置信度)'} ${latex.substring(0,80)}`);
   return { latex, confidence: avgConf };
   } finally { running = false; }
 }

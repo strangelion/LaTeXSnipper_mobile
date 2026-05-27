@@ -207,9 +207,12 @@
             开发者模式
           </label>
           <div id="devOptions" style="display:none;margin-top:0.6rem;">
-            <button class="ocr-btn secondary" id="devShowLogs" style="width:100%;">查看识别日志</button>
             <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
-            <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.4rem;">清除模型缓存</button>
+            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+              <button class="ocr-btn secondary" id="devShowLogs" style="flex:1;">查看日志</button>
+              <button class="ocr-btn secondary" id="devClearLogs" style="flex:1;">清空日志</button>
+            </div>
+            <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;">清除模型缓存</button>
           </div>
         </div>
 
