@@ -180,35 +180,28 @@ export async function processImage(file) {
           // Text mode: tesseract.js
           const text = await recognizeText(img);
           result = { latex: '\\text{' + text + '}', confidence: 0.8 };
-        } else if (mode === 'mixed' && isDetReady() && isTesseractReady()) {
-          // Mixed: formula-det for formulas + tesseract for text
-          console.debug('[mixed] Starting mixed recognition...');
-          const formulaBoxes = await detectFormulas(img);
-          console.debug('[mixed] Found', formulaBoxes.length, 'formula regions');
-
-          // Get all text with tesseract
-          const fullText = await recognizeText(img);
-
-          if (formulaBoxes.length > 0) {
-            // Recognize each formula region
-            const formulaResults = [];
-            for (const box of formulaBoxes) {
-              try {
-                const crop = cropRegion(img, box);
-                const r = await recognize(crop, 'formula');
-                if (r.latex && r.confidence > 0.3) {
-                  formulaResults.push(r.latex);
-                }
-              } catch (e) {}
+        } else if (mode === 'mixed') {
+          // Mixed: try formula-rec first, fallback to tesseract
+          let formulaResult = null;
+          try {
+            formulaResult = await recognize(img, 'formula');
+          } catch (e) {}
+          if (formulaResult && formulaResult.latex && formulaResult.confidence > 0.3 && formulaResult.tokens > 3) {
+            // Formula recognized — also get text with tesseract if available
+            let fullText = '';
+            if (isTesseractReady()) {
+              try { fullText = await recognizeText(img); } catch (e) {}
             }
-            // Merge: formulas + text
             result = {
-              latex: formulaResults.join('\n') + (fullText ? '\n\\text{' + fullText + '}' : ''),
-              confidence: 0.7
+              latex: formulaResult.latex + (fullText ? '\n\\text{' + fullText + '}' : ''),
+              confidence: formulaResult.confidence
             };
+          } else if (isTesseractReady()) {
+            // Formula failed or too few tokens, use tesseract
+            const text = await recognizeText(img);
+            result = { latex: text, confidence: 0.6 };
           } else {
-            // No formulas detected, use tesseract for everything
-            result = { latex: fullText || '\\text{无法识别}', confidence: 0.6 };
+            result = { latex: formulaResult?.latex || '', confidence: formulaResult?.confidence || 0 };
           }
         } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Fallback: text-det + text-rec pipeline

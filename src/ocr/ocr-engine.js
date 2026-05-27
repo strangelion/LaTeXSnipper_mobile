@@ -299,6 +299,6 @@ export async function recognize(img, mode = 'formula') {
 
   if (mode !== 'text' && mode !== 'mixed' && avgConf < CONFIDENCE_MIN) latex = '';
   devLog(`[完成] mode=${mode} tokens=${tokenIds.length} conf=${avgConf.toFixed(4)} total=${(performance.now()-t0).toFixed(0)}ms ${latex?'✓':'(低置信度)'} ${latex.substring(0,80)}`);
-  return { latex, confidence: avgConf };
+  return { latex, confidence: avgConf, tokens: tokenIds.length };
   } finally { running = false; }
 }
