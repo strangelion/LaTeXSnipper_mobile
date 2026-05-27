@@ -394,10 +394,10 @@ function bindGlobalEvents() {
 
 export async function initModels(onProgress) {
   ort.env.wasm.wasmPaths = '/ort/';
-  // Multi-threading: use localStorage toggle (default on), requires SharedArrayBuffer
+  // Multi-threading: use up to 8 cores (ONNX Runtime limit)
   const mtOn = (localStorage.getItem('ls_mt') || '1') !== '0';
   if (crossOriginIsolated && mtOn) {
-    ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 4);
+    ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 8);
     ort.env.wasm.simd = true;
   } else {
     ort.env.wasm.numThreads = 1;
