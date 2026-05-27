@@ -107,15 +107,15 @@
 
       <!-- Region labeler modal -->
       <div class="cam-modal" id="labelerModal" style="z-index:60;">
-        <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;background:#000;">
+        <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;background:#1a1a2e;">
           <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;overflow:hidden;padding:8px;">
-            <canvas id="labelerCanvas" style="max-width:100%;max-height:100%;border:1px solid #444;touch-action:none;"></canvas>
+            <canvas id="labelerCanvas" style="max-width:100%;max-height:100%;border:2px solid #555;touch-action:none;filter:brightness(1.1) contrast(1.1);"></canvas>
           </div>
-          <div class="cam-actions" style="background:rgba(0,0,0,0.85);">
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;padding:4px 8px;">
-              <span style="color:#ef4444;font-size:12px;">长按拖动=公式</span>
-              <span style="color:#3b82f6;font-size:12px;">右键拖动=文字</span>
-              <span style="color:#888;font-size:11px;">点击框内切换类型</span>
+          <div class="cam-actions" style="background:rgba(0,0,0,0.9);">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;padding:6px 12px;">
+              <span style="color:#ff6b6b;font-size:13px;font-weight:bold;">长按拖动=公式</span>
+              <span style="color:#74b9ff;font-size:13px;font-weight:bold;">右键拖动=文字</span>
+              <span style="color:#ddd;font-size:12px;">点击框内切换类型</span>
             </div>
             <div class="cam-bottom-bar">
               <button class="cam-btn cam-close" id="labelerClose">关闭</button>
