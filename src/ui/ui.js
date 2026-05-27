@@ -176,10 +176,15 @@ export async function processImage(file) {
         let result;
         console.debug('[ocr] mode=' + mode);
         if (mode === 'text' && isTesseractReady()) {
-          // Use tesseract.js for text recognition — handles full image directly
+          // Text mode: use tesseract.js for pure text recognition
           const text = await recognizeText(img);
           console.debug('[tesseract] result:', text.substring(0, 100));
           result = { latex: text, confidence: 0.8 };
+        } else if (mode === 'mixed' && isTesseractReady()) {
+          // Mixed mode: use tesseract.js (handles both text and simple formulas)
+          const text = await recognizeText(img);
+          console.debug('[tesseract] mixed result:', text.substring(0, 100));
+          result = { latex: text, confidence: 0.7 };
         } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Fallback: text-det + text-rec pipeline
           const boxes = await detectText(img);
