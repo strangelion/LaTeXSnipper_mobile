@@ -175,28 +175,40 @@ export async function processImage(file) {
       try {
         const mode = window.__recogMode?.() || 'formula';
         let result;
-        console.debug('[ocr] mode=' + mode + ' textRecReady=' + isTextRecReady() + ' textDetReady=' + isTextDetReady());
+        console.debug('[ocr] mode=' + mode);
         if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Text pipeline: detect text regions → crop → recognize each
           const boxes = await detectText(img);
           console.debug('[text-det] found', boxes.length, 'regions');
           if (boxes.length === 0) {
-            result = { latex: '', confidence: 0 };
+            // No regions detected, fallback to formula-rec
+            result = await recognize(img, 'formula');
           } else {
             const lines = [];
+            let totalConf = 0;
             for (const box of boxes) {
               const crop = cropTextRegion(img, box);
-              const text = await recognizeText(crop);
-              if (text) lines.push(text);
+              try {
+                const r = await recognize(crop, 'formula');
+                if (r.latex) {
+                  // Strip $$ delimiters for inline display
+                  const cleaned = r.latex.replace(/\$\$/g, '').trim();
+                  if (cleaned) lines.push(cleaned);
+                  totalConf += r.confidence;
+                }
+              } catch (e) {
+                console.debug('[text-rec] region failed:', e.message);
+              }
             }
-            result = { latex: lines.join('\n'), confidence: 1.0 };
+            if (lines.length === 0) {
+              // All regions failed, fallback
+              result = await recognize(img, 'formula');
+            } else {
+              result = { latex: lines.join('\n'), confidence: totalConf / boxes.length };
+            }
           }
-        } else if (mode === 'text') {
-          // Fallback: try full-image text-rec
-          const text = await recognizeText(img);
-          console.debug('[ocr] textRec full-image result:', text);
-          result = { latex: text, confidence: 1.0 };
         } else {
+          // Formula mode or fallback
           result = await recognize(img, mode);
         }
         lastRecognitionTime = Date.now();
