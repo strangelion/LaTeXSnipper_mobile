@@ -435,13 +435,6 @@ initEditor();
     }
   });
 })();
-      });
-      testResult.textContent = resp.ok ? '✓ 连接成功' : '✗ HTTP ' + resp.status;
-    } catch (err) {
-      testResult.textContent = '✗ ' + (err.message || '连接失败');
-    }
-  });
-})();
 
 /* ── Startup: load models ── */
 async function boot() {
