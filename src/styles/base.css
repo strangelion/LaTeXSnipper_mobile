@@ -146,3 +146,21 @@ a:hover { color: var(--accent-hover); }
 .set-radio input { display: none; }
 .set-radio.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .set-radio:active { transform: scale(0.97); }
+
+/* ── Settings toggle switch ── */
+.set-toggle {
+  display: flex; align-items: center; gap: 0.6rem; cursor: pointer;
+  font-size: 0.85rem; color: var(--fg); margin-top: 0.4rem; user-select: none;
+}
+.set-toggle input { display: none; }
+.set-toggle-track {
+  width: 44px; height: 26px; border-radius: 13px;
+  background: var(--border-color); position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.set-toggle-track::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.set-toggle input:checked + .set-toggle-track { background: var(--accent); }
+.set-toggle input:checked + .set-toggle-track::after { transform: translateX(18px); }

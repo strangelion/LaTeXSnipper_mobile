@@ -2,6 +2,19 @@
 
 import { MODEL_BASE, MODEL_CACHE, IMG_SIZE, CONFIDENCE_MIN, DECODER_MAX_TOKENS } from '../constants.js';
 
+function devLog(msg) {
+  if (!window.__DEBUG__) return;
+  const ts = new Date().toISOString().slice(11, 23);
+  const line = `[${ts}] ${msg}`;
+  try {
+    const logs = JSON.parse(localStorage.getItem('ls_ocr_logs') || '[]');
+    logs.push(line);
+    if (logs.length > 200) logs.shift();
+    localStorage.setItem('ls_ocr_logs', JSON.stringify(logs));
+  } catch (_) {}
+  console.debug(line);
+}
+
 let encoderSession = null;
 let decoderSession = null;
 let tokenizerVocab = null;
@@ -83,8 +96,10 @@ export function isReady() {
 
 export function isImageEmpty(img) {
   const canvas = document.createElement('canvas');
-  let size = Math.min(384, img.naturalWidth || img.width, img.naturalHeight || img.height);
-  if (size < 4) return true;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (w < 4 || h < 4) return true;
+  const size = Math.min(384, w, h);
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, size, size);
@@ -229,8 +244,10 @@ export async function recognize(img, mode = 'formula') {
   running = true;
 
   try {
-  if (isImageEmpty(img)) return { latex: '', confidence: 0 };
+  devLog(`recognize start mode=${mode} size=${img.naturalWidth}x${img.naturalHeight}`);
+  if (isImageEmpty(img)) { devLog('image empty, skip'); return { latex: '', confidence: 0 }; }
 
+  const t0 = performance.now();
   const pixelValues = preprocessImage(img);
   const inputTensor = new ort.Tensor('float32', pixelValues, [1, 3, 384, 384]);
 
@@ -279,6 +296,7 @@ export async function recognize(img, mode = 'formula') {
     : 0;
 
   if (mode !== 'text' && mode !== 'mixed' && avgConf < CONFIDENCE_MIN) latex = '';
+  devLog(`done mode=${mode} tokens=${tokenIds.length} conf=${avgConf.toFixed(4)} latex=${latex.substring(0,60)}`);
   return { latex, confidence: avgConf };
   } finally { running = false; }
 }

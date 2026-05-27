@@ -170,9 +170,7 @@ export async function processImage(file) {
     const img = new Image();
     img.onload = async () => {
       try {
-        const mode = window.__recogMode?.() || 'formula';
-        console.debug('[ocr] mode:', mode);
-        const result = await recognize(img, mode);
+        const result = await recognize(img, window.__recogMode?.() || 'formula');
         lastRecognitionTime = Date.now();
         URL.revokeObjectURL(url);
         if (!result.latex) {

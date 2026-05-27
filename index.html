@@ -196,6 +196,21 @@
         </div>
 
         <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;">保存设置</button>
+
+        <div class="set-section" style="margin-top:1.2rem;">
+          <div class="set-section-title">开发者选项</div>
+          <label class="set-toggle">
+            <input type="checkbox" id="setDevMode">
+            <span class="set-toggle-track"></span>
+            开发者模式
+          </label>
+          <div id="devOptions" style="display:none;margin-top:0.6rem;">
+            <button class="ocr-btn secondary" id="devShowLogs" style="width:100%;">查看识别日志</button>
+            <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
+            <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.4rem;">清除模型缓存</button>
+          </div>
+        </div>
+
         <p class="set-hint">外部模型通过云端 API 识别，需网络和 API Key。内置 ONNX 完全离线运行。</p>
       </div>
     </div>

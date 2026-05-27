@@ -434,6 +434,49 @@ initEditor();
       testResult.textContent = '✗ ' + (err.message || '连接失败');
     }
   });
+
+  // Developer mode
+  const devCheck = document.getElementById('setDevMode');
+  const devOpts = document.getElementById('devOptions');
+  const devLogs = document.getElementById('devShowLogs');
+  const devOutput = document.getElementById('devLogOutput');
+  const devClear = document.getElementById('devClearCache');
+
+  // Load saved dev mode
+  try {
+    const devOn = localStorage.getItem('ls_devmode') === '1';
+    if (devCheck) devCheck.checked = devOn;
+    if (devOpts) devOpts.style.display = devOn ? '' : 'none';
+  } catch (_) {}
+
+  devCheck?.addEventListener('change', () => {
+    const on = devCheck.checked;
+    if (devOpts) devOpts.style.display = on ? '' : 'none';
+    try { localStorage.setItem('ls_devmode', on ? '1' : '0'); } catch (_) {}
+    // Toggle global debug flag
+    window.__DEBUG__ = on;
+  });
+
+  devLogs?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (!devOutput) return;
+    if (devOutput.style.display !== 'none') { devOutput.style.display = 'none'; return; }
+    devOutput.style.display = 'block';
+    try {
+      const logs = JSON.parse(localStorage.getItem('ls_ocr_logs') || '[]');
+      devOutput.textContent = logs.slice(-50).join('\n') || '(无日志)';
+    } catch (_) { devOutput.textContent = '(日志读取失败)'; }
+  });
+
+  devClear?.addEventListener('pointerdown', async (e) => {
+    e.preventDefault();
+    try { await caches.delete('ocr-models-v1'); devClear.textContent = '已清除 ✓'; }
+    catch (_) { devClear.textContent = '清除失败'; }
+    setTimeout(() => devClear.textContent = '清除模型缓存', 1500);
+  });
+
+  // Set initial debug flag
+  try { window.__DEBUG__ = localStorage.getItem('ls_devmode') === '1'; } catch (_) {}
 })();
 
 /* ── Startup: load models ── */
