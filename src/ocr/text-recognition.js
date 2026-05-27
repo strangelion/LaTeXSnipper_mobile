@@ -85,9 +85,10 @@ function preprocessText(img) {
   const n = maxW * targetH;
   for (let i = 0; i < n; i++) {
     const p = i * 4;
-    floatData[i] = (pixels[p] / 255.0 - 0.5) / 0.5;
-    floatData[n + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5;
-    floatData[2 * n + i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5;
+    // BGR channel order (matches PaddlePaddle/OpenCV convention)
+    floatData[i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5; // B
+    floatData[n + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5; // G
+    floatData[2 * n + i] = (pixels[p] / 255.0 - 0.5) / 0.5; // R
   }
   return { data: floatData, width: maxW };
 }
