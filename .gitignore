@@ -31,3 +31,4 @@ keystore_new.txt
 keystore_new_clean.txt
 skills/
 training-data/
+train_region_classifier.py

@@ -100,6 +100,7 @@ function onMove(e) {
     }
   }
 
+  // Draw preview while dragging
   if (!drawing) return;
   const pos = getPos(e);
   const x = Math.min(startX, pos.x);
@@ -107,17 +108,23 @@ function onMove(e) {
   const w = Math.abs(pos.x - startX);
   const h = Math.abs(pos.y - startY);
   redraw();
-  ctx.strokeStyle = drawType === 'formula' ? '#ef4444' : '#3b82f6';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([5, 5]);
+  const color = drawType === 'formula' ? '#ff4444' : '#4488ff';
+  // White outline
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x * scale - 1, y * scale - 1, w * scale + 2, h * scale + 2);
+  // Colored dashed line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
   ctx.strokeRect(x * scale, y * scale, w * scale, h * scale);
   ctx.setLineDash([]);
-  // Show size
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(x * scale, y * scale - 18, 60, 16);
+  // Size indicator
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(x * scale, y * scale - 20, 70, 18);
   ctx.fillStyle = '#fff';
-  ctx.font = '10px sans-serif';
-  ctx.fillText(`${Math.round(w)}x${Math.round(h)}`, x * scale + 2, y * scale - 5);
+  ctx.font = '11px sans-serif';
+  ctx.fillText(`${Math.round(w)}x${Math.round(h)}`, x * scale + 4, y * scale - 6);
 }
 
 function onUp(e) {
