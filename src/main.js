@@ -14,6 +14,7 @@ import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updat
 import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, rotateImage, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
 import { initEditor, setEditorContent } from './editor/mathlive-config.js';
+import { initRegionLabeler, clearRegions, undoRegion, getRegionCount, recognizeRegions, destroyLabeler } from './region-labeler/region-labeler.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -480,6 +481,67 @@ initEditor();
     try { await caches.delete('ocr-models-v1'); devClear.textContent = '已清除 ✓'; }
     catch (_) { devClear.textContent = '清除失败'; }
     setTimeout(() => devClear.textContent = '清除模型缓存', 1500);
+  });
+
+  // Region labeler
+  const labelerBtn = document.getElementById('devRegionLabeler');
+  const labelerModal = document.getElementById('labelerModal');
+  const labelerCanvas = document.getElementById('labelerCanvas');
+
+  labelerBtn?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    // Need an image first
+    const preview = document.getElementById('preview');
+    if (!preview?.src || preview.style.display === 'none') {
+      labelerBtn.textContent = '请先上传图片';
+      setTimeout(() => labelerBtn.textContent = '区域标注工具', 1500);
+      return;
+    }
+    // Open labeler with the preview image
+    const img = new Image();
+    img.onload = () => {
+      if (labelerModal) labelerModal.classList.add('show');
+      initRegionLabeler(labelerCanvas, img, (progress, total) => {
+        const btn = document.getElementById('labelerRecognize');
+        if (btn) btn.textContent = `识别中 ${progress}/${total}`;
+      });
+    };
+    img.src = preview.src;
+  });
+
+  document.getElementById('labelerClose')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (labelerModal) labelerModal.classList.remove('show');
+    destroyLabeler();
+  });
+
+  document.getElementById('labelerUndo')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    undoRegion();
+  });
+
+  document.getElementById('labelerClear')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    clearRegions();
+  });
+
+  document.getElementById('labelerRecognize')?.addEventListener('pointerdown', async (e) => {
+    e.preventDefault();
+    if (getRegionCount() === 0) return;
+    const btn = document.getElementById('labelerRecognize');
+    if (btn) btn.textContent = '识别中…';
+    try {
+      const result = await recognizeRegions();
+      if (result && result.latex) {
+        showResult(result.latex, result.confidence, getRegionCount() + ' 个区域');
+        setStatus('done', '区域识别完成', false);
+      }
+    } catch (err) {
+      console.debug('[labeler] error:', err.message);
+    }
+    if (btn) btn.textContent = '识别';
+    if (labelerModal) labelerModal.classList.remove('show');
+    destroyLabeler();
   });
 
   // Set initial debug flag

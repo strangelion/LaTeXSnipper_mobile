@@ -49,7 +49,7 @@ function preprocessDet(img) {
 function nms(boxes, scores, iouThreshold) {
   if (boxes.length === 0) return [];
   const areas = boxes.map(b => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]));
-  const order = scores.map((s, i) => s).map((s, i) => i).sort((a, b) => scores[b] - scores[a]);
+  const order = scores.map((s, i) => ({ s, i })).sort((a, b) => b.s - a.s).map(x => x.i);
   const keep = [];
   while (order.length > 0) {
     const current = order[0];
@@ -63,10 +63,12 @@ function nms(boxes, scores, iouThreshold) {
     const interW = xx2.map((v, i) => Math.max(0, v - xx1[i]));
     const interH = yy2.map((v, i) => Math.max(0, v - yy1[i]));
     const intersection = interW.map((v, i) => v * interH[i]);
-    const union = rest.map(i => areas[current] + areas[i] - intersection[rest.indexOf(i)]);
-    const iou = intersection.map((v, i) => union[i] > 0 ? v / union[i] : 0);
     order.length = 0;
-    rest.forEach((idx, i) => { if (iou[i] <= 0.45) order.push(idx); });
+    rest.forEach((idx, i) => {
+      const union = areas[current] + areas[idx] - intersection[i];
+      const iou = union > 0 ? intersection[i] / union : 0;
+      if (iou <= iouThreshold) order.push(idx);
+    });
   }
   return keep;
 }
@@ -87,13 +89,16 @@ function parseDetections(output, origW, origH, scale, padX, padY) {
     }
   }
 
-  const confThresh = 0.25;
+  const confThresh = 0.5;
   const boxes = [], scores = [], classIds = [];
+  const minArea = 225; // minimum box area in original pixels (15x15)
 
   for (let i = 0; i < numAnchors; i++) {
-    const classScores = [preds[i * channels + 4], preds[i * channels + 5]];
-    const classId = classScores[0] >= classScores[1] ? 0 : 1;
-    const score = Math.max(classScores[0], classScores[1]);
+    // Model output is already probabilities in [0, 1]
+    const s0 = preds[i * channels + 4];
+    const s1 = preds[i * channels + 5];
+    const classId = s0 >= s1 ? 0 : 1;
+    const score = Math.max(s0, s1);
     if (score < confThresh) continue;
 
     const cx = preds[i * channels + 0];
@@ -106,7 +111,15 @@ function parseDetections(output, origW, origH, scale, padX, padY) {
     const x2 = (cx + w / 2 - padX) / scale;
     const y2 = (cy + h / 2 - padY) / scale;
 
-    boxes.push([Math.max(0, x1), Math.max(0, y1), Math.min(origW, x2), Math.min(origH, y2)]);
+    // Clamp and filter tiny boxes
+    const bx1 = Math.max(0, x1);
+    const by1 = Math.max(0, y1);
+    const bx2 = Math.min(origW, x2);
+    const by2 = Math.min(origH, y2);
+    const area = (bx2 - bx1) * (by2 - by1);
+    if (area < minArea) continue;
+
+    boxes.push([bx1, by1, bx2, by2]);
     scores.push(score);
     classIds.push(classId);
   }
@@ -130,21 +143,53 @@ export async function detectFormulas(img) {
   console.debug('[formula-det] after NMS:', keep.length, 'boxes');
 
   const labels = ['embedding', 'isolated'];
-  return keep.map(idx => ({
+  let results = keep.map(idx => ({
     x: Math.max(0, Math.round(boxes[idx][0])),
     y: Math.max(0, Math.round(boxes[idx][1])),
-    w: Math.round(boxes[idx][2] - boxes[idx][0]),
-    h: Math.round(boxes[idx][3] - boxes[idx][1]),
+    w: Math.max(1, Math.round(boxes[idx][2] - boxes[idx][0])),
+    h: Math.max(1, Math.round(boxes[idx][3] - boxes[idx][1])),
     confidence: scores[idx],
     label: classIds[idx] < labels.length ? labels[classIds[idx]] : String(classIds[idx]),
   }));
+
+  // Cap at max 15, sorted by confidence
+  results.sort((a, b) => b.confidence - a.confidence);
+  results = results.slice(0, 15);
+  // Re-sort by position
+  results.sort((a, b) => a.y - b.y || a.x - b.x);
+
+  console.debug('[formula-det] final regions:', results.length);
+  return results;
 }
 
 // Crop image region
 export function cropRegion(img, box) {
+  const w = Math.max(1, Math.round(box.w));
+  const h = Math.max(1, Math.round(box.h));
   const canvas = document.createElement('canvas');
-  canvas.width = box.w; canvas.height = box.h;
+  canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+  ctx.drawImage(img, box.x, box.y, w, h, 0, 0, w, h);
+  return canvas;
+}
+
+// Mask formula regions (paint them black) for text detection
+export function maskFormulaRegions(img, boxes, margin) {
+  const canvas = document.createElement('canvas');
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  ctx.fillStyle = '#000000';
+  const m = margin || 2;
+  for (const box of boxes) {
+    ctx.fillRect(
+      Math.max(0, box.x - m),
+      Math.max(0, box.y - m),
+      Math.min(w, box.w + 2 * m),
+      Math.min(h, box.h + 2 * m)
+    );
+  }
   return canvas;
 }

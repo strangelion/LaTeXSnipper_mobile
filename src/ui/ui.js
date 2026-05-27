@@ -3,7 +3,7 @@
 
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
 import { isTextDetReady, detectText, cropTextRegion, loadTextDetModel } from '../ocr/text-detection.js';
-import { isDetReady, detectFormulas, cropRegion, loadFormulaDetModel } from '../ocr/formula-detection.js';
+import { isDetReady, detectFormulas, cropRegion, maskFormulaRegions, loadFormulaDetModel } from '../ocr/formula-detection.js';
 import { isTesseractReady, recognizeText, loadTesseract } from '../ocr/tesseract-recognition.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
@@ -181,21 +181,8 @@ export async function processImage(file) {
           const text = await recognizeText(img);
           result = { latex: '\\text{' + text + '}', confidence: 0.8 };
         } else if (mode === 'mixed' && isTesseractReady()) {
-          // Mixed: tesseract.js + post-process math patterns
-          const rawText = await recognizeText(img);
-          // Post-process: convert common math patterns to LaTeX
-          let processed = rawText
-            .replace(/e\^[\(（]([^)）]+)[\)）]/g, 'e^{$1}') // e^(iπ) → e^{iπ}
-            .replace(/([a-zA-Z])\^[\(（]([^)）]+)[\)）]/g, '$1^{$2}') // x^(2) → x^{2}
-            .replace(/([a-zA-Z])_([\w])/g, '$1_{$2}') // x_n → x_{n}
-            .replace(/\*/g, '\\times ') // * → \times
-            .replace(/≈/g, '\\approx ')
-            .replace(/≠/g, '\\neq ')
-            .replace(/±/g, '\\pm ')
-            .replace(/≤/g, '\\leq ')
-            .replace(/≥/g, '\\geq ');
-          // Wrap in \text{} for display
-          result = { latex: '\\text{' + processed + '}', confidence: 0.7 };
+          // Mixed mode: detect formulas first, then OCR text regions
+          result = await processMixedMode(img);
         } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Fallback: text-det + text-rec pipeline
           const boxes = await detectText(img);
@@ -242,7 +229,141 @@ export async function processImage(file) {
   });
 }
 
-// ── Drop zone ──
+// ── Mixed mode: intelligent region splitting ──
+
+async function processMixedMode(img) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  console.debug(`[mixed] image: ${iw}x${ih}`);
+
+  // Step 1: try formula-det to find formula regions
+  let formulaBoxes = [];
+  if (isDetReady()) {
+    try {
+      formulaBoxes = await detectFormulas(img);
+      console.debug(`[mixed] formula-det found ${formulaBoxes.length} regions`);
+    } catch (e) {
+      console.debug('[mixed] formula-det failed:', e.message);
+    }
+  }
+
+  // Step 2: split image into horizontal strips
+  const stripH = Math.max(30, Math.round(ih / 20)); // adaptive strip height
+  const strips = [];
+  for (let y = 0; y < ih; y += stripH) {
+    strips.push({ y, h: Math.min(stripH, ih - y) });
+  }
+
+  // Step 3: classify each strip as text/formula/empty
+  const segments = [];
+  for (const strip of strips) {
+    // Check if this strip overlaps any formula box
+    const overlapping = formulaBoxes.filter(box =>
+      box.y < strip.y + strip.h && box.y + box.h > strip.y
+    );
+
+    if (overlapping.length > 0) {
+      // This strip contains formula(s) — recognize each
+      for (const box of overlapping) {
+        if (box.w < 10 || box.h < 10) continue;
+        const crop = cropRegion(img, box);
+        try {
+          const r = await recognize(crop, 'formula');
+          if (r.latex && r.latex.trim().length > 0 && r.confidence > 0.15) {
+            segments.push({ type: 'formula', text: r.latex, confidence: r.confidence, y: box.y });
+            console.debug(`[mixed] formula: ${r.latex.substring(0, 50)} conf=${r.confidence.toFixed(2)}`);
+          }
+        } catch (e) {}
+      }
+      // For the non-formula parts of this strip, try tesseract
+      // (skip if strip is mostly formula)
+      const formulaCoverage = overlapping.reduce((sum, box) => sum + box.w * box.h, 0);
+      const stripArea = iw * strip.h;
+      if (formulaCoverage / stripArea < 0.7) {
+        // Still has text — mask and OCR
+        const masked = maskFormulaRegions(img, overlapping, 2);
+        const stripCanvas = document.createElement('canvas');
+        stripCanvas.width = iw;
+        stripCanvas.height = strip.h;
+        const ctx = stripCanvas.getContext('2d');
+        ctx.drawImage(masked, 0, strip.y, iw, strip.h, 0, 0, iw, strip.h);
+        try {
+          const t = await recognizeText(stripCanvas);
+          if (t && t.trim().length > 1) {
+            segments.push({ type: 'text', text: t.trim(), confidence: 0.7, y: strip.y });
+            console.debug(`[mixed] text(mixed strip): ${t.trim().substring(0, 50)}`);
+          }
+        } catch (e) {}
+      }
+    } else {
+      // No formula in this strip — classify as text or empty
+      // Quick check: is the strip mostly empty/white?
+      const stripCanvas = document.createElement('canvas');
+      stripCanvas.width = iw;
+      stripCanvas.height = strip.h;
+      const ctx = stripCanvas.getContext('2d');
+      ctx.drawImage(img, 0, strip.y, iw, strip.h, 0, 0, iw, strip.h);
+
+      if (!isStripEmpty(stripCanvas)) {
+        try {
+          const t = await recognizeText(stripCanvas);
+          if (t && t.trim().length > 1) {
+            segments.push({ type: 'text', text: t.trim(), confidence: 0.7, y: strip.y });
+            console.debug(`[mixed] text: ${t.trim().substring(0, 50)}`);
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  // Step 4: merge consecutive same-type segments
+  const merged = mergeSegments(segments);
+
+  if (merged.length === 0) {
+    return await recognize(img, 'formula');
+  }
+
+  const parts = merged.map(s => s.text);
+  const avgConf = merged.reduce((sum, s) => sum + s.confidence, 0) / merged.length;
+  const latex = parts.join('\n');
+  console.debug(`[mixed] result: ${merged.length} segments, conf=${avgConf.toFixed(2)}`);
+  return { latex, confidence: avgConf };
+}
+
+// Check if a strip image is mostly empty (white/light)
+function isStripEmpty(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  if (w < 4 || h < 4) return true;
+  const sampleW = Math.min(w, 200);
+  const sampleH = Math.min(h, 50);
+  const pixels = ctx.getImageData(0, 0, sampleW, sampleH).data;
+  const n = sampleW * sampleH;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    sum += pixels[i * 4]; // R channel
+  }
+  const mean = sum / n;
+  return mean > 240; // mostly white
+}
+
+// Merge consecutive segments of the same type
+function mergeSegments(segments) {
+  if (segments.length <= 1) return segments;
+  const merged = [segments[0]];
+  for (let i = 1; i < segments.length; i++) {
+    const prev = merged[merged.length - 1];
+    const cur = segments[i];
+    if (cur.type === prev.type) {
+      // Same type — merge text
+      prev.text = prev.text + '\n' + cur.text;
+      prev.confidence = Math.min(prev.confidence, cur.confidence);
+    } else {
+      merged.push(cur);
+    }
+  }
+  return merged;
+}
 
 // ── External API recognition ──
 async function processImageExternal(file, settings) {

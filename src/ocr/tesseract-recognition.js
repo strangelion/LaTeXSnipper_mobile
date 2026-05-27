@@ -39,6 +39,10 @@ export async function recognizeText(img) {
     .replace(/\s+/g, ' ') // Collapse multiple spaces to single
     .replace(/\s([,，。！？;；:：])/g, '$1') // Remove space before punctuation
     .replace(/([,，。！？;；:：])\s+/g, '$1') // Remove space after punctuation
+    .replace(/([一-鿿])\s+([一-鿿])/g, '$1$2') // Remove space between CJK chars
+    .replace(/([一-鿿])\s+([,，。！？;；:：])/g, '$1$2') // No space CJK->punct
+    .replace(/([a-zA-Z])\s+([一-鿿])/g, '$1 $2') // Keep space between ASCII and CJK
+    .replace(/([一-鿿])\s+([a-zA-Z])/g, '$1 $2') // Keep space between CJK and ASCII
     .trim();
   if (compactText) {
     return '\\text{' + compactText.replace(/[{}]/g, '\\$&') + '}';

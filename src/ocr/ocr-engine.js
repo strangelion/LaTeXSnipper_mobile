@@ -172,6 +172,28 @@ function decodeTokens(tokenIds) {
   return text.trim();
 }
 
+// ── Repetitive pattern detection ──
+
+function removeRepetitivePatterns(text) {
+  // Detect and remove patterns that repeat 3+ times
+  // e.g., "a \pm b \pm c \pm d" or "x + y + z + w + ..."
+  // Find the longest non-repeating prefix
+  for (let patternLen = 3; patternLen <= Math.floor(text.length / 3); patternLen++) {
+    const pattern = text.substring(0, patternLen);
+    let repeatCount = 0;
+    let pos = 0;
+    while (text.substring(pos, pos + patternLen) === pattern) {
+      repeatCount++;
+      pos += patternLen;
+    }
+    if (repeatCount >= 3) {
+      // Found a repeating pattern — return one instance
+      return pattern;
+    }
+  }
+  return text;
+}
+
 // ── LaTeX repair ──
 
 export function repairLatex(tex) {
@@ -262,9 +284,10 @@ export async function recognize(img, mode = 'formula') {
 
   const decName0 = decoderSession.inputNames[0];
   const decName1 = decoderSession.inputNames[1];
-  const maxTokens = 256; // Cap to limit UI freeze duration
+  const maxTokens = 128; // Most formulas are under 128 tokens
   let inputIds = new ort.Tensor('int64', BigInt64Array.from([BigInt(decoderStartId)]), [1, 1]);
   const tokenIds = [], tokenProbs = [];
+  let lowConfStreak = 0; // consecutive low-confidence tokens
 
   for (let step = 0; step < maxTokens; step++) {
     // Yield main thread every 8 steps to keep UI responsive
@@ -281,6 +304,9 @@ export async function recognize(img, mode = 'formula') {
     const res = greedyDecode(lastLogits);
 
     if (res.tokenId === eosId || res.tokenId === padId) break;
+    // Early stop: 5 consecutive tokens with < 10% confidence
+    if (res.prob < 0.1) { lowConfStreak++; if (lowConfStreak >= 5) break; }
+    else { lowConfStreak = 0; }
     tokenIds.push(res.tokenId);
     tokenProbs.push(res.prob);
 
@@ -292,6 +318,16 @@ export async function recognize(img, mode = 'formula') {
   const rawLatex = decodeTokens(tokenIds);
   // Apply LaTeX repair only for formula/mixed modes; text mode returns raw output
   let latex = mode === 'text' ? rawLatex : repairLatex(rawLatex);
+
+  // Detect repetitive output (model generating garbage loops)
+  if (latex.length > 20) {
+    const deduped = removeRepetitivePatterns(latex);
+    if (deduped.length < latex.length * 0.4) {
+      // More than 60% was repetition — likely garbage
+      devLog(`[repetitive] detected: ${latex.length} -> ${deduped.length} chars`);
+      latex = '';
+    }
+  }
 
   const avgConf = tokenProbs.length > 0
     ? tokenProbs.reduce((a, b) => a + b, 0) / tokenProbs.length
