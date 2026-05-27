@@ -2,6 +2,7 @@
 // Extracted from ocr_demo.html
 
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
+import { isTextRecReady, recognizeText, loadTextRecModel } from '../ocr/text-recognition.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
 import { ICONS } from '../constants.js';
@@ -170,7 +171,15 @@ export async function processImage(file) {
     const img = new Image();
     img.onload = async () => {
       try {
-        const result = await recognize(img, window.__recogMode?.() || 'formula');
+        const mode = window.__recogMode?.() || 'formula';
+        let result;
+        if (mode === 'text' && isTextRecReady()) {
+          // Use PP-OCRv5 for text recognition
+          const text = await recognizeText(img);
+          result = { latex: text, confidence: 1.0 };
+        } else {
+          result = await recognize(img, mode);
+        }
         lastRecognitionTime = Date.now();
         URL.revokeObjectURL(url);
         if (!result.latex) {
@@ -378,5 +387,14 @@ export async function initModels(onProgress) {
     }
     if (onProgress) onProgress(label, pct);
   });
+
+  // Load text recognition model (PP-OCRv5) in background
+  loadTextRecModel((label, pct) => {
+    if (pct < 0) { /* cached */ }
+    else if (pct === 0) showProgress(label, 0);
+    else if (pct === 100) hideProgress();
+    else showProgress(label, pct);
+  }).catch(() => {});
+
   setStatus('ready', '模型就绪！拖入公式图片或 Ctrl+V 粘贴', false);
 }
