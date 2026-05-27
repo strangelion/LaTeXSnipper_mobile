@@ -83,9 +83,25 @@ function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0
 export async function detectFormulas(img) {
   if (!isDetReady()) throw new Error('Detection model not ready');
   const { data, scale, padX, padY, origW, origH } = preprocessDet(img);
+  console.debug('[formula-det] input shape:', [1, 3, 640, 640], 'origSize:', origW, 'x', origH);
   const inputTensor = new ort.Tensor('float32', data, [1, 3, 640, 640]);
   const result = await detSession.run({ [detSession.inputNames[0]]: inputTensor });
-  const boxes = parseDetections(result[detSession.outputNames[0]], origW, origH, scale, padX, padY);
+  const output = result[detSession.outputNames[0]];
+  console.debug('[formula-det] output shape:', output.dims);
+
+  // Check probability distribution
+  let max = 0, min = 1, sum = 0, above05 = 0;
+  for (let i = 0; i < output.data.length; i++) {
+    const v = output.data[i];
+    if (v > max) max = v;
+    if (v < min) min = v;
+    sum += v;
+    if (v > 0.5) above05++;
+  }
+  console.debug('[formula-det] prob stats:', { min: min.toFixed(4), max: max.toFixed(4), avg: (sum / output.data.length).toFixed(4), above05 });
+
+  const boxes = parseDetections(output, origW, origH, scale, padX, padY);
+  console.debug('[formula-det] raw boxes:', boxes.length);
 
   // Sort by reading order (top to bottom, left to right)
   boxes.sort((a, b) => {
@@ -106,6 +122,7 @@ export async function detectFormulas(img) {
     }
     if (keep) nms.push(box);
   }
+  console.debug('[formula-det] after NMS:', nms.length, 'boxes', nms.slice(0, 5));
   return nms;
 }
 
