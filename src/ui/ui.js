@@ -177,39 +177,13 @@ export async function processImage(file) {
         let result;
         console.debug('[ocr] mode=' + mode);
         if (mode === 'text' && isTesseractReady()) {
-          // Text mode: use tesseract.js for pure text recognition
+          // Text mode: tesseract.js
           const text = await recognizeText(img);
           result = { latex: '\\text{' + text + '}', confidence: 0.8 };
-        } else if (mode === 'mixed') {
-          // Mixed: try formula-rec first, then tesseract for text parts
-          try {
-            const r = await recognize(img, 'formula');
-            if (r.latex && r.confidence > 0.3) {
-              // Formula recognized - also try tesseract for any text
-              let fullText = '';
-              if (isTesseractReady()) {
-                fullText = await recognizeText(img);
-              }
-              // Merge formula + text
-              result = { latex: r.latex + (fullText ? '\n\\text{' + fullText + '}' : ''), confidence: r.confidence };
-            } else {
-              // Formula failed, use tesseract for all
-              if (isTesseractReady()) {
-                const text = await recognizeText(img);
-                result = { latex: '\\text{' + text + '}', confidence: 0.6 };
-              } else {
-                result = { latex: '', confidence: 0 };
-              }
-            }
-          } catch (e) {
-            console.debug('[mixed] formula-rec failed:', e.message);
-            if (isTesseractReady()) {
-              const text = await recognizeText(img);
-              result = { latex: '\\text{' + text + '}', confidence: 0.6 };
-            } else {
-              result = { latex: '', confidence: 0 };
-            }
-          }
+        } else if (mode === 'mixed' && isTesseractReady()) {
+          // Mixed: tesseract.js handles both text and simple formulas
+          const text = await recognizeText(img);
+          result = { latex: text, confidence: 0.7 };
         } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Fallback: text-det + text-rec pipeline
           const boxes = await detectText(img);
