@@ -4,6 +4,7 @@
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
 import { isTextRecReady, recognizeText, loadTextRecModel } from '../ocr/text-recognition.js';
 import { isDetReady, detectFormulas, cropRegion, loadFormulaDetModel } from '../ocr/formula-detection.js';
+import { isTextDetReady, detectText, cropTextRegion, loadTextDetModel } from '../ocr/text-detection.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
 import { ICONS } from '../constants.js';
@@ -174,11 +175,28 @@ export async function processImage(file) {
       try {
         const mode = window.__recogMode?.() || 'formula';
         let result;
-        if (mode === 'text' && isTextRecReady()) {
+        console.debug('[ocr] mode=' + mode + ' textRecReady=' + isTextRecReady() + ' textDetReady=' + isTextDetReady());
+        if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
+          // Text pipeline: detect text regions → crop → recognize each
+          const boxes = await detectText(img);
+          console.debug('[text-det] found', boxes.length, 'regions');
+          if (boxes.length === 0) {
+            result = { latex: '', confidence: 0 };
+          } else {
+            const lines = [];
+            for (const box of boxes) {
+              const crop = cropTextRegion(img, box);
+              const text = await recognizeText(crop);
+              if (text) lines.push(text);
+            }
+            result = { latex: lines.join('\n'), confidence: 1.0 };
+          }
+        } else if (mode === 'text') {
+          // Fallback: try full-image text-rec
           const text = await recognizeText(img);
+          console.debug('[ocr] textRec full-image result:', text);
           result = { latex: text, confidence: 1.0 };
         } else {
-          // TODO: enable detection pipeline after verifying FP32 models in CI build
           result = await recognize(img, mode);
         }
         lastRecognitionTime = Date.now();
@@ -392,6 +410,12 @@ export async function initModels(onProgress) {
 
   // Load text rec + formula det models in background
   loadTextRecModel((label, pct) => {
+    if (pct < 0) { /* cached */ }
+    else if (pct === 0) showProgress(label, 0);
+    else if (pct === 100) hideProgress();
+    else showProgress(label, pct);
+  }).catch(() => {});
+  loadTextDetModel((label, pct) => {
     if (pct < 0) { /* cached */ }
     else if (pct === 0) showProgress(label, 0);
     else if (pct === 100) hideProgress();

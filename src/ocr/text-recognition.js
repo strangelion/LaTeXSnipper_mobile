@@ -73,7 +73,31 @@ export async function recognizeText(img) {
   if (!isTextRecReady()) throw new Error('Text rec model not ready');
   const { data, width } = preprocessText(img);
   const inputTensor = new ort.Tensor('float32', data, [1, 3, TARGET_HEIGHT, width]);
-  const outName = textRecSession.outputNames[0];
+  const t0 = performance.now();
   const results = await textRecSession.run({ [textRecSession.inputNames[0]]: inputTensor });
-  return ctcDecode(results[outName], keys);
+  const output = results[textRecSession.outputNames[0]];
+  console.debug('[text-rec] shape:', output.dims, 'time:', (performance.now()-t0).toFixed(0)+'ms', 'keys:', keys.length);
+  // Show first 10 non-zero values for debugging
+  const nonZero = [];
+  for (let i = 0; i < output.dims[1] * output.dims[2]; i++) {
+    if (output.data[i] > 0.01) nonZero.push({ idx: i, val: output.data[i].toFixed(4) });
+  }
+  console.debug('[text-rec] non-zero values:', nonZero.length, nonZero.slice(0, 20));
+  // Check what the model actually decodes
+  const decoded = ctcDecode(output, keys);
+  console.debug('[text-rec] decoded:', JSON.stringify(decoded), 'len:', decoded.length);
+  // Also check: what are the argmax tokens at each step?
+  const seqLen = output.dims[1];
+  const vocabSize = output.dims[2];
+  const tokens = [];
+  for (let t = 0; t < seqLen; t++) {
+    const offset = t * vocabSize;
+    let maxIdx = 0, maxVal = output.data[offset];
+    for (let i = 1; i < vocabSize; i++) {
+      if (output.data[offset + i] > maxVal) { maxVal = output.data[offset + i]; maxIdx = i; }
+    }
+    tokens.push(maxIdx);
+  }
+  console.debug('[text-rec] argmax tokens:', tokens, 'keyList length:', keys.length);
+  return ctcDecode(output, keys);
 }
