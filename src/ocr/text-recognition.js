@@ -9,7 +9,7 @@ let keys = [];
 export async function loadTextRecModel(onProgress) {
   const buf = await downloadWithProgress(TEXT_REC_BASE + '/ppocrv5_mobile_rec.onnx', '文本识别模型', onProgress);
   textRecSession = await ort.InferenceSession.create(buf, {
-    executionProviders: ['webgpu', 'wasm'],
+    executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
   });
   // Load character keys

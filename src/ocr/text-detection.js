@@ -7,7 +7,7 @@ let detSession = null;
 export async function loadTextDetModel(onProgress) {
   const buf = await downloadWithProgress(DET_BASE + '/ppocrv5_mobile_det.onnx', '文字检测模型', onProgress);
   detSession = await ort.InferenceSession.create(buf, {
-    executionProviders: ['webgpu', 'wasm'],
+    executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
   });
 }
