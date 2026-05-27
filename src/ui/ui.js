@@ -189,19 +189,17 @@ export async function processImage(file) {
             for (const box of boxes) {
               const crop = cropTextRegion(img, box);
               try {
-                const r = await recognize(crop, 'formula');
-                if (r.latex) {
-                  // Strip $$ delimiters for inline display
-                  const cleaned = r.latex.replace(/\$\$/g, '').trim();
-                  if (cleaned) lines.push(cleaned);
-                  totalConf += r.confidence;
+                const text = await recognizeText(crop);
+                if (text && text.trim()) {
+                  lines.push(text.trim());
+                  totalConf += 0.8;
                 }
               } catch (e) {
                 console.debug('[text-rec] region failed:', e.message);
               }
             }
             if (lines.length === 0) {
-              // All regions failed, fallback
+              // All regions failed, fallback to formula-rec
               result = await recognize(img, 'formula');
             } else {
               result = { latex: lines.join('\n'), confidence: totalConf / boxes.length };
