@@ -82,12 +82,12 @@ async function run() {
     new Array(3*640*640).fill(0.5)
   );
 
-  // Test 3: text-rec (1x3x32x~)
+  // Test 3: text-rec (1x3x48x~)
   await testModel(
     'text-rec (文字识别 PP-OCRv5 CRNN)',
     '/models/mathcraft-text-rec/ppocrv5_mobile_rec.onnx',
-    [1, 3, 32, 100],
-    new Float32Array(3*32*100).fill(0)
+    [1, 3, 48, 100],
+    new Float32Array(3*48*100).fill(0)
   );
 
   L(`\n── 测试完成 ──`);
