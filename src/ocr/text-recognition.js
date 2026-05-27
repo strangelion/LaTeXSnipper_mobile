@@ -22,20 +22,28 @@ export function isTextRecReady() {
   return textRecSession !== null && keys.length > 0;
 }
 
-// Preprocess: resize to 48px height (PP-OCRv5 expects 48), keep aspect ratio, normalize
+// Preprocess: resize to 48px height (PP-OCRv5 expects 48), keep aspect ratio,
+// pad width to multiple of 32, normalize to [-1, 1]
 function preprocessText(img) {
   const targetH = 48;
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
   const ratio = targetH / h;
-  const targetW = Math.max(8, Math.round(w * ratio));
+  const rawW = Math.max(8, Math.round(w * ratio));
+  // PP-OCRv5 expects width divisible by 32, pad with white if needed
+  const targetW = Math.ceil(rawW / 32) * 32;
+  const offsetX = Math.floor((targetW - rawW) / 2);
 
   const canvas = document.createElement('canvas');
   canvas.width = targetW; canvas.height = targetH;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, targetW, targetH);
-  ctx.drawImage(img, 0, 0, targetW, targetH);
+  // Draw centered, maintaining aspect ratio
+  const drawScale = Math.min(targetW / w, targetH / h);
+  const dw = Math.round(w * drawScale);
+  const dh = Math.round(h * drawScale);
+  ctx.drawImage(img, (targetW - dw) / 2, (targetH - dh) / 2, dw, dh);
 
   const pixels = ctx.getImageData(0, 0, targetW, targetH).data;
   const floatData = new Float32Array(3 * targetH * targetW);
@@ -66,7 +74,7 @@ function ctcDecode(logits, keyList) {
     }
     prev = maxIdx;
   }
-  return text;
+  return text.replace(/\r/g, '').replace(/\n/g, '').trim();
 }
 
 export async function recognizeText(img) {
