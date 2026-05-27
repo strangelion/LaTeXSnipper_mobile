@@ -51,8 +51,8 @@ function preprocessDetText(img) {
 
 // Simple contour-based text detection from DB probability map
 function detectTextBoxes(probMap, thresh, origW, origH, scaleX, scaleY) {
-  const w = probMap.dims[2]; // e.g. 640
-  const h = probMap.dims[1]; // e.g. 640
+  const h = probMap.dims[2]; // H = 640
+  const w = probMap.dims[3]; // W = 960
   const data = probMap.data;
 
   // Binary threshold
@@ -133,6 +133,17 @@ export async function detectText(img) {
   console.debug('[text-det] inference done:', (performance.now() - t0).toFixed(0) + 'ms');
   const probMap = results[detSession.outputNames[0]];
   console.debug('[text-det] output shape:', probMap.dims);
+  // Check probability distribution
+  let max = 0, min = 1, sum = 0, above03 = 0, above05 = 0;
+  for (let i = 0; i < probMap.data.length; i++) {
+    const v = probMap.data[i];
+    if (v > max) max = v;
+    if (v < min) min = v;
+    sum += v;
+    if (v > 0.3) above03++;
+    if (v > 0.5) above05++;
+  }
+  console.debug('[text-det] prob stats:', { min: min.toFixed(4), max: max.toFixed(4), avg: (sum / probMap.data.length).toFixed(4), above03, above05, total: probMap.data.length });
   const boxes = detectTextBoxes(probMap, 0.3, img.naturalWidth || img.width, img.naturalHeight || img.height, scaleX, scaleY);
   return boxes;
 }
