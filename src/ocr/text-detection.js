@@ -46,11 +46,11 @@ function preprocessDetText(img) {
     floatData[n + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5;
     floatData[2 * n + i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5;
   }
-  return { data: floatData, width: finalW, height: finalH, scaleX: finalW / w, scaleY: finalH / h };
+  return { data: floatData, width: finalW, height: finalH, scale: scale, offsetX: (finalW - sw) / 2, offsetY: (finalH - sh) / 2 };
 }
 
 // Simple contour-based text detection from DB probability map
-function detectTextBoxes(probMap, thresh, origW, origH, scaleX, scaleY) {
+function detectTextBoxes(probMap, thresh, origW, origH, scale, offsetX, offsetY) {
   const h = probMap.dims[2]; // H = 640
   const w = probMap.dims[3]; // W = 960
   const data = probMap.data;
@@ -97,13 +97,13 @@ function detectTextBoxes(probMap, thresh, origW, origH, scaleX, scaleY) {
     if (!found) merged.push({ ...box });
   }
 
-  // Convert to original coordinates and add padding
+  // Convert to original coordinates: undo offset then undo scale
   const pad = 4;
   const result = merged.map(m => ({
-    x: Math.max(0, Math.round(m.x1 / scaleX) - pad),
-    y: Math.max(0, Math.round(m.y1 / scaleY) - pad),
-    w: Math.round((m.x2 - m.x1) / scaleX) + pad * 2,
-    h: Math.max(16, Math.round((m.y2 - m.y1) / scaleY) + pad * 2),
+    x: Math.max(0, Math.round((m.x1 - offsetX) / scale) - pad),
+    y: Math.max(0, Math.round((m.y1 - offsetY) / scale) - pad),
+    w: Math.round((m.x2 - m.x1) / scale) + pad * 2,
+    h: Math.max(16, Math.round((m.y2 - m.y1) / scale) + pad * 2),
   })).filter(b => b.w > 8 && b.h > 4);
 
   // Sort by reading order (top to bottom)
@@ -119,8 +119,8 @@ function detectTextBoxes(probMap, thresh, origW, origH, scaleX, scaleY) {
 // Full text detection pipeline
 export async function detectText(img) {
   if (!isTextDetReady()) throw new Error('Text det model not ready');
-  const { data, width, height, scaleX, scaleY } = preprocessDetText(img);
-  console.debug('[text-det] input shape:', [1, 3, height, width]);
+  const { data, width, height, scale, offsetX, offsetY } = preprocessDetText(img);
+  console.debug('[text-det] input shape:', [1, 3, height, width], 'scale:', scale, 'offset:', offsetX, offsetY);
   const inputTensor = new ort.Tensor('float32', data, [1, 3, height, width]);
   const t0 = performance.now();
   let results;
@@ -144,7 +144,7 @@ export async function detectText(img) {
     if (v > 0.5) above05++;
   }
   console.debug('[text-det] prob stats:', { min: min.toFixed(4), max: max.toFixed(4), avg: (sum / probMap.data.length).toFixed(4), above03, above05, total: probMap.data.length });
-  const boxes = detectTextBoxes(probMap, 0.3, img.naturalWidth || img.width, img.naturalHeight || img.height, scaleX, scaleY);
+  const boxes = detectTextBoxes(probMap, 0.3, img.naturalWidth || img.width, img.naturalHeight || img.height, scale, offsetX, offsetY);
   return boxes;
 }
 

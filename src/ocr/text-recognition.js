@@ -10,39 +10,48 @@ export async function loadTextRecModel(onProgress) {
   let modelUrl = TEXT_REC_BASE + '/ppocrv5_official_rec.onnx';
   let keysUrl = TEXT_REC_BASE + '/ppocrv5_keys.txt';
 
-  // Download model
+  // Step 1: download
   try {
-    console.debug('[text-rec] Step 1: download official model');
+    console.debug('[text-rec] Step 1: download');
     await downloadWithProgress(modelUrl, '文字识别模型 (PP-OCRv5)', onProgress);
     console.debug('[text-rec] Step 1 done');
   } catch (e) {
-    console.debug('[text-rec] Official failed:', e.message, '→ fallback');
+    console.debug('[text-rec] Official failed:', e.message);
     modelUrl = TEXT_REC_BASE + '/ppocrv5_mobile_rec.onnx';
     await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
   }
 
-  setStatus('loading', '正在加载文字识别模型…', true);
+  // Step 2: fetch ArrayBuffer
+  console.debug('[text-rec] Step 2: fetch ArrayBuffer');
+  try {
+    const modelResp = await fetch(modelUrl);
+    console.debug('[text-rec] Step 2a: status', modelResp.status);
+    const modelBuf = await modelResp.arrayBuffer();
+    console.debug('[text-rec] Step 2b: size', modelBuf.byteLength);
 
-  // Create ORT session
-  console.debug('[text-rec] Step 2: fetch for ORT session');
-  const modelResp = await fetch(modelUrl);
-  console.debug('[text-rec] Step 2: fetch done, status:', modelResp.status);
-  const modelBuf = await modelResp.arrayBuffer();
-  console.debug('[text-rec] Step 2: arrayBuffer done, size:', modelBuf.byteLength);
+    // Step 3: ORT session
+    console.debug('[text-rec] Step 3: ORT session');
+    textRecSession = await ort.InferenceSession.create(modelBuf, {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all',
+    });
+    console.debug('[text-rec] Step 3 done');
+  } catch (e) {
+    console.error('[text-rec] Step 2-3 FAILED:', e.message);
+    return;
+  }
 
-  console.debug('[text-rec] Step 3: create ORT session');
-  textRecSession = await ort.InferenceSession.create(modelBuf, {
-    executionProviders: ['wasm'],
-    graphOptimizationLevel: 'all',
-  });
-  console.debug('[text-rec] Step 3 done');
+  // Step 4: keys
+  try {
+    console.debug('[text-rec] Step 4: keys');
+    const resp = await fetch(keysUrl);
+    const text = await resp.text();
+    keys = text.split('\n').filter(l => l.trim());
+    console.debug('[text-rec] Step 4 done, keys:', keys.length);
+  } catch (e) {
+    console.error('[text-rec] Step 4 FAILED:', e.message);
+  }
 
-  // Load keys
-  console.debug('[text-rec] Step 4: fetch keys');
-  const resp = await fetch(keysUrl);
-  const text = await resp.text();
-  keys = text.split('\n').filter(l => l.trim());
-  console.debug('[text-rec] Step 4 done, keys:', keys.length);
   console.debug('[text-rec] READY');
 }
 
