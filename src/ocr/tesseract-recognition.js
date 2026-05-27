@@ -33,10 +33,15 @@ export async function recognizeText(img) {
   ctx.drawImage(img, 0, 0);
 
   const result = await worker.recognize(canvas);
-  const text = result.data.text.trim();
-  // Wrap text in LaTeX format: \text{...}
-  if (text) {
-    return '\\text{' + text.replace(/[{}]/g, '\\$&') + '}';
+  const rawText = result.data.text.trim();
+  // Compact output: remove extra spaces, keep only meaningful spaces
+  const compactText = rawText
+    .replace(/\s+/g, ' ') // Collapse multiple spaces to single
+    .replace(/\s([,，。！？;；:：])/g, '$1') // Remove space before punctuation
+    .replace(/([,，。！？;；:：])\s+/g, '$1') // Remove space after punctuation
+    .trim();
+  if (compactText) {
+    return '\\text{' + compactText.replace(/[{}]/g, '\\$&') + '}';
   }
-  return text;
+  return compactText;
 }
