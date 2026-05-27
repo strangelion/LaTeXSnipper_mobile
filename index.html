@@ -207,6 +207,11 @@
             开发者模式
           </label>
           <div id="devOptions" style="display:none;margin-top:0.6rem;">
+            <label class="set-toggle">
+              <input type="checkbox" id="devMultiThread" checked>
+              <span class="set-toggle-track"></span>
+              ONNX 多线程 (4核+SIMD)
+            </label>
             <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
             <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
               <button class="ocr-btn secondary" id="devShowLogs" style="flex:1;">查看日志</button>
