@@ -2,8 +2,6 @@
 // Extracted from ocr_demo.html
 
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
-import { isTextRecReady, recognizeText, loadTextRecModel } from '../ocr/text-recognition.js';
-import { isDetReady, detectFormulas, cropRegion, loadFormulaDetModel } from '../ocr/formula-detection.js';
 import { isTextDetReady, detectText, cropTextRegion, loadTextDetModel } from '../ocr/text-detection.js';
 import { isTesseractReady, recognizeText, loadTesseract } from '../ocr/tesseract-recognition.js';
 import { processPDF } from '../ocr/pdf-processor.js';
