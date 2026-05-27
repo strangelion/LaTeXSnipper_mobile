@@ -177,39 +177,8 @@ export async function processImage(file) {
         if (mode === 'text' && isTextRecReady()) {
           const text = await recognizeText(img);
           result = { latex: text, confidence: 1.0 };
-        } else if (isDetReady()) {
-          // Detection pipeline for formula/mixed modes
-          const regions = await detectFormulas(img);
-          if (regions.length === 0) {
-            result = await recognize(img, mode);
-          } else {
-            const parts = [];
-            let totalConf = 0;
-            for (const region of regions) {
-              // For mixed mode: try formula first, fallback to text if confidence is low
-              const r = await recognize(cropRegion(img, region), 'formula');
-              if (r.latex && r.confidence >= 0.3) {
-                const isDisplay = region.w > img.naturalWidth * 0.5;
-                parts.push(isDisplay ? '$$\n' + r.latex + '\n$$' : '$' + r.latex + '$');
-                totalConf += r.confidence;
-              } else if (mode === 'mixed' && isTextRecReady()) {
-                // Fallback to text recognition for low-confidence formula regions
-                const text = await recognizeText(cropRegion(img, region));
-                if (text) {
-                  parts.push(text);
-                  totalConf += 0.5;
-                }
-              } else if (r.latex) {
-                parts.push(r.latex);
-                totalConf += r.confidence;
-              }
-            }
-            result = {
-              latex: parts.join('\n'),
-              confidence: regions.length > 0 ? totalConf / regions.length : 0,
-            };
-          }
         } else {
+          // TODO: enable detection pipeline after verifying FP32 models in CI build
           result = await recognize(img, mode);
         }
         lastRecognitionTime = Date.now();

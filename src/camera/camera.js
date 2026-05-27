@@ -290,9 +290,11 @@ export function confirmCrop() {
   } else { octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh); }
   camCropCanvas.style.display = 'none'; camCropActions.style.display = 'none'; camModal.classList.remove('show');
   camCropImg = null; camCropRect = null; camCropPath = [];
-  // Restore bottom nav
-  const nav = document.querySelector('.bottom-nav');
-  if (nav) nav.style.display = '';
+  // Restore bottom nav after delay to prevent phantom tap on tab buttons
+  setTimeout(() => {
+    const nav = document.querySelector('.bottom-nav');
+    if (nav) nav.style.display = '';
+  }, 300);
   return new Promise(r => out.toBlob(b => r(new File([b], 'camera.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.92));
 }
 
