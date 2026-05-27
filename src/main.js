@@ -11,7 +11,7 @@ import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
 import { initModels, initUI, processImage, setStatus, copyResult, showResult, onFileProcessed } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
-import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, initCamera } from './camera/camera.js';
+import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, rotateImage, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
 import { initEditor, setEditorContent } from './editor/mathlive-config.js';
 
@@ -144,6 +144,16 @@ document.getElementById('camCropModeLasso')?.addEventListener('pointerdown', (e)
 document.getElementById('camClose')?.addEventListener('pointerdown', (e) => {
   e.preventDefault(); e.stopPropagation();
   closeCamera();
+});
+
+document.getElementById('camFlash')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  toggleFlash();
+});
+
+document.getElementById('camCropRotate')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  rotateImage();
 });
 
 document.getElementById('camModal')?.addEventListener('click', (e) => {
@@ -336,9 +346,7 @@ initEditor();
   const testResult = document.getElementById('setTestResult');
 
   const PRESETS = {
-    'glm': { engine:'ollama', baseUrl:'http://localhost:11434/v1', model:'glm-ocr' },
     'paddle': { engine:'openai', baseUrl:'http://localhost:8080/v1', model:'paddleocr-vl' },
-    'qwen': { engine:'ollama', baseUrl:'http://localhost:11434/v1', model:'qwen2.5-vl' },
     'silicon': { engine:'openai', baseUrl:'https://api.siliconflow.cn/v1', model:'Qwen/Qwen2.5-VL-72B-Instruct' },
     'deepseek': { engine:'openai', baseUrl:'https://api.deepseek.com/v1', model:'deepseek-vl2' },
     'mineru-native': { engine:'mineru', baseUrl:'http://localhost:8888', model:'mineru' },

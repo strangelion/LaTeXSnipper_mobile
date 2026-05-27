@@ -60,11 +60,12 @@ export async function deleteResult(id) {
   await database.delete(STORE_NAME, id);
 }
 
-export async function clearHistory() {
+export async function clearHistory(keepFavorites = true) {
   const database = await getDB();
   const all = await database.getAll(STORE_NAME);
   const tx = database.transaction(STORE_NAME, 'readwrite');
   for (const record of all) {
+    if (keepFavorites && record.favorite) continue;
     await tx.store.delete(record.id);
   }
   await tx.done;

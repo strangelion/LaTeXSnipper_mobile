@@ -35,7 +35,35 @@ export async function openCamera() {
     camVideo.style.display = ''; camCropCanvas.style.display = 'none';
     camActions.style.display = 'flex'; camCropActions.style.display = 'none';
     camModal.classList.add('show');
+    // Reset flash state
+    document.getElementById('camFlash')?.classList.remove('active');
   } catch (e) { throw new Error('Camera access denied: ' + (e.message || e)); }
+}
+
+export async function toggleFlash() {
+  if (!camStream) return;
+  const track = camStream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    const current = track.getCapabilities?.()?.torch || false;
+    await track.applyConstraints({ advanced: [{ torch: !current }] });
+    document.getElementById('camFlash')?.classList.toggle('active');
+  } catch (_) { /* torch not supported */ }
+}
+
+export function rotateImage() {
+  if (!camCropImg) return;
+  const w = camCropImg.width, h = camCropImg.height;
+  const rotated = document.createElement('canvas');
+  rotated.width = h; rotated.height = w;
+  const ctx = rotated.getContext('2d');
+  ctx.translate(h / 2, w / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(camCropImg, -w / 2, -h / 2);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  camCropImg = rotated;
+  camCropCanvas.width = h; camCropCanvas.height = w;
+  camCropRect = null; camCropPath = []; drawCropOverlay();
 }
 
 export function closeCamera() {

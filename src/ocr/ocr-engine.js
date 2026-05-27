@@ -278,7 +278,7 @@ export async function recognize(img, mode = 'formula') {
     ? tokenProbs.reduce((a, b) => a + b, 0) / tokenProbs.length
     : 0;
 
-  if (avgConf < CONFIDENCE_MIN) latex = '';
+  if (mode !== 'text' && mode !== 'mixed' && avgConf < CONFIDENCE_MIN) latex = '';
   return { latex, confidence: avgConf };
   } finally { running = false; }
 }
