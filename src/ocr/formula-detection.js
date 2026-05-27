@@ -49,13 +49,13 @@ function preprocessDet(img) {
 }
 
 // Parse YOLO output → bounding boxes in original image coordinates
-function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0.5) {
+function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0.6) {
   const data = output.data; // [1, 6, 8400]
   const numAnchors = 8400;
   const boxes = [];
 
   for (let i = 0; i < numAnchors; i++) {
-    // Channels: [cx, cy, w, h, obj1, obj2] — apply sigmoid to confidence channels
+    // Channels: [cx, cy, w, h, obj1, obj2] — apply sigmoid to confidence
     const obj1 = 1 / (1 + Math.exp(-data[4 * numAnchors + i]));
     const obj2 = 1 / (1 + Math.exp(-data[5 * numAnchors + i]));
     const conf = Math.max(obj1, obj2);
@@ -72,10 +72,14 @@ function parseDetections(output, origW, origH, scale, padX, padY, confThresh = 0
     const x2 = ((cx + w / 2) - padX) / scale;
     const y2 = ((cy + h / 2) - padY) / scale;
 
+    const bw = Math.min(origW, x2) - Math.max(0, x1);
+    const bh = Math.min(origH, y2) - Math.max(0, y1);
+    // Skip tiny boxes
+    if (bw < 10 || bh < 10) continue;
+
     boxes.push({
       x: Math.max(0, x1), y: Math.max(0, y1),
-      w: Math.min(origW, x2) - Math.max(0, x1),
-      h: Math.min(origH, y2) - Math.max(0, y1),
+      w: bw, h: bh,
       confidence: conf,
     });
   }
