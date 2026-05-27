@@ -3,6 +3,7 @@
 
 import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine.js';
 import { isTextDetReady, detectText, cropTextRegion, loadTextDetModel } from '../ocr/text-detection.js';
+import { isDetReady, detectFormulas, cropRegion, loadFormulaDetModel } from '../ocr/formula-detection.js';
 import { isTesseractReady, recognizeText, loadTesseract } from '../ocr/tesseract-recognition.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
@@ -180,11 +181,44 @@ export async function processImage(file) {
           const text = await recognizeText(img);
           console.debug('[tesseract] result:', text.substring(0, 100));
           result = { latex: text, confidence: 0.8 };
-        } else if (mode === 'mixed' && isTesseractReady()) {
-          // Mixed mode: use tesseract.js (handles both text and simple formulas)
-          const text = await recognizeText(img);
-          console.debug('[tesseract] mixed result:', text.substring(0, 100));
-          result = { latex: text, confidence: 0.7 };
+        } else if (mode === 'mixed') {
+          // Mixed mode: detect formulas with formula-det, use tesseract for text
+          if (isDetReady() && isTesseractReady()) {
+            console.debug('[mixed] Detecting formulas...');
+            const boxes = await detectFormulas(img);
+            console.debug('[mixed] Found', boxes.length, 'formula regions');
+
+            // Get full text with tesseract
+            const fullText = await recognizeText(img);
+
+            if (boxes.length > 0) {
+              // Merge: formula regions + text for non-formula areas
+              const parts = [];
+              for (const box of boxes) {
+                try {
+                  const crop = cropRegion(img, box);
+                  const r = await recognize(crop, 'formula');
+                  if (r.latex && r.confidence > 0.3) {
+                    parts.push(r.latex);
+                  }
+                } catch (e) {}
+              }
+              // If tesseract found more text, add it as well
+              if (fullText && parts.length > 0) {
+                result = { latex: parts.join('\n') + '\n\\text{' + fullText + '}', confidence: 0.7 };
+              } else if (parts.length > 0) {
+                result = { latex: parts.join('\n'), confidence: 0.7 };
+              } else {
+                result = { latex: '\\text{' + fullText + '}', confidence: 0.6 };
+              }
+            } else {
+              result = { latex: '\\text{' + fullText + '}', confidence: 0.6 };
+            }
+          } else {
+            // Fallback: just use tesseract
+            const text = await recognizeText(img);
+            result = { latex: text, confidence: 0.6 };
+          }
         } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
           // Fallback: text-det + text-rec pipeline
           const boxes = await detectText(img);
@@ -420,6 +454,12 @@ export async function initModels(onProgress) {
   // Load tesseract.js for text recognition in background
   loadTesseract().catch(() => {});
   loadTextDetModel((label, pct) => {
+    if (pct < 0) { /* cached */ }
+    else if (pct === 0) showProgress(label, 0);
+    else if (pct === 100) hideProgress();
+    else showProgress(label, pct);
+  }).catch(() => {});
+  loadFormulaDetModel((label, pct) => {
     if (pct < 0) { /* cached */ }
     else if (pct === 0) showProgress(label, 0);
     else if (pct === 100) hideProgress();
