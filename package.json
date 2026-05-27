@@ -16,7 +16,8 @@
     "mathlive": "^0.98.0",
     "onnxruntime-web": "1.21.0",
     "pdfjs-dist": "3.11.174",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@capacitor/android": "^8.3.4",

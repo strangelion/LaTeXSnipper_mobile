@@ -5,6 +5,7 @@ import { isReady, recognize, loadTokenizer, loadModels } from '../ocr/ocr-engine
 import { isTextRecReady, recognizeText, loadTextRecModel } from '../ocr/text-recognition.js';
 import { isDetReady, detectFormulas, cropRegion, loadFormulaDetModel } from '../ocr/formula-detection.js';
 import { isTextDetReady, detectText, cropTextRegion, loadTextDetModel } from '../ocr/text-detection.js';
+import { isTesseractReady, recognizeText, loadTesseract } from '../ocr/tesseract-recognition.js';
 import { processPDF } from '../ocr/pdf-processor.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
 import { ICONS } from '../constants.js';
@@ -176,12 +177,15 @@ export async function processImage(file) {
         const mode = window.__recogMode?.() || 'formula';
         let result;
         console.debug('[ocr] mode=' + mode);
-        if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
-          // Text pipeline: detect text regions → crop → recognize each
+        if (mode === 'text' && isTesseractReady()) {
+          // Use tesseract.js for text recognition — handles full image directly
+          const text = await recognizeText(img);
+          console.debug('[tesseract] result:', text.substring(0, 100));
+          result = { latex: text, confidence: 0.8 };
+        } else if (mode === 'text' && isTextDetReady() && isTextRecReady()) {
+          // Fallback: text-det + text-rec pipeline
           const boxes = await detectText(img);
-          console.debug('[text-det] found', boxes.length, 'regions');
           if (boxes.length === 0) {
-            // No regions detected, fallback to formula-rec
             result = await recognize(img, 'formula');
           } else {
             const lines = [];
@@ -190,20 +194,12 @@ export async function processImage(file) {
               const crop = cropTextRegion(img, box);
               try {
                 const text = await recognizeText(crop);
-                if (text && text.trim()) {
-                  lines.push(text.trim());
-                  totalConf += 0.8;
-                }
-              } catch (e) {
-                console.debug('[text-rec] region failed:', e.message);
-              }
+                if (text && text.trim()) { lines.push(text.trim()); totalConf += 0.8; }
+              } catch (e) {}
             }
-            if (lines.length === 0) {
-              // All regions failed, fallback to formula-rec
-              result = await recognize(img, 'formula');
-            } else {
-              result = { latex: lines.join('\n'), confidence: totalConf / boxes.length };
-            }
+            result = lines.length > 0
+              ? { latex: lines.join('\n'), confidence: totalConf / boxes.length }
+              : await recognize(img, 'formula');
           }
         } else {
           // Formula mode or fallback
@@ -418,13 +414,8 @@ export async function initModels(onProgress) {
     if (onProgress) onProgress(label, pct);
   });
 
-  // Load text rec + formula det models in background
-  loadTextRecModel((label, pct) => {
-    if (pct < 0) { /* cached */ }
-    else if (pct === 0) showProgress(label, 0);
-    else if (pct === 100) hideProgress();
-    else showProgress(label, pct);
-  }).catch(() => {});
+  // Load tesseract.js for text recognition in background
+  loadTesseract().catch(() => {});
   loadTextDetModel((label, pct) => {
     if (pct < 0) { /* cached */ }
     else if (pct === 0) showProgress(label, 0);
