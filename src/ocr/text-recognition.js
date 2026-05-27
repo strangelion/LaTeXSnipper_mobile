@@ -25,31 +25,30 @@ export function isTextRecReady() {
 // Preprocess: fixed 48x320 (from config: rec_img_shape [3, 48, 320])
 function preprocessText(img) {
   const targetH = 48;
-  const targetW = 320;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = targetW; canvas.height = targetH;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, targetW, targetH);
-  // Scale to fill, center-crop
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
-  const scale = Math.max(targetW / w, targetH / h);
-  const sw = Math.round(w * scale);
-  const sh = Math.round(h * scale);
-  ctx.drawImage(img, (targetW - sw) / 2, (targetH - sh) / 2, sw, sh);
+  const ratio = targetH / h;
+  const targetW = Math.min(Math.round(w * ratio), 320);
+  if (targetW < 4) targetW = 4;
 
-  const pixels = ctx.getImageData(0, 0, targetW, targetH).data;
-  const floatData = new Float32Array(3 * targetH * targetW);
-  const n = targetW * targetH;
+  const canvas = document.createElement('canvas');
+  canvas.width = 320; canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  // Fill with BLACK (zero value) — matches rapidocr preprocessing
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, 320, targetH);
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  const pixels = ctx.getImageData(0, 0, 320, targetH).data;
+  const floatData = new Float32Array(3 * targetH * 320);
+  const n = 320 * targetH;
   for (let i = 0; i < n; i++) {
     const p = i * 4;
     floatData[i] = (pixels[p] / 255.0 - 0.5) / 0.5;
     floatData[n + i] = (pixels[p + 1] / 255.0 - 0.5) / 0.5;
     floatData[2 * n + i] = (pixels[p + 2] / 255.0 - 0.5) / 0.5;
   }
-  return { data: floatData, width: targetW };
+  return { data: floatData, width: 320 };
 }
 
 // CTC greedy decode
