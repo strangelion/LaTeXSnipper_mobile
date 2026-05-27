@@ -22,16 +22,20 @@ function preprocessDetText(img) {
   const h = img.naturalHeight || img.height;
   const ratio = targetH / h;
   const targetW = Math.max(32, Math.round(w * ratio));
-  // Cap width to MAX_W, resize proportionally if needed
+
+  const finalH = targetH;
   const finalW = Math.min(targetW, MAX_W);
-  const finalH = finalW < targetW ? Math.round(h * (finalW / w)) : targetH;
 
   const canvas = document.createElement('canvas');
   canvas.width = finalW; canvas.height = finalH;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, finalW, finalH);
-  ctx.drawImage(img, 0, 0, finalW, finalH);
+  // Scale to fill height=640, center-crop if wider than 960
+  const scale = Math.max(finalW / w, finalH / h);
+  const sw = Math.round(w * scale);
+  const sh = Math.round(h * scale);
+  ctx.drawImage(img, (finalW - sw) / 2, (finalH - sh) / 2, sw, sh);
 
   const pixels = ctx.getImageData(0, 0, finalW, finalH).data;
   const floatData = new Float32Array(3 * finalH * finalW);
@@ -116,8 +120,8 @@ function detectTextBoxes(probMap, thresh, origW, origH, scaleX, scaleY) {
 export async function detectText(img) {
   if (!isTextDetReady()) throw new Error('Text det model not ready');
   const { data, width, scaleX, scaleY } = preprocessDetText(img);
-  console.debug('[text-det] input shape:', [1, 3, 640, width]);
-  const inputTensor = new ort.Tensor('float32', data, [1, 3, 640, width]);
+  console.debug('[text-det] input shape:', [1, 3, finalH, finalW]);
+  const inputTensor = new ort.Tensor('float32', data, [1, 3, finalH, finalW]);
   const t0 = performance.now();
   let results;
   try {
