@@ -6,19 +6,22 @@ let textRecSession = null;
 let keys = [];
 
 export async function loadTextRecModel(onProgress) {
+  console.debug('[text-rec] Starting model load...');
   // Try official PP-OCRv5 ONNX model first, fallback to MathCraft v5
   let modelUrl = TEXT_REC_BASE + '/ppocrv5_official_rec.onnx';
   let keysUrl = TEXT_REC_BASE + '/ppocrv5_keys.txt';
   try {
+    console.debug('[text-rec] Loading official model:', modelUrl);
     await downloadWithProgress(modelUrl, '文字识别模型 (PP-OCRv5)', onProgress);
   } catch (e) {
-    console.debug('[text-rec] Official model not found, using MathCraft v5');
+    console.debug('[text-rec] Official model failed:', e.message);
     modelUrl = TEXT_REC_BASE + '/ppocrv5_mobile_rec.onnx';
     await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
   }
 
   setStatus('loading', '正在加载文字识别模型…', true);
   const buf = await downloadWithProgress(modelUrl, '文字识别模型', onProgress);
+  console.debug('[text-rec] Model loaded, creating session...');
   textRecSession = await ort.InferenceSession.create(buf, {
     executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
@@ -27,6 +30,7 @@ export async function loadTextRecModel(onProgress) {
   const resp = await fetch(keysUrl);
   const text = await resp.text();
   keys = text.split('\n').filter(l => l.trim());
+  console.debug('[text-rec] Ready, keys:', keys.length);
 }
 
 export function isTextRecReady() {
