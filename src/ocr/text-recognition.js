@@ -2,6 +2,7 @@
 import { downloadWithProgress } from './ocr-engine.js';
 
 const TEXT_REC_BASE = '/models/mathcraft-text-rec';
+const TARGET_HEIGHT = 48; // PP-OCRv5 expects 48px height
 let textRecSession = null;
 let keys = [];
 
@@ -71,7 +72,7 @@ function ctcDecode(logits, keyList) {
 export async function recognizeText(img) {
   if (!isTextRecReady()) throw new Error('Text rec model not ready');
   const { data, width } = preprocessText(img);
-  const inputTensor = new ort.Tensor('float32', data, [1, 3, targetH, width]);
+  const inputTensor = new ort.Tensor('float32', data, [1, 3, TARGET_HEIGHT, width]);
   const outName = textRecSession.outputNames[0];
   const results = await textRecSession.run({ [textRecSession.inputNames[0]]: inputTensor });
   return ctcDecode(results[outName], keys);
