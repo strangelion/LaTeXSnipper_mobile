@@ -36,4 +36,4 @@ training-data/
 .venv/
 *.py
 *.pth
-C/
+C/
