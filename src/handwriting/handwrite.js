@@ -210,29 +210,41 @@ export function hwGetContentBounds() {
 
 // ── Export handwriting as file for recognition ──
 
-export function hwExportImage() {
-  return new Promise((resolve) => {
-    const tmp = document.createElement('canvas');
-    tmp.width = hwCanvas.width; tmp.height = hwCanvas.height;
-    const tctx = tmp.getContext('2d');
-    tctx.fillStyle = '#ffffff';
-    tctx.fillRect(0, 0, tmp.width, tmp.height);
-    tctx.drawImage(hwCanvas, 0, 0);
-    // Dark mode: invert non-white pixels to black (for white-text-on-dark)
-    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-      const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) {
-          d[i] = 255 - d[i]; d[i + 1] = 255 - d[i + 1]; d[i + 2] = 255 - d[i + 2];
-        }
+export async function hwExportImage() {
+  const tmp = document.createElement('canvas');
+  tmp.width = hwCanvas.width; tmp.height = hwCanvas.height;
+  const tctx = tmp.getContext('2d');
+  tctx.fillStyle = '#ffffff';
+  tctx.fillRect(0, 0, tmp.width, tmp.height);
+  tctx.drawImage(hwCanvas, 0, 0);
+  // Dark mode: invert non-white pixels to black (for white-text-on-dark)
+  if (document.documentElement.getAttribute('data-theme') === 'dark') {
+    const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) {
+        d[i] = 255 - d[i]; d[i + 1] = 255 - d[i + 1]; d[i + 2] = 255 - d[i + 2];
       }
-      tctx.putImageData(imgData, 0, 0);
     }
-    tmp.toBlob((blob) => {
-      resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
-    }, 'image/png');
-  });
+    tctx.putImageData(imgData, 0, 0);
+  }
+
+  // Enhance contrast for handwriting recognition
+  try {
+    const { enhanceHandwriting } = await import('../ocr/image-preprocess.js');
+    const enhanced = enhanceHandwriting(tmp);
+    return new Promise((resolve) => {
+      enhanced.toBlob((blob) => {
+        resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
+      }, 'image/png');
+    });
+  } catch (_) {
+    return new Promise((resolve) => {
+      tmp.toBlob((blob) => {
+        resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
+      }, 'image/png');
+    });
+  }
 }
 
 // ── Update theme (call on theme change) ──

@@ -12,6 +12,31 @@
   --max-w: 900px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+  /* Skin variables (default = Material 3) */
+  --btn-radius: 20px;
+  --btn-radius-lg: 26px;
+  --card-radius: 12px;
+  --nav-radius: 0px;
+  --tab-radius: 20px;
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 1px 3px 1px rgba(0,0,0,0.06);
+  --btn-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  --nav-blur: none;
+  --nav-border: 1px solid var(--border-color);
+  --font-stack: "Roboto","Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  --spacing-unit: 1rem;
+}
+/* Material 3: pill nav indicator, filled button shadows */
+[data-skin="default"] .bottom-nav button.active::after,
+:root:not([data-skin]) .bottom-nav button.active::after,
+:root[data-skin="default"] .bottom-nav button.active::after {
+  content: ''; position: absolute; bottom: 4px;
+  width: 32px; height: 3px; border-radius: 3px;
+  background: var(--accent);
+}
+[data-skin="default"] .ocr-btn,
+:root:not([data-skin]) .ocr-btn,
+:root[data-skin="default"] .ocr-btn {
+  font-weight: 500; letter-spacing: 0.01em;
 }
 
 [data-theme="dark"] {
@@ -23,12 +48,144 @@
   --border-color: #334155;
   --card-bg: #1e293b;
   --hdr-bg: rgba(15, 17, 26, 0.85);
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --btn-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
+
+/* ═══════════════════════════════════════════
+   Skin: MIUI / HyperOS — Liquid Glass
+   超大圆角 · 渐变暖色 · 全界面毛玻璃通透
+   ═══════════════════════════════════════════ */
+[data-skin="miui"] {
+  --accent: #ff6b35;
+  --accent-hover: #e55a2b;
+  --border-color: #f0e0d6;
+  --btn-radius: 24px;
+  --btn-radius-lg: 34px;
+  --card-radius: 20px;
+  --nav-radius: 18px;
+  --tab-radius: 24px;
+  --card-shadow: none;
+  --btn-shadow: none;
+  --nav-blur: blur(24px);
+  --nav-border: none;
+  --font-stack: "MiSans","Segoe UI","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  --spacing-unit: 1.15rem;
+  --bg: #fff5f0;
+  --card-bg: rgba(255,255,255,0.72);
+  --hdr-bg: rgba(255,245,240,0.78);
+}
+[data-skin="miui"] .ocr-btn {
+  border: none;
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  color: #fff; font-weight: 600;
+}
+[data-skin="miui"] .ocr-btn.secondary {
+  background: rgba(255,107,53,0.08);
+  color: #ff6b35; border: none;
+}
+[data-skin="miui"] .ocr-btn:active { opacity: 0.82; transform: scale(0.97); }
+[data-skin="miui"] .result-card {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,107,53,0.12);
+}
+[data-skin="miui"] .cam-capture {
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  border-color: transparent;
+}
+[data-skin="miui"] .bottom-nav button.active {
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  color: #fff; border-radius: 20px; padding: 6px 16px;
+}
+
+[data-skin="miui"][data-theme="dark"] {
+  --accent: #ff8c5a;
+  --accent-hover: #ff9e70;
+  --bg: #1a1210;
+  --card-bg: rgba(42,31,26,0.78);
+  --border-color: #3a2a20;
+  --hdr-bg: rgba(26,18,16,0.82);
+}
+[data-skin="miui"][data-theme="dark"] .ocr-btn {
+  background: linear-gradient(135deg, #ff6b35, #e55a2b);
+}
+[data-skin="miui"][data-theme="dark"] .ocr-btn.secondary {
+  background: rgba(255,140,90,0.12); color: #ff8c5a;
+}
+[data-skin="miui"][data-theme="dark"] .result-card {
+  background: rgba(42,31,26,0.7); border-color: rgba(255,140,90,0.1);
+}
+
+/* ═══════════════════════════════════════════
+   Skin: iOS — Glass Morphism + SF Typography
+   毛玻璃+饱和度 · 0.5px发丝边框 · 零阴影 · 细字重
+   ═══════════════════════════════════════════ */
+[data-skin="ios"] {
+  --accent: #007AFF;
+  --accent-hover: #0056cc;
+  --bg: #f2f2f7;
+  --card-bg: rgba(255,255,255,0.82);
+  --border-color: rgba(60,60,67,0.12);
+  --btn-radius: 10px;
+  --btn-radius-lg: 16px;
+  --card-radius: 14px;
+  --nav-radius: 0px;
+  --tab-radius: 8px;
+  --card-shadow: none;
+  --btn-shadow: none;
+  --nav-blur: blur(40px) saturate(180%);
+  --nav-border: none;
+  --font-stack: -apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",sans-serif;
+  --spacing-unit: 1rem;
+}
+[data-skin="ios"] .ocr-btn {
+  border: 0.5px solid rgba(60,60,67,0.18);
+  box-shadow: none; font-weight: 500; letter-spacing: -0.01em;
+  background: rgba(255,255,255,0.75);
+}
+[data-skin="ios"] .ocr-btn:active { background: var(--accent); color: #fff; }
+[data-skin="ios"] .ocr-btn.secondary {
+  border-color: rgba(60,60,67,0.1); color: var(--accent);
+}
+[data-skin="ios"] .result-card {
+  box-shadow: none; border: 0.5px solid rgba(60,60,67,0.1);
+}
+[data-skin="ios"] .bottom-nav {
+  border-top: 0.5px solid rgba(60,60,67,0.1);
+}
+[data-skin="ios"] .bottom-nav button.active {
+  color: var(--accent); font-weight: 500;
+}
+[data-skin="ios"] .top-nav {
+  border-bottom: 0.5px solid rgba(60,60,67,0.1);
+}
+[data-skin="ios"] .mode-tab.active,
+[data-skin="ios"] .recog-tabs .mode-tab.active {
+  background: var(--accent); color: #fff; border-radius: 6px;
+}
+
+[data-skin="ios"][data-theme="dark"] {
+  --accent: #0A84FF;
+  --accent-hover: #409CFF;
+  --bg: #1c1c1e;
+  --card-bg: rgba(44,44,46,0.82);
+  --border-color: rgba(84,84,88,0.3);
+  --hdr-bg: rgba(28,28,30,0.82);
+}
+[data-skin="ios"][data-theme="dark"] .ocr-btn {
+  background: rgba(44,44,46,0.75); border-color: rgba(84,84,88,0.3);
+}
+[data-skin="ios"][data-theme="dark"] .result-card {
+  border-color: rgba(84,84,88,0.2);
+}
+
+/* ── End skin blocks ── */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  font-family: "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-stack);
   background: var(--bg);
   color: var(--fg);
   -webkit-tap-highlight-color: transparent;
@@ -51,8 +208,8 @@ a:hover { color: var(--accent-hover); }
 .top-nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   background: var(--hdr-bg);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border-color);
+  backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur);
+  border-bottom: var(--nav-border);
   padding-top: var(--safe-t);
 }
 .top-nav .inner {
@@ -85,14 +242,15 @@ a:hover { color: var(--accent-hover); }
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
   background: var(--hdr-bg);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border-top: 1px solid var(--border-color);
+  border-radius: var(--nav-radius) var(--nav-radius) 0 0;
+  backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur);
+  border-top: var(--nav-border);
   display: flex; justify-content: space-around;
   padding-bottom: var(--safe-b);
 }
 .bottom-nav button {
   flex: 1; background: none; border: none;
-  color: var(--muted); cursor: pointer;
+  color: var(--muted); cursor: pointer; position: relative;
   padding: 8px 4px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   font-size: 0.7rem; font-family: inherit;
@@ -164,3 +322,70 @@ a:hover { color: var(--accent-hover); }
 }
 .set-toggle input:checked + .set-toggle-track { background: var(--accent); }
 .set-toggle input:checked + .set-toggle-track::after { transform: translateX(18px); }
+
+/* ═══════════════════════════════════════════
+   Splash / Loading Screen
+   ═══════════════════════════════════════════ */
+.splash {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+.splash--hidden {
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+.splash-inner {
+  text-align: center; max-width: 360px; width: 90vw;
+}
+.splash-icon {
+  margin-bottom: 1.2rem;
+  animation: splashPulse 2s ease-in-out infinite;
+}
+@keyframes splashPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.splash-title {
+  font-size: 1.8rem; font-weight: 700; color: var(--fg);
+  letter-spacing: -0.02em; margin-bottom: 0.2rem;
+}
+.splash-subtitle {
+  font-size: 0.95rem; color: var(--muted); margin-bottom: 2rem;
+}
+.splash-progress-wrap {
+  margin-bottom: 1.2rem;
+}
+.splash-progress-track {
+  width: 100%; height: 4px; border-radius: 2px;
+  background: var(--border-color); overflow: hidden; margin-bottom: 0.6rem;
+}
+.splash-progress-fill {
+  height: 100%; width: 0%; border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.splash-progress-label {
+  font-size: 0.8rem; color: var(--muted); min-height: 1.2em;
+}
+.splash-progress-pct {
+  font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem;
+}
+.splash-models {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center;
+  margin-top: 0.8rem;
+}
+.splash-model-tag {
+  font-size: 0.7rem; padding: 0.25rem 0.6rem; border-radius: 10px;
+  background: var(--border-color); color: var(--muted);
+  transition: background 0.3s, color 0.3s;
+}
+.splash-model-tag--loaded {
+  background: var(--accent); color: #fff;
+}
+.splash-model-tag--error {
+  background: #fecaca; color: #dc2626;
+}
+[data-theme="dark"] .splash-model-tag--error {
+  background: #7f1d1d; color: #fca5a5;
+}

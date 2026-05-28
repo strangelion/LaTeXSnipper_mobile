@@ -16,6 +16,7 @@ let camCropAction = '';
 let camCropCorner = -1, camCropEdge = -1;
 let camCropMoveBase = null, camCropMoveOff = null;
 let camActions = null, camCropActions = null;
+let _captureLock = false;
 
 export function initCamera(videoEl, modalEl, cropCanvasEl, actionsEl, cropActionsEl) {
   camVideo = videoEl; camModal = modalEl;
@@ -78,6 +79,7 @@ export function rotateImage() {
 }
 
 export function closeCamera() {
+  if (_captureLock) return; // Guard against spurious close right after capturePhoto()
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   camVideo.srcObject = null; camVideo.style.display = '';
   camCropCanvas.style.display = 'none';
@@ -113,6 +115,10 @@ export function capturePhoto() {
   camCropRect = null; camCropPath = []; camCropDragging = false;
   drawCropOverlay();
   camActions.style.display = 'none'; camCropActions.style.display = 'flex';
+  // Prevent accidental closeCamera() from residual click events
+  // after the capture button is hidden (Android WebView retargeting)
+  _captureLock = true;
+  setTimeout(() => { _captureLock = false; }, 500);
 }
 
 // ── Overlay ──
@@ -288,6 +294,7 @@ export function confirmCrop() {
     for (let i = 1; i < camCropPath.length; i++) octx.lineTo(camCropPath[i].x - sx, camCropPath[i].y - sy);
     octx.closePath(); octx.clip(); octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh); octx.restore();
   } else { octx.drawImage(camCropImg, sx, sy, sw, sh, 0, 0, sw, sh); }
+  _captureLock = false; // Clear lock on explicit confirm
   camCropCanvas.style.display = 'none'; camCropActions.style.display = 'none'; camModal.classList.remove('show');
   camCropImg = null; camCropRect = null; camCropPath = [];
   // Restore bottom nav after delay to prevent phantom tap on tab buttons

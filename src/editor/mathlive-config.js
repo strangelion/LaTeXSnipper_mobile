@@ -92,9 +92,13 @@ export function initEditor() {
   mathField.style.borderRadius = '10px';
   mathField.style.background = 'var(--card-bg)';
   mathField.style.padding = '0.75rem';
-  mathField.style.touchAction = 'manipulation';
-  // Pre-fill space to ensure keyboard renders properly when field is empty
-  mathField.value = ' ';
+  // Long-press context menu: prevent browser default, use MathLive menu
+  mathField.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (mathField.menu && typeof mathField.menu.show === 'function') {
+      mathField.menu.show();
+    }
+  });
   mathField.id = 'mathField';
 
   // Fix toolbar flash on tap — use document.body as keyboard container
@@ -117,7 +121,42 @@ export function initEditor() {
   // Sync MathJax preview
   mathField.addEventListener('input', syncPreview);
 
-  // Copy button
+  // Calculator toolbar
+  document.querySelectorAll('.calc-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const action = btn.dataset.action;
+      if (action === 'backspace') {
+        mathField.executeCommand('deleteBackward');
+        mathField.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+      if (action === 'evaluate') {
+        // Use MathLive compute engine to evaluate expression
+        try {
+          const latex = mathField.value?.trim();
+          if (!latex) return;
+          // Attempt numeric evaluation via MathLive expression
+          const mf = mathField;
+          if (mf.expression && typeof mf.expression.evaluate === 'function') {
+            const result = mf.expression.evaluate();
+            if (result && result.latex) {
+              mf.value = result.latex;
+              mf.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          } else {
+            // Fallback: insert placeholder
+            mf.insert('=');
+          }
+        } catch (_) { mathField.insert('='); }
+        return;
+      }
+      const latex = btn.dataset.latex;
+      if (latex) mathField.insert(latex);
+    });
+  });
+
+  // Copy button in preview actions bar
   document.getElementById('editorCopy')?.addEventListener('click', () => {
     const latex = mathField.value?.trim();
     if (!latex) return;
@@ -133,14 +172,14 @@ export function initEditor() {
 function syncPreview() {
   const latex = mathField?.value || '';
   const preview = document.getElementById('editorPreview');
-  const copyBtn = document.getElementById('editorCopy');
+  const previewActions = document.getElementById('editorPreviewActions');
 
   if (!latex.trim()) {
     if (preview) { preview.classList.remove('show'); preview.innerHTML = ''; }
-    if (copyBtn) copyBtn.style.display = 'none';
+    if (previewActions) previewActions.style.display = 'none';
     return;
   }
-  if (copyBtn) copyBtn.style.display = 'block';
+  if (previewActions) previewActions.style.display = 'flex';
 
   if (typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
     MathJax.tex2svgPromise(latex).then(node => {

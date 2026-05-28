@@ -26,6 +26,25 @@
 
   <div class="spacer-top"></div>
 
+  <!-- ═══ Splash / Loading Screen ═══ -->
+  <div class="splash" id="splash">
+    <div class="splash-inner">
+      <div class="splash-icon">
+        <img src="/icon.png" alt="LaTeXSnipper" width="72" height="72" style="border-radius:18px;">
+      </div>
+      <div class="splash-title">LaTeXSnipper</div>
+      <div class="splash-subtitle">公式识别</div>
+      <div class="splash-progress-wrap">
+        <div class="splash-progress-track">
+          <div class="splash-progress-fill" id="splashProgressFill"></div>
+        </div>
+        <div class="splash-progress-label" id="splashProgressLabel">正在初始化…</div>
+        <div class="splash-progress-pct" id="splashProgressPct"></div>
+      </div>
+      <div class="splash-models" id="splashModels"></div>
+    </div>
+  </div>
+
   <!-- ═══ App Container ═══ -->
   <div id="app">
 
@@ -105,28 +124,6 @@
         </div>
       </div>
 
-      <!-- Region labeler modal -->
-      <div class="cam-modal" id="labelerModal" style="z-index:60;">
-        <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;background:#1a1a2e;">
-          <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;overflow:hidden;padding:8px;">
-            <canvas id="labelerCanvas" style="max-width:100%;max-height:100%;border:2px solid #555;touch-action:none;filter:brightness(1.1) contrast(1.1);"></canvas>
-          </div>
-          <div class="cam-actions" style="background:rgba(0,0,0,0.9);">
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;padding:6px 12px;">
-              <span style="color:#ff6b6b;font-size:13px;font-weight:bold;">长按拖动=公式</span>
-              <span style="color:#74b9ff;font-size:13px;font-weight:bold;">右键拖动=文字</span>
-              <span style="color:#ddd;font-size:12px;">点击框内切换类型</span>
-            </div>
-            <div class="cam-bottom-bar">
-              <button class="cam-btn cam-close" id="labelerClose">关闭</button>
-              <button class="cam-btn cam-close" id="labelerUndo" style="font-size:13px;">撤销</button>
-              <button class="cam-btn cam-close" id="labelerClear" style="font-size:13px;">清空</button>
-              <button class="cam-btn cam-capture" id="labelerRecognize">识别</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Handwrite panel (shared with OCR tab via mode switch) -->
       <div class="hw-panel" id="hwPanel">
         <div class="hw-canvas-wrap" id="hwWrap">
@@ -155,10 +152,22 @@
           <button class="ocr-btn" id="copyBtn" style="display:none;">复制 LaTeX</button>
           <button class="ocr-btn secondary" id="shareBtn" style="display:none;">分享</button>
           <button class="ocr-btn secondary" id="sendToEditorBtn" style="display:none;">填入编辑器</button>
+          <button class="ocr-btn secondary" id="exportPngBtn" style="display:none;">导出 PNG</button>
+          <button class="ocr-btn secondary" id="exportSvgBtn" style="display:none;">导出 SVG</button>
         </div>
       </div>
 
       <div class="error-msg" id="errorMsg" style="display:none;"></div>
+
+      <!-- PDF page browser -->
+      <div class="pdf-browser" id="pdfBrowser" style="display:none;">
+        <div class="pdf-nav">
+          <button class="ocr-btn secondary" id="pdfPrev">上一页</button>
+          <span class="pdf-page-info" id="pdfPageInfo">1 / 1</span>
+          <button class="ocr-btn secondary" id="pdfNext">下一页</button>
+        </div>
+        <div class="pdf-thumbstrip" id="pdfThumbstrip"></div>
+      </div>
 
       <div class="info-note">
         <strong>离线OCR：</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF、拍照和手写识别。
@@ -169,7 +178,37 @@
     <div class="page" id="page-editor">
       <div class="editor-wrap">
         <div class="math-preview" id="editorPreview"></div>
-        <button class="ocr-btn" id="editorCopy" style="width:100%;display:none;">复制 LaTeX</button>
+        <div class="editor-preview-actions" id="editorPreviewActions" style="display:none;">
+          <button class="ocr-btn secondary" id="editorCopy" style="font-size:0.8rem;padding:6px 12px;">复制 LaTeX</button>
+        </div>
+        <!-- Calculator toolbar (5x5 grid) -->
+        <div class="calc-toolbar" id="calcToolbar">
+          <button class="calc-btn" data-latex="7">7</button>
+          <button class="calc-btn" data-latex="8">8</button>
+          <button class="calc-btn" data-latex="9">9</button>
+          <button class="calc-btn calc-op" data-latex="+">+</button>
+          <button class="calc-btn calc-fn" data-latex="\lim_{x \to \infty}">lim</button>
+          <button class="calc-btn" data-latex="4">4</button>
+          <button class="calc-btn" data-latex="5">5</button>
+          <button class="calc-btn" data-latex="6">6</button>
+          <button class="calc-btn calc-op" data-latex="-">−</button>
+          <button class="calc-btn calc-fn" data-latex="\int_{}^{}">∫</button>
+          <button class="calc-btn" data-latex="1">1</button>
+          <button class="calc-btn" data-latex="2">2</button>
+          <button class="calc-btn" data-latex="3">3</button>
+          <button class="calc-btn calc-op" data-latex="\times">×</button>
+          <button class="calc-btn calc-fn" data-latex="\sum_{}^{}">∑</button>
+          <button class="calc-btn" data-latex="0">0</button>
+          <button class="calc-btn" data-latex="(">(</button>
+          <button class="calc-btn" data-latex=")">)</button>
+          <button class="calc-btn calc-op" data-latex="\div">÷</button>
+          <button class="calc-btn calc-back" data-action="backspace"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg></button>
+          <button class="calc-btn calc-fn" data-latex="^{}">x²</button>
+          <button class="calc-btn calc-fn" data-latex="_{}">x₂</button>
+          <button class="calc-btn calc-fn" data-latex="\frac{}{}">frac</button>
+          <button class="calc-btn calc-fn" data-latex="\sqrt{}">sqrt</button>
+          <button class="calc-btn calc-eval" data-action="evaluate">=</button>
+        </div>
       </div>
     </div>
 
@@ -219,6 +258,15 @@
           </div>
         </div>
 
+        <div class="set-section" style="margin-top:1rem;">
+          <div class="set-section-title">皮肤</div>
+          <div class="set-radio-group" id="setSkinGroup">
+            <label class="set-radio active"><input type="radio" name="skin" value="default" checked> Material 蓝</label>
+            <label class="set-radio"><input type="radio" name="skin" value="miui"> MIUI 渐变</label>
+            <label class="set-radio"><input type="radio" name="skin" value="ios"> iOS 蓝</label>
+          </div>
+        </div>
+
         <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;">保存设置</button>
 
         <div class="set-section" style="margin-top:1.2rem;">
@@ -240,7 +288,6 @@
               <button class="ocr-btn secondary" id="devClearLogs" style="flex:1;">清空日志</button>
             </div>
             <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;">清除模型缓存</button>
-            <button class="ocr-btn secondary" id="devRegionLabeler" style="width:100%;margin-top:0.3rem;">区域标注工具</button>
           </div>
         </div>
 

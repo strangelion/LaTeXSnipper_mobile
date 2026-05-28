@@ -1,6 +1,16 @@
-/* editor.css — LaTeX source textarea + MathJax preview */
+/* editor.css — MathLive field + MathJax preview */
 
-.editor-wrap { display: flex; flex-direction: column; gap: 0.6rem; }
+.editor-wrap {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  /* Ensure editor stays visible when virtual keyboard opens */
+  min-height: 60vh;
+}
+
+/* MathfieldElement inherits base styles; ensure consistent caret height */
+#mathField {
+  /* When empty, the field still needs visible height for keyboard to anchor properly */
+  line-height: 1.6;
+}
 
 .latex-source {
   width: 100%; padding: 0.7rem;
@@ -12,3 +22,28 @@
   touch-action: manipulation;
 }
 .latex-source:focus { border-color: var(--accent); }
+
+/* ── Calculator toolbar ── */
+.calc-toolbar {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 4px; margin-top: 0.5rem;
+  position: sticky; bottom: calc(65px + var(--safe-b));
+  background: var(--bg); padding: 6px; border-radius: var(--card-radius);
+  border: 1px solid var(--border-color); z-index: 5;
+}
+.editor-preview-actions {
+  display: flex; justify-content: flex-end; margin-top: 0.3rem;
+}
+.calc-btn {
+  padding: 10px 4px; border: 1px solid var(--border-color);
+  border-radius: var(--btn-radius); background: var(--card-bg); color: var(--fg);
+  font-size: 0.85rem; font-weight: 500; cursor: pointer;
+  font-family: inherit; touch-action: manipulation;
+  transition: background 0.15s;
+}
+.calc-btn:active { background: var(--accent); color: #fff; }
+.calc-btn.calc-op { color: var(--accent); font-weight: 700; font-size: 1rem; }
+.calc-btn.calc-fn { font-size: 0.72rem; color: #a78bfa; font-style: italic; }
+.calc-btn.calc-eval { background: var(--accent); color: #fff; font-weight: 700; font-size: 1rem; }
+.calc-btn.calc-eval:active { background: #1d4ed8; }
+.calc-btn.calc-back { display: flex; align-items: center; justify-content: center; }

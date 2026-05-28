@@ -34,5 +34,6 @@ training-data/
 
 # Python
 .venv/
-train_region_classifier.py
-generate_training_data.py
+*.py
+*.pth
+C/

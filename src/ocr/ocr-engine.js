@@ -258,6 +258,24 @@ export function repairLatex(tex) {
   return (s + suffix).trim();
 }
 
+// ── LaTeX sanitize: fix common MathJax-incompatible output ──
+
+export function sanitizeLatex(tex) {
+  let s = tex;
+  // Replace MathJax-unsupported commands with supported equivalents
+  s = s.replace(/\\textsc\b/g, '\\text');       // \textsc → \text
+  s = s.replace(/\\textup\b/g, '\\text');       // \textup → \text
+  s = s.replace(/\\textbf\b/g, '\\mathbf');     // \textbf → \mathbf
+  s = s.replace(/\\textit\b/g, '\\mathit');     // \textit → \mathit
+  s = s.replace(/\\texttt\b/g, '\\mathtt');     // \texttt → \mathtt
+  // Remove space between \command and {arg}: \text {x} → \text{x}
+  s = s.replace(/(\\[a-zA-Z*]+)\s+(\{)/g, '$1$2');
+  // Collapse spaces within braces (e.g. { d e t } → {det})
+  s = s.replace(/\{\s+([a-zA-Z0-9])\s+([a-zA-Z0-9])\s*\}/g, '{$1$2}');
+  s = s.replace(/\{\s+([a-zA-Z0-9])\s+([a-zA-Z0-9])\s+([a-zA-Z0-9])\s*\}/g, '{$1$2$3}');
+  return s;
+}
+
 // ── Main recognition pipeline ──
 
 export async function recognize(img, mode = 'formula') {
@@ -317,7 +335,7 @@ export async function recognize(img, mode = 'formula') {
 
   const rawLatex = decodeTokens(tokenIds);
   // Apply LaTeX repair only for formula/mixed modes; text mode returns raw output
-  let latex = mode === 'text' ? rawLatex : repairLatex(rawLatex);
+  let latex = mode === 'text' ? rawLatex : sanitizeLatex(repairLatex(rawLatex));
 
   // Detect repetitive output (model generating garbage loops)
   if (latex.length > 20) {

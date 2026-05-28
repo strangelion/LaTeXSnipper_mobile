@@ -9,18 +9,8 @@ export async function processPDF(file, onProgress) {
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const totalPages = pdf.numPages;
 
-    // First page preview
-    let previewDataUrl = null;
-    try {
-      const firstPage = await pdf.getPage(1);
-      const pv = firstPage.getViewport({ scale: 0.5 });
-      const pvCanvas = document.createElement('canvas');
-      pvCanvas.width = pv.width; pvCanvas.height = pv.height;
-      await firstPage.render({ canvasContext: pvCanvas.getContext('2d'), viewport: pv }).promise;
-      previewDataUrl = pvCanvas.toDataURL();
-    } catch (e) { /* non-fatal */ }
-
-    const allResults = [];
+    // Generate page thumbnails (small, for navigator strip)
+    const pages = [];
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       if (onProgress) {
         onProgress({
@@ -32,7 +22,7 @@ export async function processPDF(file, onProgress) {
 
       const page = await pdf.getPage(pageNum);
 
-      // Adaptive resolution (target 768px)
+      // Render page at moderate resolution for OCR
       const baseVp = page.getViewport({ scale: 1.0 });
       const maxDim = Math.max(baseVp.width, baseVp.height);
       const renderScale = Math.max(1.0, Math.min(2.0, 768 / maxDim));
@@ -41,15 +31,25 @@ export async function processPDF(file, onProgress) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
-      // Parallel: text extraction + rendering
+      // Render thumbnail (small, for navigator strip)
+      const thumbScale = 0.2;
+      const thumbViewport = page.getViewport({ scale: thumbScale });
+      const thumbCanvas = document.createElement('canvas');
+      thumbCanvas.width = thumbViewport.width;
+      thumbCanvas.height = thumbViewport.height;
+
       const textPromise = page.getTextContent().catch(() => ({ items: [] }));
       const renderPromise = page.render({
         canvasContext: canvas.getContext('2d'),
         viewport,
       }).promise;
-      const [textResult] = await Promise.all([textPromise, renderPromise]);
+      const thumbPromise = page.render({
+        canvasContext: thumbCanvas.getContext('2d'),
+        viewport: thumbViewport,
+      }).promise;
+      const [textResult] = await Promise.all([textPromise, renderPromise, thumbPromise]);
 
-      // Group text by lines
+      // Extract text
       let pageText = '';
       const items = textResult.items;
       if (items && items.length) {
@@ -77,7 +77,7 @@ export async function processPDF(file, onProgress) {
         pageText = lines.join('\n');
       }
 
-      // OCR (canvas direct, no PNG encode)
+      // OCR
       let formulaLatex = '', formulaConf = 0;
       try {
         const recResult = await recognize(canvas);
@@ -86,24 +86,31 @@ export async function processPDF(file, onProgress) {
       } catch (e) {
         formulaLatex = '% [Error] ' + (e.message || e);
       }
-      allResults.push({ page: pageNum, text: pageText, latex: formulaLatex, confidence: formulaConf });
+
+      pages.push({
+        page: pageNum,
+        text: pageText,
+        latex: formulaLatex,
+        confidence: formulaConf,
+        thumb: thumbCanvas.toDataURL('image/jpeg', 0.6),
+      });
     }
 
-    if (allResults.length === 0) {
+    if (pages.length === 0) {
       throw new Error('PDF recognition failed: no content extracted');
     }
 
-    // Combine output
-    const combined = allResults.map(r => {
+    // Combined output (legacy)
+    const combined = pages.map(r => {
       const parts = ['% === Page ' + r.page + ' ==='];
       if (r.text) { parts.push('% --- Text ---'); parts.push(r.text); }
       if (r.latex && r.latex.trim()) { parts.push('% --- Formulas ---'); parts.push(r.latex); }
       return parts.join('\n');
     }).join('\n\n');
 
-    const avgConf = allResults.reduce((s, r) => s + r.confidence, 0) / allResults.length;
+    const avgConf = pages.reduce((s, r) => s + r.confidence, 0) / pages.length;
 
-    return { latex: combined, confidence: avgConf, pageCount: totalPages, preview: previewDataUrl };
+    return { latex: combined, confidence: avgConf, pageCount: totalPages, pages };
   } catch (e) {
     throw new Error('PDF processing failed: ' + (e.message || e));
   }

@@ -9,12 +9,12 @@ import './styles/mobile.css';
 
 import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
-import { initModels, initUI, processImage, setStatus, copyResult, showResult, onFileProcessed } from './ui/ui.js';
+import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, exportPNG, exportSVG, onFileProcessed, hideSplash } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
 import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, rotateImage, initCamera } from './camera/camera.js';
 import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
 import { initEditor, setEditorContent } from './editor/mathlive-config.js';
-import { initRegionLabeler, clearRegions, undoRegion, getRegionCount, recognizeRegions, destroyLabeler } from './region-labeler/region-labeler.js';
+import { autoCorrectOrientation, getExifOrientation, correctByExif, isDocOriReady } from './ocr/doc-preprocess.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -125,7 +125,10 @@ document.getElementById('camCapture')?.addEventListener('pointerdown', (e) => {
 document.getElementById('camCropConfirm')?.addEventListener('pointerdown', async (e) => {
   e.preventDefault(); e.stopPropagation();
   const file = await confirmCrop();
-  if (file) processImage(file);
+  if (file) {
+    const corrected = await preprocessCameraFile(file);
+    processImage(corrected || file);
+  }
 });
 
 document.getElementById('camCropRetake')?.addEventListener('pointerdown', (e) => {
@@ -158,6 +161,8 @@ document.getElementById('camCropRotate')?.addEventListener('pointerdown', (e) =>
 });
 
 document.getElementById('camModal')?.addEventListener('click', (e) => {
+  // Only close on background click during live preview;
+  // during crop mode, canvas + cropActions cover the modal so this shouldn't fire
   if (e.target === e.currentTarget) closeCamera();
 });
 
@@ -175,7 +180,44 @@ if (hwCanvas && hwWrap) {
   document.getElementById('hwUndo')?.addEventListener('click', hwUndo);
   document.getElementById('hwRedo')?.addEventListener('click', hwRedo);
   document.getElementById('hwClear')?.addEventListener('click', hwClear);
-  document.getElementById('hwRecognize')?.addEventListener('click', async () => {
+  // Camera file preprocessing: auto-correct orientation before recognition
+async function preprocessCameraFile(file) {
+  // Step 1: Try EXIF-based correction (fast, no model needed)
+  try {
+    const exifOri = await getExifOrientation(file);
+    if (exifOri !== 1) {
+      console.debug('[preprocess] EXIF orientation:', exifOri);
+      const img = await createImageBitmap(file);
+      const corrected = correctByExif(img, exifOri);
+      if (corrected) {
+        return new Promise((resolve) => {
+          corrected.toBlob((blob) => {
+            resolve(new File([blob], file.name || 'camera.jpg', { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.92);
+        });
+      }
+    }
+  } catch (e) { /* EXIF read failed, continue */ }
+
+  // Step 2: Try ONNX model-based orientation detection
+  if (isDocOriReady()) {
+    try {
+      const img = await createImageBitmap(file);
+      const corrected = await autoCorrectOrientation(img);
+      if (corrected) {
+        return new Promise((resolve) => {
+          corrected.toBlob((blob) => {
+            resolve(new File([blob], file.name || 'camera.jpg', { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.92);
+        });
+      }
+    } catch (e) { console.debug('[preprocess] ONNX orientation failed:', e.message); }
+  }
+
+  return null; // No correction needed
+}
+
+document.getElementById('hwRecognize')?.addEventListener('click', async () => {
     const file = await hwExportImage();
     if (file) processImage(file);
   });
@@ -228,13 +270,9 @@ window.__recogMode = () => recogMode;
     });
   } catch (_) { /* browser dev mode, Capacitor not available */ }
 })();
-document.getElementById('shareBtn')?.addEventListener('click', async () => {
-  if (!document.getElementById('resultCode')?.textContent) return;
-  const text = document.getElementById('resultCode').textContent;
-  if (navigator.share) {
-    try { await navigator.share({ title: 'LaTeXSnipper OCR Result', text }); } catch (e) { /* */ }
-  }
-});
+document.getElementById('shareBtn')?.addEventListener('click', shareResult);
+document.getElementById('exportPngBtn')?.addEventListener('click', exportPNG);
+document.getElementById('exportSvgBtn')?.addEventListener('click', exportSVG);
 
 document.getElementById('sendToEditorBtn')?.addEventListener('click', () => {
   const latex = document.getElementById('resultCode')?.textContent;
@@ -382,6 +420,7 @@ initEditor();
       if (radio) {
         radio.checked = true;
         if (radio.name === 'engine') setEngineVal(radio.value);
+        if (radio.name === 'skin') applySkin(radio.value);
         if (radio.name === 'preset') {
           setPresetVal(radio.value);
           const p = PRESETS[radio.value];
@@ -394,6 +433,24 @@ initEditor();
       }
     });
   });
+
+  // Skin switching
+  function applySkin(name) {
+    document.documentElement.setAttribute('data-skin', name);
+    document.querySelectorAll('input[name="skin"]').forEach(r => r.checked = r.value === name);
+    document.querySelectorAll('#setSkinGroup .set-radio').forEach(l => {
+      l.classList.toggle('active', l.querySelector('input')?.checked);
+    });
+    try { localStorage.setItem('ls_skin', name); } catch (_) {}
+  }
+  document.querySelectorAll('input[name="skin"]').forEach(r => {
+    r.addEventListener('change', () => applySkin(r.value));
+  });
+  // Load saved skin
+  try {
+    const savedSkin = localStorage.getItem('ls_skin') || 'default';
+    applySkin(savedSkin);
+  } catch (_) {}
 
   // Load saved
   try {
@@ -483,75 +540,15 @@ initEditor();
     setTimeout(() => devClear.textContent = '清除模型缓存', 1500);
   });
 
-  // Region labeler
-  const labelerBtn = document.getElementById('devRegionLabeler');
-  const labelerModal = document.getElementById('labelerModal');
-  const labelerCanvas = document.getElementById('labelerCanvas');
-
-  labelerBtn?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    // Need an image first
-    const preview = document.getElementById('preview');
-    if (!preview?.src || preview.style.display === 'none') {
-      labelerBtn.textContent = '请先上传图片';
-      setTimeout(() => labelerBtn.textContent = '区域标注工具', 1500);
-      return;
-    }
-    // Open labeler with the preview image
-    const img = new Image();
-    img.onload = () => {
-      if (labelerModal) labelerModal.classList.add('show');
-      initRegionLabeler(labelerCanvas, img, (progress, total) => {
-        const btn = document.getElementById('labelerRecognize');
-        if (btn) btn.textContent = `识别中 ${progress}/${total}`;
-      });
-    };
-    img.src = preview.src;
-  });
-
-  document.getElementById('labelerClose')?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    if (labelerModal) labelerModal.classList.remove('show');
-    destroyLabeler();
-  });
-
-  document.getElementById('labelerUndo')?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    undoRegion();
-  });
-
-  document.getElementById('labelerClear')?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    clearRegions();
-  });
-
-  document.getElementById('labelerRecognize')?.addEventListener('pointerdown', async (e) => {
-    e.preventDefault();
-    if (getRegionCount() === 0) return;
-    const btn = document.getElementById('labelerRecognize');
-    if (btn) btn.textContent = '识别中…';
-    try {
-      const result = await recognizeRegions();
-      if (result && result.latex) {
-        showResult(result.latex, result.confidence, getRegionCount() + ' 个区域');
-        setStatus('done', '区域识别完成', false);
-      }
-    } catch (err) {
-      console.debug('[labeler] error:', err.message);
-    }
-    if (btn) btn.textContent = '识别';
-    if (labelerModal) labelerModal.classList.remove('show');
-    destroyLabeler();
-  });
-
   // Set initial debug flag
   try { window.__DEBUG__ = localStorage.getItem('ls_devmode') === '1'; } catch (_) {}
 })();
 
 /* ── Startup: load models ── */
 async function boot() {
+  // Failsafe: hide splash after 30s regardless
+  const failsafe = setTimeout(() => hideSplash(), 30000);
   try {
-    // Load history initially
     renderHistoryList();
     await initModels();
   } catch (e) {
@@ -559,6 +556,9 @@ async function boot() {
       const errEl = document.getElementById('errorMsg');
       if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Initialization failed: ' + (e.message || e); }
     }
+  } finally {
+    clearTimeout(failsafe);
+    hideSplash();
   }
 }
 

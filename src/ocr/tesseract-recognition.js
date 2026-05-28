@@ -37,15 +37,15 @@ export async function recognizeText(img) {
   // Compact output: remove extra spaces, keep only meaningful spaces
   const compactText = rawText
     .replace(/\s+/g, ' ') // Collapse multiple spaces to single
-    .replace(/\s([,，。！？;；:：])/g, '$1') // Remove space before punctuation
-    .replace(/([,，。！？;；:：])\s+/g, '$1') // Remove space after punctuation
-    .replace(/([一-鿿])\s+([一-鿿])/g, '$1$2') // Remove space between CJK chars
-    .replace(/([一-鿿])\s+([,，。！？;；:：])/g, '$1$2') // No space CJK->punct
-    .replace(/([a-zA-Z])\s+([一-鿿])/g, '$1 $2') // Keep space between ASCII and CJK
-    .replace(/([一-鿿])\s+([a-zA-Z])/g, '$1 $2') // Keep space between CJK and ASCII
+    .replace(/\s([,，。！？;；:：、])/g, '$1') // Remove space before punctuation
+    .replace(/([,，。！？;；:：、])\s+/g, '$1') // Remove space after punctuation
+    .replace(/(\p{scx=Han})\s+(\p{scx=Han})/gu, '$1$2') // Remove space between CJK chars
+    .replace(/(\p{scx=Han})\s+([,，。！？;；:：、])/gu, '$1$2') // No space CJK->punct
+    .replace(/([a-zA-Z0-9])\s+(\p{scx=Han})/gu, '$1 $2') // Keep space ASCII->CJK
+    .replace(/(\p{scx=Han})\s+([a-zA-Z0-9])/gu, '$1 $2') // Keep space CJK->ASCII
     .trim();
   if (compactText) {
-    return '\\text{' + compactText.replace(/[{}]/g, '\\$&') + '}';
+    return '\\text{' + compactText.replace(/[\\{}&#%_$~^]/g, '\\$&') + '}';
   }
   return compactText;
 }
