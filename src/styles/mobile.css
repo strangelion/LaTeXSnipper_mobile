@@ -39,7 +39,6 @@
   .hw-toolbar { gap: 0.3rem; }
   .hw-tool-btn { padding: 5px 8px; font-size: 0.75rem; }
   .hw-tool-btn svg { width: 14px; height: 14px; }
-  .hw-recognize-btn { padding: 6px 14px; font-size: 0.82rem; }
   .result-card { padding: 1rem; }
   pre.result-code { font-size: 0.78rem; padding: 0.75rem; }
   .cam-modal video { max-width: 100vw; max-height: 60vh; }

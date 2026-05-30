@@ -1,12 +1,77 @@
 /* history.css — History page styles */
 
 .history-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+/* ── Swipeable item wrapper ── */
+.history-item-wrap {
+  position: relative; overflow: hidden; border-radius: 10px;
+}
+
+/* bg = flex row with ONLY flex children — no absolute mix-ins */
+.hi-swipe-bg {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; flex-direction: row; align-items: stretch;
+  background: var(--accent);
+  pointer-events: none;
+  will-change: background;
+}
+.hi-swipe-spacer { flex: 1 1 auto; }
+
+/* Left/right hold buttons in flex, never shrink — opacity transition for hide */
+.hi-swipe-left, .hi-swipe-right {
+  display: flex; flex-direction: row; align-items: stretch; flex-shrink: 0;
+  transition: opacity 0.12s ease;
+}
+.hi-swipe-left.hide, .hi-swipe-right.hide { opacity: 0; }
+
+.hi-swipe-btn {
+  pointer-events: auto;
+  border: none; cursor: pointer; font-family: inherit;
+  font-size: 0.82rem; font-weight: 500;
+  background: var(--accent); color: #fff;
+  padding: 0 20px;
+  display: flex; align-items: center;
+  white-space: nowrap;
+  border-radius: 10px;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* Overscroll: hide the OPPOSITE side — removed, handled by JS class .hide */
+
+/* Action labels — OUTSIDE bg, on top of everything */
+.hi-swipe-label {
+  position: absolute; top: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: center;
+  pointer-events: none;
+  color: #fff; font-size: 0.95rem; font-weight: 600;
+  padding: 0 24px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  will-change: opacity;
+}
+.hi-swipe-label.show { opacity: 1; }
+.hi-swipe-label.left  { left: 0; justify-content: flex-start; }
+.hi-swipe-label.right { right: 0; justify-content: flex-end; }
+
+/* ── Card ── */
 .history-item {
-  background: var(--card-bg); border: 1px solid var(--border-color);
+  position: relative; z-index: 2;
+  background: var(--bg); border: 1px solid var(--border-color);
   border-radius: 10px; padding: 1rem;
-  cursor: pointer; transition: all 0.15s;
+  cursor: pointer;
+  touch-action: pan-y; user-select: none;
+  will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.history-item.swiping {
+  transition: transform 0.04s linear;
+}
+.history-item.deleting {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .history-item:hover { border-color: var(--accent); }
+
 .history-item .hi-latex {
   font-family: "SF Mono","Cascadia Code","Consolas",monospace;
   font-size: 0.82rem; color: var(--fg);
@@ -27,6 +92,7 @@
 }
 .history-item .hi-fav.active { color: #f59e0b; }
 
+/* ── History toolbar ── */
 .history-toolbar {
   display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;
 }
@@ -38,6 +104,7 @@
 }
 .history-toolbar button:hover { border-color: var(--accent); }
 .history-toolbar button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.history-toolbar-spacer { flex: 1; }
 
 .history-empty {
   text-align: center; color: var(--muted); padding: 3rem 1rem;

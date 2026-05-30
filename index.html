@@ -20,7 +20,7 @@
   <nav class="top-nav">
     <div class="inner">
       <span class="brand-link">LaTeXSnipper</span>
-      <button class="theme-toggle" id="themeToggle" title="切换主题"></button>
+      <button class="theme-toggle" id="themeToggle" data-i18n-title="theme.toggle" title="切换主题"></button>
     </div>
   </nav>
 
@@ -38,7 +38,7 @@
         <div class="splash-progress-track">
           <div class="splash-progress-fill" id="splashProgressFill"></div>
         </div>
-        <div class="splash-progress-label" id="splashProgressLabel">正在初始化…</div>
+        <div class="splash-progress-label" id="splashProgressLabel" data-i18n="status.initializing">正在初始化…</div>
         <div class="splash-progress-pct" id="splashProgressPct"></div>
       </div>
       <div class="splash-models" id="splashModels"></div>
@@ -53,7 +53,7 @@
       <!-- Status bar -->
       <div class="status-bar" id="statusBar">
         <span id="statusIcon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
-        <span id="statusText">正在加载 OCR 引擎…</span>
+        <span id="statusText" data-i18n="status.loadingEngine">正在加载 OCR 引擎…</span>
         <div class="spinner show" id="spinner"></div>
       </div>
 
@@ -65,17 +65,17 @@
 
       <!-- Mode tabs -->
       <div class="mode-tabs">
-        <button class="mode-tab active" id="tabImage">图片</button>
-        <button class="mode-tab" id="tabHandwrite">手写</button>
+        <button class="mode-tab active" id="tabImage" data-i18n="recog.tabImage">图片</button>
+        <button class="mode-tab" id="tabHandwrite" data-i18n="recog.tabHandwrite">手写</button>
       </div>
 
       <!-- Recognition mode -->
       <div class="recog-mode" id="recogMode">
-        <span class="recog-label">识别模式</span>
+        <span class="recog-label" data-i18n="recog.modeLabel">识别模式</span>
         <div class="recog-tabs">
-          <button class="mode-tab active" data-mode="formula">公式</button>
-          <button class="mode-tab" data-mode="text">文本</button>
-          <button class="mode-tab" data-mode="mixed">混合</button>
+          <button class="mode-tab active" data-mode="formula" data-i18n="recog.mode.formula">公式</button>
+          <button class="mode-tab" data-mode="text" data-i18n="recog.mode.text">文本</button>
+          <button class="mode-tab" data-mode="mixed" data-i18n="recog.mode.mixed">混合</button>
         </div>
       </div>
 
@@ -84,11 +84,11 @@
         <input type="file" id="fileInput" accept="image/*,.pdf">
         <div id="dropContent">
           <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-          <div>拖入公式截图 / PDF · 点击上传 · <kbd>Ctrl+V</kbd> 粘贴</div>
-          <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;">所有识别均在本地浏览器完成，图片不会上传</div>
+          <div data-i18n="recog.dropHint" data-i18n-html>拖入公式截图 / PDF · 点击上传 · <kbd>Ctrl+V</kbd> 粘贴</div>
+          <div style="font-size:0.8rem;opacity:0.6;margin-top:0.5rem;" data-i18n="recog.privacy">所有识别均在本地浏览器完成，图片不会上传</div>
         </div>
         <img id="preview" style="display:none;" alt="Preview">
-        <button class="cam-trigger-btn" id="camTrigger" type="button">
+        <button class="cam-trigger-btn" id="camTrigger" type="button" data-i18n="camera.open">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           拍照识别
         </button>
@@ -102,7 +102,7 @@
           <button class="cam-btn cam-close" id="camClose">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <button class="cam-btn cam-flash" id="camFlash" title="闪光灯">
+          <button class="cam-btn cam-flash" id="camFlash" data-i18n-title="camera.flash" title="闪光灯">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </button>
           <button class="cam-btn cam-capture" id="camCapture">
@@ -111,15 +111,15 @@
         </div>
         <div class="cam-actions" id="camCropActions" style="display:none;">
           <div class="cam-mode-bar" id="camModeBar">
-            <button class="cam-mode-btn active" id="camCropModeRect">框选</button>
-            <button class="cam-mode-btn" id="camCropModeLasso">套索</button>
+            <button class="cam-mode-btn active" id="camCropModeRect" data-i18n="camera.cropRect">框选</button>
+            <button class="cam-mode-btn" id="camCropModeLasso" data-i18n="camera.cropLasso">套索</button>
           </div>
           <div class="cam-bottom-bar">
-            <button class="cam-btn cam-close" id="camCropRetake">重拍</button>
-            <button class="cam-btn cam-close" id="camCropRotate" title="旋转">
+            <button class="cam-btn cam-close" id="camCropRetake" data-i18n="camera.retake">重拍</button>
+            <button class="cam-btn cam-close" id="camCropRotate" data-i18n-title="camera.rotate" title="旋转">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             </button>
-            <button class="cam-btn cam-capture" id="camCropConfirm">确认</button>
+            <button class="cam-btn cam-capture" id="camCropConfirm" data-i18n="camera.confirm">确认</button>
           </div>
         </div>
       </div>
@@ -131,29 +131,30 @@
           <div class="hw-resize-handle" id="hwResizeHandle"></div>
         </div>
         <div class="hw-toolbar">
-          <button class="hw-tool-btn active" id="hwPen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>笔</button>
-          <button class="hw-tool-btn" id="hwEraser"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.6 1.6c.8-.8 2-.8 2.8 0L21 5.2c.8.8.8 2 0 2.8L12 17"/><line x1="6" y1="20" x2="10" y2="20"/></svg>橡皮</button>
-          <button class="hw-tool-btn" id="hwUndo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>撤销</button>
-          <button class="hw-tool-btn" id="hwRedo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>重做</button>
-          <button class="hw-tool-btn" id="hwClear"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空</button>
-          <button class="hw-recognize-btn" id="hwRecognize">识别</button>
+          <button class="hw-tool-btn active" id="hwPen" data-i18n="hw.pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>笔</button>
+          <button class="hw-tool-btn" id="hwEraser" data-i18n="hw.eraser"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.6 1.6c.8-.8 2-.8 2.8 0L21 5.2c.8.8.8 2 0 2.8L12 17"/><line x1="6" y1="20" x2="10" y2="20"/></svg>橡皮</button>
+          <button class="hw-tool-btn" id="hwUndo" data-i18n="hw.undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>撤销</button>
+          <button class="hw-tool-btn" id="hwRedo" data-i18n="hw.redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>重做</button>
+          <button class="hw-tool-btn" id="hwClear" data-i18n="hw.clear"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空</button>
+          <button class="hw-tool-btn hw-recognize" id="hwRecognize" data-i18n="hw.recognize">识别</button>
         </div>
       </div>
 
       <!-- Result card -->
       <div class="result-card" id="resultCard">
         <div class="result-header">
-          <span class="label">结果</span>
+          <span class="label" data-i18n="recog.resultLabel">结果</span>
           <span class="confidence" id="confidence"></span>
         </div>
         <pre class="result-code" id="resultCode"></pre>
         <div class="math-preview" id="mathPreview"></div>
         <div class="result-actions">
-          <button class="ocr-btn" id="copyBtn" style="display:none;">复制 LaTeX</button>
-          <button class="ocr-btn secondary" id="shareBtn" style="display:none;">分享</button>
-          <button class="ocr-btn secondary" id="sendToEditorBtn" style="display:none;">填入编辑器</button>
-          <button class="ocr-btn secondary" id="exportPngBtn" style="display:none;">导出 PNG</button>
-          <button class="ocr-btn secondary" id="exportSvgBtn" style="display:none;">导出 SVG</button>
+          <button class="ocr-btn" id="copyBtn" style="display:none;" data-i18n="btn.copyLatex">复制 LaTeX</button>
+          <button class="ocr-btn secondary" id="aiPolishBtn" style="display:none;" data-i18n="btn.aiPolish">AI 整理</button>
+          <button class="ocr-btn secondary" id="shareBtn" style="display:none;" data-i18n="btn.share">分享</button>
+          <button class="ocr-btn secondary" id="sendToEditorBtn" style="display:none;" data-i18n="btn.sendToEditor">填入编辑器</button>
+          <button class="ocr-btn secondary" id="exportPngBtn" style="display:none;" data-i18n="btn.exportPng">导出 PNG</button>
+          <button class="ocr-btn secondary" id="exportSvgBtn" style="display:none;" data-i18n="btn.exportSvg">导出 SVG</button>
         </div>
       </div>
 
@@ -162,14 +163,14 @@
       <!-- PDF page browser -->
       <div class="pdf-browser" id="pdfBrowser" style="display:none;">
         <div class="pdf-nav">
-          <button class="ocr-btn secondary" id="pdfPrev">上一页</button>
+          <button class="ocr-btn secondary" id="pdfPrev" data-i18n="pdf.prev">上一页</button>
           <span class="pdf-page-info" id="pdfPageInfo">1 / 1</span>
-          <button class="ocr-btn secondary" id="pdfNext">下一页</button>
+          <button class="ocr-btn secondary" id="pdfNext" data-i18n="pdf.next">下一页</button>
         </div>
         <div class="pdf-thumbstrip" id="pdfThumbstrip"></div>
       </div>
 
-      <div class="info-note">
+      <div class="info-note" data-i18n="recog.intro" data-i18n-html>
         <strong>离线OCR：</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF、拍照和手写识别。
       </div>
     </div>
@@ -179,7 +180,7 @@
       <div class="editor-wrap">
         <div class="math-preview" id="editorPreview"></div>
         <div class="editor-preview-actions" id="editorPreviewActions" style="display:none;">
-          <button class="ocr-btn secondary" id="editorCopy" style="font-size:0.8rem;padding:6px 12px;">复制 LaTeX</button>
+          <button class="ocr-btn secondary" id="editorCopy" style="font-size:0.8rem;padding:6px 12px;" data-i18n="editor.copyLatex">复制 LaTeX</button>
         </div>
         <!-- Calculator toolbar (5x5 grid) -->
         <div class="calc-toolbar" id="calcToolbar">
@@ -215,12 +216,13 @@
     <!-- ── Tab 4: History ── -->
     <div class="page" id="page-history">
       <div class="history-toolbar">
-        <button class="active" data-filter="all">全部</button>
-        <button data-filter="favorites">收藏</button>
-        <button id="clearHistory">清空</button>
+        <button class="active" data-filter="all" data-i18n="history.all">全部</button>
+        <button data-filter="favorites" data-i18n="history.favorite">收藏</button>
+        <span class="history-toolbar-spacer"></span>
+        <button id="clearHistory" data-i18n="history.clear">清空</button>
       </div>
       <div class="history-list" id="historyList">
-        <div class="history-empty">暂无识别记录。<br>上传公式图片开始使用！</div>
+        <div class="history-empty" data-i18n="history.empty">暂无识别记录。<br>上传公式图片开始使用！</div>
       </div>
     </div>
 
@@ -228,49 +230,81 @@
     <div class="page" id="page-settings">
       <div class="settings-body">
         <div class="set-section">
-          <div class="set-section-title">识别引擎</div>
-          <div class="set-radio-group" id="setEngineGroup">
-            <label class="set-radio active"><input type="radio" name="engine" value="builtin" checked> 内置 ONNX</label>
-            <label class="set-radio"><input type="radio" name="engine" value="openai"> OpenAI 兼容</label>
-            <label class="set-radio"><input type="radio" name="engine" value="mineru"> MinerU</label>
-          </div>
+          <div class="set-section-title" data-i18n="settings.engine">识别引擎</div>
+          <select class="set-select" id="setEngineSelect">
+            <option value="builtin" data-i18n="settings.engine.builtin">本地识别</option>
+            <option value="hybrid" selected data-i18n="settings.engine.hybrid">本地识别 + AI整理</option>
+            <option value="external" data-i18n="settings.engine.external">AI全托管</option>
+          </select>
+          <p class="set-hint" data-i18n="settings.engineHint">内置识别使用本地ONNX模型离线运行。AI整理可将识别结果发送到外部LLM纠错。</p>
         </div>
 
         <div id="extSettings" style="display:none;">
           <div class="set-section">
-            <div class="set-section-title">预设</div>
-            <div class="set-radio-group" id="setPresetGroup">
-              <label class="set-radio"><input type="radio" name="preset" value=""> 自定义</label>
-              <label class="set-radio"><input type="radio" name="preset" value="paddle"> PaddleOCR</label>
-              <label class="set-radio"><input type="radio" name="preset" value="silicon"> SiliconFlow</label>
-              <label class="set-radio"><input type="radio" name="preset" value="deepseek"> DeepSeek</label>
-              <label class="set-radio"><input type="radio" name="preset" value="mineru-native"> MinerU</label>
-            </div>
+            <div class="set-section-title" data-i18n="settings.presets">预设</div>
+            <select class="set-select" id="setPresetSelect">
+              <option value="" data-i18n="settings.custom">自定义</option>
+              <option value="paddle">PaddleOCR</option>
+              <option value="silicon">SiliconFlow</option>
+              <option value="gemini">Gemini</option>
+              <option value="mineru-native">MinerU</option>
+            </select>
           </div>
 
           <div class="set-section">
-            <div class="set-section-title">连接配置</div>
-            <input class="set-input" id="setBaseUrl" placeholder="https://api.openai.com/v1">
-            <input class="set-input" id="setModel" placeholder="模型名称，如 gpt-4o" style="margin-top:0.5rem;">
-            <input class="set-input" type="password" id="setApiKey" placeholder="API Key（sk-...）" style="margin-top:0.5rem;">
-            <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.6rem;">测试连接</button>
+            <div class="set-section-title" data-i18n="settings.connection">连接配置</div>
+            <input class="set-input" id="setBaseUrl" data-i18n-placeholder="settings.externalBaseUrl" placeholder="https://api.openai.com/v1">
+            <input class="set-input" id="setModel" data-i18n-placeholder="settings.externalModel" placeholder="模型名称，如 gpt-4o" style="margin-top:0.5rem;">
+            <input class="set-input" type="password" id="setApiKey" data-i18n-placeholder="settings.externalApiKey" placeholder="API Key（sk-...）" style="margin-top:0.5rem;">
+            <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.6rem;" data-i18n="settings.test">测试连接</button>
             <span id="setTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
+            <p class="set-hint" style="margin-top:0.4rem;">支持 OpenAI 兼容 API (DeepSeek / SiliconFlow / Gemini 等)</p>
           </div>
+        </div>
+
+        <div class="set-section" id="polishSection" style="margin-top:1rem;">
+          <div class="set-section-title" data-i18n="btn.aiPolish">AI 整理 (纠错/格式化)</div>
+          <input class="set-input" id="setPolishBaseUrl" placeholder="https://api.deepseek.com">
+          <input class="set-input" id="setPolishModel" placeholder="deepseek-chat" style="margin-top:0.4rem;">
+          <input class="set-input" type="password" id="setPolishApiKey" placeholder="API Key（sk-...）" style="margin-top:0.4rem;">
+          <button class="ocr-btn secondary" id="setPolishTest" style="width:100%;margin-top:0.4rem;" data-i18n="settings.test">测试连接</button>
+          <span id="setPolishTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
+          <p class="set-hint" style="margin-top:0.4rem;">支持 OpenAI 兼容 API。建议使用文本能力强的模型 (DeepSeek / GPT 等)。</p>
         </div>
 
         <div class="set-section" style="margin-top:1rem;">
-          <div class="set-section-title">皮肤</div>
-          <div class="set-radio-group" id="setSkinGroup">
-            <label class="set-radio active"><input type="radio" name="skin" value="default" checked> Material 蓝</label>
-            <label class="set-radio"><input type="radio" name="skin" value="miui"> MIUI 渐变</label>
-            <label class="set-radio"><input type="radio" name="skin" value="ios"> iOS 蓝</label>
-          </div>
+          <div class="set-section-title" data-i18n="settings.skin">皮肤</div>
+          <select class="set-select" id="setSkinSelect">
+            <option value="default">Material 蓝</option>
+            <option value="miui">MIUI 渐变</option>
+            <option value="ios">iOS 蓝</option>
+          </select>
         </div>
 
-        <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;">保存设置</button>
+        <div class="set-section" style="margin-top:1rem;">
+          <div class="set-section-title" data-i18n="settings.language">语言 / Language</div>
+          <select class="set-select" id="setLangSelect">
+            <option value="zh-CN">中文</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+          </select>
+        </div>
+
+        <div class="set-section" style="margin-top:1rem;">
+          <button class="ocr-btn secondary" id="checkUpdateBtn" style="width:100%;" data-i18n="update.checkUpdate">检查更新</button>
+          <label class="set-toggle" style="margin-top:0.6rem;">
+            <input type="checkbox" id="setAutoUpdate">
+            <span class="set-toggle-track"></span>
+            自动检查更新
+          </label>
+        </div>
+
+        <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;" data-i18n="btn.saveSettings">保存设置</button>
 
         <div class="set-section" style="margin-top:1.2rem;">
-          <div class="set-section-title">开发者选项</div>
+          <div class="set-section-title" data-i18n="dev.title">开发者选项</div>
           <label class="set-toggle">
             <input type="checkbox" id="setDevMode">
             <span class="set-toggle-track"></span>
@@ -280,14 +314,14 @@
             <label class="set-toggle">
               <input type="checkbox" id="devMultiThread" checked>
               <span class="set-toggle-track"></span>
-              ONNX 多线程 (最多8核+SIMD)
+              <span data-i18n="dev.multiThread">ONNX 多线程 (最多8核+SIMD)</span>
             </label>
             <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
             <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
               <button class="ocr-btn secondary" id="devShowLogs" style="flex:1;">查看日志</button>
               <button class="ocr-btn secondary" id="devClearLogs" style="flex:1;">清空日志</button>
             </div>
-            <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;">清除模型缓存</button>
+            <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;" data-i18n="btn.clearCache">清除模型缓存</button>
           </div>
         </div>
 
@@ -301,19 +335,19 @@
   <nav class="bottom-nav">
     <button class="active" data-page="ocr">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      <span>识别</span>
+      <span data-i18n="nav.recognize">识别</span>
     </button>
     <button data-page="editor">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      <span>编辑器</span>
+      <span data-i18n="nav.editor">编辑器</span>
     </button>
     <button data-page="history">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span>历史</span>
+      <span data-i18n="nav.history">历史</span>
     </button>
     <button data-page="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span>设置</span>
+      <span data-i18n="nav.settings">设置</span>
     </button>
   </nav>
 

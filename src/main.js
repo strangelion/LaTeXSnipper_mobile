@@ -9,12 +9,15 @@ import './styles/mobile.css';
 
 import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
-import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, exportPNG, exportSVG, onFileProcessed, hideSplash } from './ui/ui.js';
+import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, exportPNG, exportSVG, onFileProcessed, hideSplash, polishResult } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
 import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, rotateImage, initCamera } from './camera/camera.js';
-import { addResult, getAllResults, toggleFavorite, deleteResult, clearHistory } from './history/history-db.js';
+import { addResult, clearHistory } from './history/history-db.js';
+import { renderHistoryList } from './history/history-ui.js';
 import { initEditor, setEditorContent } from './editor/mathlive-config.js';
 import { autoCorrectOrientation, getExifOrientation, correctByExif, isDocOriReady } from './ocr/doc-preprocess.js';
+import { initI18n, t, translateDOM } from './lang/i18n.js';
+import { initSettings } from './settings/settings.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -271,6 +274,7 @@ window.__recogMode = () => recogMode;
   } catch (_) { /* browser dev mode, Capacitor not available */ }
 })();
 document.getElementById('shareBtn')?.addEventListener('click', shareResult);
+document.getElementById('aiPolishBtn')?.addEventListener('click', () => polishResult().catch(() => {}));
 document.getElementById('exportPngBtn')?.addEventListener('click', exportPNG);
 document.getElementById('exportSvgBtn')?.addEventListener('click', exportSVG);
 
@@ -299,61 +303,6 @@ onFileProcessed(async (result, file) => {
     }
   });
 
-async function renderHistoryList(filter = 'all') {
-  const listEl = document.getElementById('historyList');
-  if (!listEl) return;
-  const results = await getAllResults({ filter });
-  if (results.length === 0) {
-    listEl.innerHTML = '<div class="history-empty">No recognition history yet.<br>Start by uploading a formula image!</div>';
-    return;
-  }
-  listEl.innerHTML = results.map(r => `
-    <div class="history-item" data-id="${r.id}">
-      <div class="hi-latex">${escapeHtml(r.latex.substring(0, 120))}${r.latex.length > 120 ? '…' : ''}</div>
-      <div class="hi-meta">
-        <span class="hi-tag">${r.source}</span>
-        <span>${new Date(r.createdAt).toLocaleString()}</span>
-        <span>${(r.confidence * 100).toFixed(0)}%</span>
-        <button class="hi-fav ${r.favorite ? 'active' : ''}" data-action="fav" data-id="${r.id}">★</button>
-        <button class="hi-fav" data-action="del" data-id="${r.id}" style="color:#ef4444;">×</button>
-      </div>
-    </div>
-  `).join('');
-
-  // Click handlers
-  listEl.querySelectorAll('.history-item').forEach(item => {
-    item.addEventListener('click', async (e) => {
-      const target = e.target;
-      if (target.dataset.action === 'fav') {
-        e.stopPropagation();
-        const id = Number(target.dataset.id);
-        const isFav = await toggleFavorite(id);
-        target.classList.toggle('active', isFav);
-        return;
-      }
-      if (target.dataset.action === 'del') {
-        e.stopPropagation();
-        await deleteResult(Number(target.dataset.id));
-        renderHistoryList(filter);
-        return;
-      }
-      // Load into editor
-      const id = Number(item.dataset.id);
-      const all = await getAllResults();
-      const record = all.find(r => r.id === id);
-      if (record) {
-        setEditorContent(record.latex);
-      }
-    });
-  });
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 // History toolbar
 document.getElementById('clearHistory')?.addEventListener('click', async () => {
   await clearHistory();
@@ -375,177 +324,16 @@ document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListe
 /* ── Editor tab ── */
 initEditor();
 
-/* ── Settings page ── */
-(function initSettings() {
-  const extDiv = document.getElementById('extSettings');
-  const saveBtn = document.getElementById('settingsSave');
-  const testBtn = document.getElementById('setTestConn');
-  const testResult = document.getElementById('setTestResult');
-
-  const PRESETS = {
-    'paddle': { engine:'openai', baseUrl:'http://localhost:8080/v1', model:'paddleocr-vl' },
-    'silicon': { engine:'openai', baseUrl:'https://api.siliconflow.cn/v1', model:'Qwen/Qwen2.5-VL-72B-Instruct' },
-    'deepseek': { engine:'openai', baseUrl:'https://api.deepseek.com/v1', model:'deepseek-vl2' },
-    'mineru-native': { engine:'mineru', baseUrl:'http://localhost:8888', model:'mineru' },
-  };
-
-  function getEngineVal() {
-    return document.querySelector('input[name="engine"]:checked')?.value || 'builtin';
-  }
-  function getPresetVal() {
-    return document.querySelector('input[name="preset"]:checked')?.value || '';
-  }
-  function setEngineVal(v) {
-    document.querySelectorAll('input[name="engine"]').forEach(r => r.checked = r.value === v);
-    document.querySelectorAll('.set-radio-group .set-radio').forEach(l => {
-      l.classList.toggle('active', l.querySelector('input')?.checked);
-    });
-    if (extDiv) extDiv.style.display = v === 'builtin' ? 'none' : '';
-  }
-  function setPresetVal(v) {
-    document.querySelectorAll('input[name="preset"]').forEach(r => r.checked = r.value === v);
-    document.querySelectorAll('.set-radio-group .set-radio').forEach(l => {
-      l.classList.toggle('active', l.querySelector('input')?.checked);
-    });
-  }
-
-  // Engine radio click
-  document.querySelectorAll('input[name="engine"]').forEach(r => {
-    r.addEventListener('change', () => setEngineVal(r.value));
-  });
-  // Make labels clickable
-  document.querySelectorAll('.set-radio').forEach(label => {
-    label.addEventListener('pointerdown', (e) => {
-      const radio = label.querySelector('input');
-      if (radio) {
-        radio.checked = true;
-        if (radio.name === 'engine') setEngineVal(radio.value);
-        if (radio.name === 'skin') applySkin(radio.value);
-        if (radio.name === 'preset') {
-          setPresetVal(radio.value);
-          const p = PRESETS[radio.value];
-          if (p) {
-            setEngineVal(p.engine);
-            document.getElementById('setBaseUrl').value = p.baseUrl || '';
-            document.getElementById('setModel').value = p.model || '';
-          }
-        }
-      }
-    });
-  });
-
-  // Skin switching
-  function applySkin(name) {
-    document.documentElement.setAttribute('data-skin', name);
-    document.querySelectorAll('input[name="skin"]').forEach(r => r.checked = r.value === name);
-    document.querySelectorAll('#setSkinGroup .set-radio').forEach(l => {
-      l.classList.toggle('active', l.querySelector('input')?.checked);
-    });
-    try { localStorage.setItem('ls_skin', name); } catch (_) {}
-  }
-  document.querySelectorAll('input[name="skin"]').forEach(r => {
-    r.addEventListener('change', () => applySkin(r.value));
-  });
-  // Load saved skin
-  try {
-    const savedSkin = localStorage.getItem('ls_skin') || 'default';
-    applySkin(savedSkin);
-  } catch (_) {}
-
-  // Load saved
-  try {
-    const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
-    if (saved.engine) setEngineVal(saved.engine);
-    if (saved.preset) setPresetVal(saved.preset);
-    if (saved.baseUrl) document.getElementById('setBaseUrl').value = saved.baseUrl;
-    if (saved.model) document.getElementById('setModel').value = saved.model;
-    if (saved.apiKey) document.getElementById('setApiKey').value = saved.apiKey;
-  } catch (_) {}
-
-  saveBtn?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    const settings = {
-      engine: getEngineVal(),
-      baseUrl: document.getElementById('setBaseUrl')?.value || '',
-      model: document.getElementById('setModel')?.value || '',
-      apiKey: document.getElementById('setApiKey')?.value || '',
-    };
-    try { localStorage.setItem('ls_settings', JSON.stringify(settings)); } catch (_) {}
-    saveBtn.textContent = '已保存 ✓';
-    setTimeout(() => saveBtn.textContent = '保存设置', 1500);
-  });
-
-  testBtn?.addEventListener('pointerdown', async (e) => {
-    e.preventDefault();
-    if (!testResult) return;
-    testResult.textContent = '测试中…';
-    const baseUrl = document.getElementById('setBaseUrl')?.value || '';
-    const apiKey = document.getElementById('setApiKey')?.value || '';
-    if (!baseUrl) { testResult.textContent = '请填写 Base URL'; return; }
-    try {
-      const resp = await fetch(baseUrl.replace(/\/+$/, '') + (getEngineVal() === 'mineru' ? '/health' : '/models'), {
-        headers: apiKey ? { Authorization: 'Bearer ' + apiKey } : {},
-        signal: AbortSignal.timeout(10000),
-      });
-      testResult.textContent = resp.ok ? '✓ 连接成功' : '✗ HTTP ' + resp.status;
-    } catch (err) {
-      testResult.textContent = '✗ ' + (err.message || '连接失败');
-    }
-  });
-
-  // Developer mode
-  const devCheck = document.getElementById('setDevMode');
-  const devOpts = document.getElementById('devOptions');
-  const devLogs = document.getElementById('devShowLogs');
-  const devClearLogs = document.getElementById('devClearLogs');
-  const devOutput = document.getElementById('devLogOutput');
-  const devClear = document.getElementById('devClearCache');
-
-  // Load saved dev mode
-  try {
-    const devOn = localStorage.getItem('ls_devmode') === '1';
-    if (devCheck) devCheck.checked = devOn;
-    if (devOpts) devOpts.style.display = devOn ? '' : 'none';
-  } catch (_) {}
-
-  devCheck?.addEventListener('change', () => {
-    const on = devCheck.checked;
-    if (devOpts) devOpts.style.display = on ? '' : 'none';
-    try { localStorage.setItem('ls_devmode', on ? '1' : '0'); } catch (_) {}
-    // Toggle global debug flag
-    window.__DEBUG__ = on;
-  });
-
-  devLogs?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    if (!devOutput) return;
-    if (devOutput.style.display !== 'none') { devOutput.style.display = 'none'; return; }
-    devOutput.style.display = 'block';
-    try {
-      const logs = JSON.parse(localStorage.getItem('ls_ocr_logs') || '[]');
-      devOutput.textContent = logs.join('\n') || '(无日志)';
-    } catch (_) { devOutput.textContent = '(日志读取失败)'; }
-  });
-
-  devClearLogs?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    try { localStorage.removeItem('ls_ocr_logs'); } catch (_) {}
-    if (devOutput) devOutput.textContent = '(日志已清空)';
-  });
-
-  devClear?.addEventListener('pointerdown', async (e) => {
-    e.preventDefault();
-    try { await caches.delete('ocr-models-v1'); devClear.textContent = '已清除 ✓'; }
-    catch (_) { devClear.textContent = '清除失败'; }
-    setTimeout(() => devClear.textContent = '清除模型缓存', 1500);
-  });
-
-  // Set initial debug flag
-  try { window.__DEBUG__ = localStorage.getItem('ls_devmode') === '1'; } catch (_) {}
-})();
 
 /* ── Startup: load models ── */
 async function boot() {
+  // Init i18n + translate static text
+  await initI18n();
+  translateDOM();
+
+  // Init settings (dropdowns, save/load)
+  initSettings();
+
   // Failsafe: hide splash after 30s regardless
   const failsafe = setTimeout(() => hideSplash(), 30000);
   try {

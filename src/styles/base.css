@@ -323,6 +323,59 @@ a:hover { color: var(--accent-hover); }
 .set-toggle input:checked + .set-toggle-track { background: var(--accent); }
 .set-toggle input:checked + .set-toggle-track::after { transform: translateX(18px); }
 
+/* ── Toast ── */
+.toast-popup {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 10000; background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 14px; padding: 20px 28px; max-width: 320px; width: 90%;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18); text-align: center;
+  animation: toastIn 0.25s ease;
+}
+.toast-popup p { margin: 0 0 16px; color: var(--fg); font-size: 0.9rem; line-height: 1.5; }
+.toast-popup .toast-close {
+  background: var(--accent); color: #fff; border: none; padding: 8px 28px;
+  border-radius: 10px; font-size: 0.85rem; font-weight: 500; cursor: pointer; font-family: inherit;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%,-50%) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+
+/* ── Update modal ── */
+.update-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center;
+  padding: 16px; animation: overlayIn 0.2s ease;
+}
+.update-dialog {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: 16px; max-width: 440px; width: 100%; max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.22);
+  animation: dialogIn 0.25s ease;
+}
+.update-dialog-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 0; flex-shrink: 0;
+}
+.update-dialog-header h3 { margin: 0; font-size: 1.05rem; color: var(--fg); }
+.update-dialog-close {
+  background: none; border: none; font-size: 1.4rem; cursor: pointer;
+  color: var(--muted); line-height: 1; padding: 0 4px;
+}
+.update-dialog-body {
+  padding: 16px 24px; overflow-y: auto; flex: 1;
+  font-size: 0.85rem; color: var(--muted); line-height: 1.6;
+  white-space: pre-wrap;
+}
+.update-dialog-footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding: 16px 24px 20px; flex-shrink: 0;
+}
+.update-dialog-footer .ocr-btn { min-width: 90px; }
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialogIn { from { opacity: 0; transform: scale(0.93) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
 /* ═══════════════════════════════════════════
    Splash / Loading Screen
    ═══════════════════════════════════════════ */

@@ -42,11 +42,9 @@
 }
 .hw-tool-btn:hover { border-color: var(--accent); }
 .hw-tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.hw-recognize-btn {
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
-  color: #fff; border: none; padding: 8px 22px; border-radius: 10px;
-  cursor: pointer; font-size: 0.9rem; font-weight: 600;
-  font-family: inherit;
+/* Recognize button — same size as siblings but accent-colored to stand out */
+.hw-recognize {
+  background: var(--accent); color: #fff; border-color: var(--accent);
 }
 .hw-expand-btn {
   display: inline-flex; align-items: center; gap: 4px;
