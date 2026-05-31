@@ -129,7 +129,9 @@ public class OcrEngine {
     /**
      * Auto-correct image orientation using PP-LCNet doc_ori model.
      * Returns the corrected bitmap (or the original if no rotation needed).
-     * The caller must recycle the returned bitmap if different from input.
+     * Angle mapping: model outputs [0,1,2,3] -> index 0 is 0°, 1 is 90°, 2 is 180°, 3 is 270°.
+     * These represent the rotation detected in the image.
+     * To correct: rotate by -angle (opposite direction) to bring it upright.
      */
     public Bitmap autoOrient(Bitmap bitmap) {
         if (!runner.isDocOriReady()) return bitmap;
