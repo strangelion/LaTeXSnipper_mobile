@@ -21,15 +21,20 @@ export function updateSplash(modelName, pct) {
   splashProgress[modelName] = pct;
 
   // Compute weighted overall progress
+  // Only sum weights for which we have actually received progress updates
   let totalWeight = 0, weightedSum = 0;
   for (const [name, weight] of Object.entries(MODEL_WEIGHTS)) {
-    totalWeight += weight;
     const p = splashProgress[name];
     if (p !== undefined) {
+      totalWeight += weight;
       weightedSum += weight * Math.max(0, p) / 100;
     }
   }
-  const overall = totalWeight > 0 ? Math.round(weightedSum / totalWeight * 100) : 0;
+  // If no weights have reported yet, fall back to the full weight denominator
+  // so progress never jumps from a low value to a high one as models report in
+  const overall = totalWeight > 0
+    ? Math.round(weightedSum / totalWeight * 100)
+    : 0;
 
   const fill = document.getElementById('splashProgressFill');
   const label = document.getElementById('splashProgressLabel');
