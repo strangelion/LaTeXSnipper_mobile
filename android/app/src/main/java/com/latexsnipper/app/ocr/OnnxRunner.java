@@ -77,14 +77,15 @@ public class OnnxRunner {
     private ByteBuffer loadAsset(Context ctx, String assetPath) {
         try {
             InputStream is = ctx.getAssets().open(assetPath);
-            byte[] bytes = new byte[is.available()];
-            int offset = 0;
-            while (offset < bytes.length) {
-                int read = is.read(bytes, offset, bytes.length - offset);
-                if (read < 0) break;
-                offset += read;
+            // Read all bytes from the input stream into a byte array
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = is.read(buf)) >= 0) {
+                baos.write(buf, 0, n);
             }
             is.close();
+            byte[] bytes = baos.toByteArray();
             ByteBuffer bb = ByteBuffer.allocateDirect(bytes.length);
             bb.put(bytes);
             bb.rewind();

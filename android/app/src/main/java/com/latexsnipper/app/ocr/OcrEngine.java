@@ -76,7 +76,8 @@ public class OcrEngine {
             modelsLoaded = true;
             Log.d(TAG, "All models loaded (sync)");
         } catch (Exception e) {
-            Log.e(TAG, "Model loading failed", e);
+            Log.e(TAG, "Model loading failed, cleaning up sessions", e);
+            runner.release();
             throw new RuntimeException("Model loading failed", e);
         } finally {
             loading = false;
@@ -109,7 +110,8 @@ public class OcrEngine {
                 if (cb != null) cb.onProgress("全部模型加载完成", 100);
                 Log.d(TAG, "All models loaded");
             } catch (Exception e) {
-                Log.e(TAG, "Model loading failed", e);
+                Log.e(TAG, "Model loading failed, cleaning up sessions", e);
+                runner.release();
             } finally {
                 loading = false;
             }
