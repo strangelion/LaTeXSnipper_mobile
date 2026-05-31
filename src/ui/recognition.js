@@ -111,6 +111,7 @@ export async function processImage(file) {
 
       // ── Run recognition ──
       setStatus('processing', '正在识别…', true);
+      // Reset progress to 0% before starting new recognition
       showProgress('识别中', 0);
 
       // Smooth progress (always increase, never decrease)
