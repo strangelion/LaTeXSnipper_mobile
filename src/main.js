@@ -11,13 +11,13 @@ import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
 import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, exportPNG, exportSVG, onFileProcessed, hideSplash, polishResult } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
-import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, rotateImage, initCamera } from './camera/camera.js';
+import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, initCamera } from './camera/camera.js';
 import { addResult, clearHistory } from './history/history-db.js';
 import { renderHistoryList } from './history/history-ui.js';
 import { initEditor, setEditorContent } from './editor/mathlive-config.js';
-import { autoCorrectOrientation, getExifOrientation, correctByExif, isDocOriReady } from './ocr/doc-preprocess.js';
-import { initI18n, t, translateDOM } from './lang/i18n.js';
+import { initI18n, t, translateDOM, onLangChange } from './lang/i18n.js';
 import { initSettings } from './settings/settings.js';
+import { initCustomSelects, syncCustomSelects } from './ui/custom-select.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -129,8 +129,7 @@ document.getElementById('camCropConfirm')?.addEventListener('pointerdown', async
   e.preventDefault(); e.stopPropagation();
   const file = await confirmCrop();
   if (file) {
-    const corrected = await preprocessCameraFile(file);
-    processImage(corrected || file);
+    processImage(file);
   }
 });
 
@@ -158,10 +157,6 @@ document.getElementById('camFlash')?.addEventListener('pointerdown', (e) => {
   toggleFlash();
 });
 
-document.getElementById('camCropRotate')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  rotateImage();
-});
 
 document.getElementById('camModal')?.addEventListener('click', (e) => {
   // Only close on background click during live preview;
@@ -183,44 +178,7 @@ if (hwCanvas && hwWrap) {
   document.getElementById('hwUndo')?.addEventListener('click', hwUndo);
   document.getElementById('hwRedo')?.addEventListener('click', hwRedo);
   document.getElementById('hwClear')?.addEventListener('click', hwClear);
-  // Camera file preprocessing: auto-correct orientation before recognition
-async function preprocessCameraFile(file) {
-  // Step 1: Try EXIF-based correction (fast, no model needed)
-  try {
-    const exifOri = await getExifOrientation(file);
-    if (exifOri !== 1) {
-      console.debug('[preprocess] EXIF orientation:', exifOri);
-      const img = await createImageBitmap(file);
-      const corrected = correctByExif(img, exifOri);
-      if (corrected) {
-        return new Promise((resolve) => {
-          corrected.toBlob((blob) => {
-            resolve(new File([blob], file.name || 'camera.jpg', { type: 'image/jpeg' }));
-          }, 'image/jpeg', 0.92);
-        });
-      }
-    }
-  } catch (e) { /* EXIF read failed, continue */ }
-
-  // Step 2: Try ONNX model-based orientation detection
-  if (isDocOriReady()) {
-    try {
-      const img = await createImageBitmap(file);
-      const corrected = await autoCorrectOrientation(img);
-      if (corrected) {
-        return new Promise((resolve) => {
-          corrected.toBlob((blob) => {
-            resolve(new File([blob], file.name || 'camera.jpg', { type: 'image/jpeg' }));
-          }, 'image/jpeg', 0.92);
-        });
-      }
-    } catch (e) { console.debug('[preprocess] ONNX orientation failed:', e.message); }
-  }
-
-  return null; // No correction needed
-}
-
-document.getElementById('hwRecognize')?.addEventListener('click', async () => {
+  document.getElementById('hwRecognize')?.addEventListener('click', async () => {
     const file = await hwExportImage();
     if (file) processImage(file);
   });
@@ -327,12 +285,24 @@ initEditor();
 
 /* ── Startup: load models ── */
 async function boot() {
+  // Init logging
+  const { default: Logger } = await import('./shared/logger.js');
+  Logger.logSystemInfo();
+
   // Init i18n + translate static text
   await initI18n();
   translateDOM();
 
+  // Init custom dropdowns (before settings reads values)
+  initCustomSelects();
+
   // Init settings (dropdowns, save/load)
   initSettings();
+  // Sync custom button text with restored values
+  syncCustomSelects();
+
+  // Re-sync custom selects when language changes
+  onLangChange(() => syncCustomSelects());
 
   // Failsafe: hide splash after 30s regardless
   const failsafe = setTimeout(() => hideSplash(), 30000);

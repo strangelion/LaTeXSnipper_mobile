@@ -1,7 +1,10 @@
 // Settings module — engine, presets, skin, AI polish, update check
 // Imported once in main.js. All DOM IDs are in index.html.
 
+import Logger from '../shared/logger.js';
+import { isNativeOcrAvailable, OcrNative } from '../native/ocr-native.js';
 import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
+import { shareText } from '../shared/share.js';
 
 export function initSettings() {
   const extDiv = document.getElementById('extSettings');
@@ -9,7 +12,7 @@ export function initSettings() {
 
   // ═══ Engine dropdown ═══
   const engineSelect = document.getElementById('setEngineSelect');
-  const getEngine = () => engineSelect?.value || 'hybrid';
+  const getEngine = () => engineSelect?.value || 'builtin';
   window.__getEngine = getEngine;
 
   if (engineSelect) {
@@ -54,12 +57,39 @@ export function initSettings() {
   }
   try { applySkin(localStorage.getItem('ls_skin') || 'default'); } catch (_) {}
 
-  // ═══ Save / Load ═══
-  const saveBtn = document.getElementById('settingsSave');
-  saveBtn?.addEventListener('pointerdown', e => {
-    e.preventDefault();
+  // ═══ Acceleration dropdown (instant apply) ═══
+  const accelSelect = document.getElementById('setAccelSelect');
+  accelSelect?.addEventListener('change', () => {
+    if (isNative() && OcrNative?.setAcceleration) {
+      OcrNative.setAcceleration({ mode: accelSelect.value }).catch(() => {});
+    }
+  });
+
+  // ═══ Native settings persistence (Android SharedPreferences) ═══
+  function isNative() {
+    return isNativeOcrAvailable();
+  }
+
+  async function saveSettingsNative(s) {
+    try {
+      await OcrNative.saveSettings({ settings: JSON.stringify(s) });
+    } catch (_) { /* fallback below */ }
+  }
+
+  async function loadSettingsNative() {
+    try {
+      const ret = await OcrNative.loadSettings();
+      const json = ret.settings || '{}';
+      return JSON.parse(json);
+    } catch (_) { return {}; }
+  }
+
+  // ═══ Save ═══
+  async function saveSettings() {
     const s = {
       engine: getEngine(),
+      accel: document.getElementById('setAccelSelect')?.value || 'gpu',
+      devMode: document.getElementById('setDevMode')?.checked || false,
       baseUrl: document.getElementById('setBaseUrl')?.value || '',
       model: document.getElementById('setModel')?.value || '',
       apiKey: document.getElementById('setApiKey')?.value || '',
@@ -67,14 +97,53 @@ export function initSettings() {
       polishModel: document.getElementById('setPolishModel')?.value || '',
       polishApiKey: document.getElementById('setPolishApiKey')?.value || '',
     };
+    // Always write to localStorage (sync, fast)
     try { localStorage.setItem('ls_settings', JSON.stringify(s)); } catch (_) {}
-    saveBtn.textContent = t('btn.saved');
-    setTimeout(() => saveBtn.textContent = t('btn.saveSettings'), 1500);
-  });
+    // Also persist via native plugin (survives app data clear)
+    if (isNative()) {
+      await saveSettingsNative(s);
+    }
+    const saveBtn = document.getElementById('settingsSave');
+    if (saveBtn) {
+      saveBtn.textContent = t('btn.saved');
+      setTimeout(() => saveBtn.textContent = t('btn.saveSettings'), 1500);
+    }
+  }
 
-  // Restore saved
-  try {
-    const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
+  const saveBtn = document.getElementById('settingsSave');
+  saveBtn?.addEventListener('pointerdown', e => { e.preventDefault(); saveSettings(); });
+  saveBtn?.addEventListener('click', e => { e.preventDefault(); saveSettings(); });
+
+  // ═══ Restore saved ═══
+  async function restoreSettings() {
+    let saved = {};
+    if (isNative()) {
+      saved = await loadSettingsNative();
+      // Sync native settings to localStorage as fallback cache
+      if (saved && Object.keys(saved).length > 0) {
+        try { localStorage.setItem('ls_settings', JSON.stringify(saved)); } catch (_) {}
+      }
+    } else {
+      try { saved = JSON.parse(localStorage.getItem('ls_settings') || '{}'); } catch (_) {}
+    }
+    if (saved.accel) {
+      const accelSelect = document.getElementById('setAccelSelect');
+      if (accelSelect) accelSelect.value = saved.accel;
+      if (isNative() && OcrNative?.setAcceleration) {
+        try { await OcrNative.setAcceleration({ mode: saved.accel }); } catch (_) {}
+      }
+    } else {
+      // Default to GPU if not set
+      const accelSelect = document.getElementById('setAccelSelect');
+      if (accelSelect) accelSelect.value = 'gpu';
+    }
+    if (saved.devMode !== undefined) {
+      const devCb = document.getElementById('setDevMode');
+      if (devCb) {
+        devCb.checked = saved.devMode;
+        devCb.dispatchEvent(new Event('change'));
+      }
+    }
     if (saved.engine && engineSelect) { engineSelect.value = saved.engine; engineSelect.dispatchEvent(new Event('change')); }
     if (saved.baseUrl) document.getElementById('setBaseUrl').value = saved.baseUrl;
     if (saved.model) document.getElementById('setModel').value = saved.model;
@@ -82,7 +151,8 @@ export function initSettings() {
     if (saved.polishBaseUrl) document.getElementById('setPolishBaseUrl').value = saved.polishBaseUrl;
     if (saved.polishModel) document.getElementById('setPolishModel').value = saved.polishModel;
     if (saved.polishApiKey) document.getElementById('setPolishApiKey').value = saved.polishApiKey;
-  } catch (_) {}
+  }
+  restoreSettings();
 
   // ═══ Test connections ═══
   async function testConn(baseUrl, resultEl) {
@@ -127,14 +197,28 @@ export function initSettings() {
   document.getElementById('devShowLogs')?.addEventListener('pointerdown', e => {
     e.preventDefault();
     if (!devLogOutput) return;
-    const logs = (localStorage.getItem('ls_log') || '').split('\n').filter(Boolean).slice(-100);
-    devLogOutput.textContent = logs.length ? logs.join('\n') : t('dev.noLogs');
+    const lines = Logger.getLastLines(100);
+    devLogOutput.textContent = lines.length ? lines.join('\n') : t('dev.noLogs');
     devLogOutput.style.display = '';
   });
   document.getElementById('devClearLogs')?.addEventListener('pointerdown', e => {
     e.preventDefault();
-    try { localStorage.setItem('ls_log', ''); } catch (_) {}
+    Logger.clear();
     if (devLogOutput) { devLogOutput.textContent = t('dev.cleared'); }
+  });
+  const devExportBtn = document.getElementById('devExportLogs');
+  devExportBtn?.addEventListener('pointerdown', async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (devExportBtn.disabled) return;
+    devExportBtn.disabled = true;
+    try {
+      const text = Logger.getExportText();
+      await shareText(text, { title: 'LaTeXSnipper 诊断日志', dialogTitle: '导出诊断日志' });
+    } catch (err) {
+      alert('导出失败: ' + (err.message || err));
+    }
+    setTimeout(() => { devExportBtn.disabled = false; }, 2000);
   });
   document.getElementById('devClearCache')?.addEventListener('pointerdown', async e => {
     e.preventDefault();

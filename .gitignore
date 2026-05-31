@@ -30,10 +30,20 @@ RELEASE.md
 keystore_new.txt
 keystore_new_clean.txt
 skills/
-training-data/
 
 # Python
 .venv/
-*.py
-*.pth
-C/
+*.pyc
+__pycache__/
+
+# Packages / datasets (too large for git)
+*.zip
+*.tar
+*.gz
+
+# Training artifacts (all consolidated)
+pp-ocr-train/
+
+# Test scripts (local only, not for production)
+test_onnx_local.py
+test_*

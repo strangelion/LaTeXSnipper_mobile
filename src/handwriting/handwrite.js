@@ -217,34 +217,24 @@ export async function hwExportImage() {
   tctx.fillStyle = '#ffffff';
   tctx.fillRect(0, 0, tmp.width, tmp.height);
   tctx.drawImage(hwCanvas, 0, 0);
-  // Dark mode: invert non-white pixels to black (for white-text-on-dark)
-  if (document.documentElement.getAttribute('data-theme') === 'dark') {
-    const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
-    const d = imgData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) {
-        d[i] = 255 - d[i]; d[i + 1] = 255 - d[i + 1]; d[i + 2] = 255 - d[i + 2];
-      }
+  // Ensure white background + black strokes regardless of theme
+  const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    // If pixel is not close to white, make it black
+    if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) {
+      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0;
+    } else {
+      d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
     }
-    tctx.putImageData(imgData, 0, 0);
   }
-
-  // Enhance contrast for handwriting recognition
-  try {
-    const { enhanceHandwriting } = await import('../ocr/image-preprocess.js');
-    const enhanced = enhanceHandwriting(tmp);
-    return new Promise((resolve) => {
-      enhanced.toBlob((blob) => {
-        resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
-      }, 'image/png');
-    });
-  } catch (_) {
-    return new Promise((resolve) => {
-      tmp.toBlob((blob) => {
-        resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
-      }, 'image/png');
-    });
-  }
+  tctx.putImageData(imgData, 0, 0);
+  // Use the raw image (contrast enhancement handled by native pipeline)
+  return new Promise((resolve) => {
+    tmp.toBlob((blob) => {
+      resolve(new File([blob], 'handwrite.png', { type: 'image/png' }));
+    }, 'image/png');
+  });
 }
 
 // ── Update theme (call on theme change) ──

@@ -1,16 +1,16 @@
 # LaTeXSnipper Mobile
 
-基于 ONNX Runtime Web 的完全离线 LaTeX 公式 OCR 识别 PWA 应用。
+基于 Android + Java ONNX Runtime 的完全离线 LaTeX 公式 OCR 识别 App。
 
 ## 功能
 
-- **公式 OCR 识别** — 图片/PDF/拍照/手写 → LaTeX，浏览器端 ONNX Runtime 本地推理
+- **公式/文字/混合 OCR 识别** — 图片/PDF/拍照/手写 → LaTeX/文本，Android 端 ONNX Runtime 本地推理
 - **MathLive 公式编辑器** — 所见即所得数学公式编辑，支持片段插入和计算引擎
 - **手写画板** — 墨迹平滑、压感、撤销/重做
 - **历史记录** — IndexedDB 存储，收藏夹管理
 - **多格式导出** — LaTeX / Markdown / MathML / 文本
 - **完全离线** — 所有模型和依赖内置，安装后无需网络
-- **PWA** — 可安装到手机桌面，Service Worker 离线缓存
+- **GPU 加速** — Android NNAPI (OpenGL/Vulkan/NPU) 加速推理
 - **日/夜主题** — 自动跟随系统或手动切换
 
 ## 技术栈
@@ -18,12 +18,18 @@
 | 组件 | 技术 |
 |------|------|
 | 构建 | Vite 5 |
-| OCR 引擎 | ONNX Runtime Web 1.21 + WASM |
+| OCR 引擎 | ONNX Runtime Android (Java) |
+| 公式检测 | YOLOv8 (mathcraft-mfd) |
+| 公式识别 | TrOCR (DeiT 编码器 + 束搜索解码) |
+| 文字检测 | DBNet (PP-OCRv5) + Moore-Neighbor 轮廓追踪 |
+| 文字识别 | CRNN (PP-OCRv5) + CTC 解码 |
+| 方向检测 | PP-LCNet 文档方向 |
 | 公式渲染 | MathJax 3 (tex-svg) |
 | 公式编辑 | MathLive 0.98 |
 | PDF 渲染 | pdfjs-dist 3.11 |
 | 存储 | IndexedDB (idb) |
 | 移动打包 | Capacitor 8 (Android + iOS) |
+| Android 桥接 | @JavascriptInterface (NativeOcrBridge)
 | 部署 | Cloudflare Pages / Workers |
 
 ## 开发
@@ -46,31 +52,65 @@ cd android && ./gradlew assembleDebug  # 构建 APK
 
 APK 约 192MB（含全部模型和离线资源）。
 
+## 桌面端 vs 移动端引擎对比
+
+Android 端使用纯 Java ONNX Runtime 管线，与桌面端 Python `mathcraft-ocr` 实现对标：
+
+| 管线 | 桌面端 (Python) | 移动端 (Java) | 状态 |
+|------|----------------|---------------|------|
+| **公式检测** | YOLOv8, thresh=0.25, IoU=0.45 | 同左，动态 anchor 数 | ✅ 一致 |
+| **公式识别** | TrOCR 贪心解码, max_tokens=512 | TrOCR 束搜索(beam=3), same max_tokens | ✅ 一致 |
+| **公式预处理** | 短边 384 + 中心裁剪 | 同左 | ✅ 一致 |
+| **文字检测** | RapidOCR DBPostProcess (OpenCV 轮廓追踪) | Moore-Neighbor 轮廓追踪 (纯 Java) | ✅ 一致 |
+| **文字预处理** | BGR 48×320, mean=0.5, std=0.5 | 同左 | ✅ 一致 |
+| **文字识别** | CRNN CTC 解码 | 同左 + 繁简转换 | ✅ 一致 |
+| **混合模式** | 原图检测 → 公式分割 → 行分割 → 版面输出 | 同左 | ✅ 一致 |
+| **公式行分割** | 投影分析 → 逐行识别 → `\begin{aligned}` | 同左 | ✅ 一致 |
+| **版面输出** | 行分组 + 段落合并 + `$$` 包裹 | 同左 | ✅ 一致 |
+| **方向检测** | PP-LCNet 0°/90°/180°/270° + EXIF | 同左 | ✅ 一致 |
+| **GPU 加速** | CUDA / CoreML | NNAPI (OpenGL/Vulkan/NPU) | ✅ |
+| **推理延迟** | GPU ~2s/图 | NNAPI ~3-5s/图 | ⚠️ 略慢 |
+
 ## 目录结构
 
 ```
 LaTeXSnipper_mobile/
 ├── index.html                  # 单页面入口
 ├── public/
-│   ├── models/                 # ONNX 模型文件 (113MB)
-│   ├── vendor/                 # 内置库 (onnxruntime/pdfjs/mathjax/mathlive)
-│   ├── ort/                    # ONNX WASM 文件
+│   ├── models/                 # ONNX 模型文件 (249MB)
+│   │   ├── mathcraft-formula-det/   # YOLOv8 公式检测
+│   │   ├── mathcraft-formula-rec/   # TrOCR 公式识别
+│   │   ├── mathcraft-text-det/      # DBNet 文字检测
+│   │   └── mathcraft-text-rec/      # CRNN + 方向检测
+│   ├── vendor/                 # 内置库 (mathjax/mathlive/pdfjs)
 │   ├── fonts/                  # 中文字体
-│   ├── manifest.json           # PWA 清单
 │   ├── sw.js                   # Service Worker
-│   └── icon.png
+│   └── manifest.json           # PWA 清单
 ├── src/
 │   ├── main.js                 # 入口
 │   ├── constants.js            # 常量
-│   ├── ocr/                    # OCR 引擎 + PDF 处理
+│   ├── native/                 # Android 桥接封装
+│   ├── shared/                 # 分享/日志工具
 │   ├── camera/                 # 相机模块
 │   ├── handwriting/            # 手写模块
 │   ├── editor/                 # MathLive 配置
 │   ├── history/                # IndexedDB 存储
-│   ├── export/                 # 导出模块
-│   ├── ui/                     # UI 组件
-│   └── styles/                 # CSS 样式
+│   ├── settings/               # 设置页面
+│   └── ui/                     # UI 组件 + 识别入口
 ├── android/                    # Capacitor Android 项目
+│   └── app/src/main/java/com/latexsnipper/app/ocr/
+│       ├── NativeOcrBridge.java        # @JavascriptInterface 桥接
+│       ├── OnnxRunner.java             # ONNX Runtime 会话管理
+│       ├── OcrEngine.java              # 主编排器
+│       ├── DetPreProcess.java          # 公式检测预处理
+│       ├── FormulaDetPostProcess.java  # YOLOv8 后处理
+│       ├── FormulaRecPreProcess.java   # TrOCR 预处理
+│       ├── FormulaRecPostProcess.java  # 束搜索解码
+│       ├── FormulaLineSplitter.java    # 多行公式分割
+│       ├── TextDetProcessor.java       # DBNet + 轮廓追踪
+│       ├── TextRecPreProcess.java      # CRNN 预处理
+│       ├── TextRecPostProcess.java     # CTC 解码
+│       └── DocOriPreProcess.java       # 方向检测
 ├── dist/                       # 构建输出
 ├── vite.config.js
 ├── capacitor.config.json
@@ -79,12 +119,16 @@ LaTeXSnipper_mobile/
 
 ## 模型
 
-使用 MathCraft OCR 模型 (`mathcraft-formula-rec`)：
+| 模型 | 来源 | 用途 |
+|------|------|------|
+| `mathcraft-mfd.onnx` | MathCraft | YOLOv8 公式检测 |
+| `encoder_model.onnx` + `decoder_model.onnx` | MathCraft (pix2text-mfr) | TrOCR 公式识别 (DeiT + 6层解码器) |
+| `ppocrv5_mobile_det.onnx` | PaddleOCR | DBNet 文字检测 |
+| `ppocrv5_mobile_rec.onnx` | PaddleOCR | CRNN 文字识别 |
+| `pplcnet_doc_ori.onnx` | PaddleOCR | PP-LCNet 文档方向检测 |
+| `chinese_detector.onnx` | 自定义训练 | 中文/公式二分类 |
 
-- 编码器: DeiT (Vision Transformer), 12 层, hidden_size=384
-- 解码器: TrOCR, 6 层, d_model=256
-- 输入: 384×384 RGB
-- 模型来源: [MathCraft-Models](https://github.com/SakuraMathcraft/MathCraft-Models)
+所有模型内置在 `public/models/` 中，安装后完全离线使用。
 
 ## 致谢
 
@@ -102,4 +146,4 @@ LaTeXSnipper_mobile/
 
 ## 许可证
 
-MIT
+Apache License 2.0

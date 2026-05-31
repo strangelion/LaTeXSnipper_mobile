@@ -77,6 +77,14 @@ export default {
   "dev.clearLogs": "清除日誌",
   "dev.noLogs": "（無日誌）",
   "dev.cleared": "（日誌已清除）",
+  "dev.devMode": "開發者模式",
+  "dev.showLogs": "檢視日誌",
+  "dev.exportLogs": "匯出日誌",
+
+  "settings.accel": "加速模式",
+  "settings.accelGpu": "GPU (NNAPI 加速)",
+  "settings.accelCpu": "CPU (相容模式)",
+  "settings.accelHint": "GPU加速使用Android NNAPI，自動呼叫OpenGL/Vulkan NPU。辨識效果與CPU一致，速度更快。",
 
   "update.available": "新版本 v{{version}} 可用",
   "update.download": "下載更新",

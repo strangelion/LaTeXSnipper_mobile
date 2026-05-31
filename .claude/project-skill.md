@@ -1,13 +1,3 @@
----
-name: latexsnipper-mobile
-description: |
-  LaTeXSnipper Mobile 项目完整维护指南。
-  包含项目架构、文件用途、构建流程、开发规范。
-  当需要修改代码、排查构建问题、或理解项目结构时使用。
-metadata:
-  type: project
----
-
 # LaTeXSnipper Mobile — 项目维护指南
 
 ## 代码规范
@@ -25,63 +15,62 @@ metadata:
 
 ```
 LaTeXSnipper_mobile/
-├── index.html              # 单页面 SPA，4 个 Tab 页面
-├── src/
-│   ├── main.js             # 入口：组装模块、事件绑定、启动
-│   ├── constants.js        # 全局常量（模型路径、阈值等）
-│   ├── update-checker.js   # GitHub Releases 自动更新检查
-│   ├── lang/
-│   │   ├── i18n.js         # 多语言引擎（自动检测、t()、translateDOM）
-│   │   ├── zh-CN.js        # 简体中文（同时也是回退语言）
-│   │   ├── zh-TW.js        # 繁體中文
-│   │   ├── en.js           # English
-│   │   ├── ja.js           # 日本語
-│   │   └── ko.js           # 한국어
-│   ├── ocr/
-│   │   ├── ocr-engine.js   # ONNX 公式推理管线
-│   │   ├── region-detect.js # 版面分析 + 中文/公式分类
-│   │   ├── text-recognition.js # PP-OCRv5 文字识别
-│   │   ├── text-detection.js   # 文字检测
-│   │   ├── tesseract-recognition.js # Tesseract WASM 文字识别
-│   │   ├── image-preprocess.js # 图像预处理 + 手写增强
-│   │   ├── pdf-processor.js    # PDF 逐页渲染 + OCR
-│   │   ├── simplify.js         # 繁简转换
-│   │   └── doc-preprocess.js   # 文档方向检测
-│   ├── camera/
-│   │   └── camera.js       # 全屏相机：拍照/框选/套索/四角把手
-│   ├── handwriting/
-│   │   └── handwrite.js    # Canvas 手写板 + 导出
-│   ├── editor/
-│   │   └── mathlive-config.js # MathLive 编辑器 + 中文翻译
-│   ├── history/
-│   │   └── history-db.js  # IndexedDB 存储（idb 封装）
-│   ├── export/
-│   │   └── exporter.js     # 多格式导出
-│   ├── ui/
-│   │   ├── ui.js           # 状态栏/进度条/结果展示/外部API调用/图片处理
-│   │   ├── theme.js        # 日/夜主题切换
-│   │   └── particles.js    # 数学粒子背景（已禁用）
-│   └── styles/
-│       ├── base.css        # CSS 变量、布局、导航、设置页
-│       ├── ocr.css         # 识别页、相机、按钮、裁剪 UI
-│       ├── editor.css      # 编辑器
-│       ├── handwriting.css # 手写板
-│       ├── history.css     # 历史记录列表
-│       └── mobile.css      # 响应式、安全区域、PWA 增强
+├── index.html                 # 单页面 SPA，4 个 Tab 页面
 ├── public/
-│   ├── models/             # ONNX 模型文件
-│   ├── vendor/             # 内置库（ort/pdfjs/mathjax/mathlive）
-│   ├── ort/                # ONNX WASM 文件
-│   ├── fonts/              # 中文字体
-│   ├── manifest.json       # PWA 清单
-│   ├── sw.js               # Service Worker
-│   └── icon.png            # App 图标
-├── android/                # Capacitor Android 项目
-├── vite.config.js          # Vite 配置（含 COOP/COEP 头）
-├── capacitor.config.json   # Capacitor 配置
+│   ├── models/                # ONNX 模型文件
+│   │   ├── mathcraft-formula-det/   # YOLOv8 公式检测
+│   │   ├── mathcraft-formula-rec/   # TrOCR 公式识别
+│   │   ├── mathcraft-text-det/      # DBNet 文字检测
+│   │   ├── mathcraft-text-rec/      # CRNN 文字识别 + 方向检测
+│   │   └── chinese_detector.onnx    # 中文/公式分类
+│   ├── vendor/                # 内置库 (mathjax/mathlive/pdfjs)
+│   ├── fonts/                 # 中文字体
+│   ├── sw.js                  # Service Worker
+│   └── manifest.json          # PWA 清单
+├── src/
+│   ├── main.js                # 入口：模块组装、事件绑定、启动
+│   ├── constants.js           # 全局常量
+│   ├── update-checker.js      # GitHub Releases 自动更新检查
+│   ├── lang/                  # 多语言（zh-CN/zh-TW/en/ja/ko）
+│   ├── native/                # Android Native Bridge 封装
+│   │   └── ocr-native.js      # window.NativeOcr 异步调用封装
+│   ├── shared/                # 通用工具模块
+│   │   ├── share.js           # 分享功能（Capacitor → WebShare → 剪贴板）
+│   │   └── logger.js          # 日志收集与诊断导出
+│   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手
+│   ├── handwriting/           # Canvas 手写板 + 导出
+│   ├── editor/                # MathLive 编辑器 + 中文翻译
+│   ├── history/               # IndexedDB 存储（idb 封装）
+│   ├── settings/              # 设置页面逻辑
+│   ├── ui/                    # UI 组件
+│   │   ├── ui.js              # 状态栏/进度条/结果展示等
+│   │   ├── recognition.js     # 识别入口（Native → External API → fallback）
+│   │   ├── result.js          # 结果显示/分享/PNG/SVG导出
+│   │   ├── splash.js          # 启动加载进度
+│   │   └── custom-select.js   # 自定义下拉选择器
+│   └── styles/                # CSS 样式模块
+├── android/                   # Capacitor Android 项目
+│   └── app/src/main/java/com/latexsnipper/app/
+│       ├── MainActivity.java  # 入口 + NativeOcrBridge 注入
+│       └── ocr/               # Java ONNX OCR 引擎
+│           ├── NativeOcrBridge.java    # @JavascriptInterface 桥接
+│           ├── OnnxRunner.java         # ONNX Runtime 会话管理
+│           ├── OcrEngine.java          # 主编排器（formula/text/mixed）
+│           ├── DetPreProcess.java      # 公式检测预处理
+│           ├── FormulaDetPostProcess.java  # YOLOv8 后处理
+│           ├── FormulaRecPreProcess.java   # TrOCR 预处理
+│           ├── FormulaRecPostProcess.java  # 束搜索解码
+│           ├── FormulaLineSplitter.java    # 多行公式行分割
+│           ├── TextDetProcessor.java       # DBNet 轮廓追踪
+│           ├── TextRecPreProcess.java      # CRNN 预处理
+│           ├── TextRecPostProcess.java     # CTC 解码
+│           ├── DocOriPreProcess.java       # 方向检测
+│           └── ImagePreProcess.java        # 图像增强
+├── vite.config.js           # Vite 配置
+├── capacitor.config.json    # Capacitor 配置
 └── .github/workflows/
-    ├── build-apk.yml       # Android APK 构建
-    └── build-ios.yml       # iOS 模拟器构建
+    ├── build-apk.yml         # Android APK 构建
+    └── build-ios.yml         # iOS 模拟器构建
 ```
 
 ---
@@ -93,116 +82,116 @@ LaTeXSnipper_mobile/
 | 识别 | `#page-ocr` | 图片/PDF/拍照/手写识别，模式选择（公式/文本/混合） |
 | 编辑器 | `#page-editor` | MathLive 输入，MathJax 预览，复制 |
 | 历史 | `#page-history` | IndexedDB 列表，收藏筛选，点击填入编辑器 |
-| 设置 | `#page-settings` | 识别引擎选择、外部模型配置、预设、皮肤、语言、更新检查 |
+| 设置 | `#page-settings` | 识别引擎选择、加速模式、外部模型配置、预设、皮肤、语言、更新检查 |
 
 ---
 
-## 三、多语言系统
+## 三、识别引擎架构
 
-### 架构
+Android 端使用纯 Java ONNX Runtime 管线，桌面端 Python `mathcraft-ocr` 实现对标。
+
+### 公式识别 (formula mode)
+```
+图片 → autoOrient (EXIF + PP-LCNet) → FormulaDetPreProcess (768×768 letterbox)
+  → 公式检测 (YOLOv8) → 结果区域 → 每个区域:
+    → FormulaRecPreProcess (短边384+中心裁剪) → TrOCR 编码器(DeiT) → 束搜索解码(beam=3)
+    → LaTeX 修复 → 输出
+```
+
+### 文字识别 (text mode)
+```
+图片 → autoOrient → TextDetPreProcess (最长边960, stride32对齐)
+  → DBNet 推理 → Moore-Neighbor 轮廓追踪 → unclip → box_thresh=0.5
+  → 每个文本框 → TextRecPreProcess (BGR 48×320) → CRNN 推理 → CTC 解码
+  → 输出文本
+```
+
+### 混合模式 (mixed mode)
+```
+图片 → autoOrient → 公式检测 → 原图文字检测 → splitTextBoxAroundFormulas
+  → 公式段 → 公式行分割（投影→逐行识别→重组{aligned}）
+  → 文字段 → 直接 CRNN 识别
+  → 版面输出（行分组 + $$包裹 + 段落合并）
+```
+
+### 桥接通信
+
+```
+JS → window.NativeOcr.recognizeFormula(base64) → NativeOcrBridge (后台线程)
+  → OcrEngine → ONNX Runtime Android
+  → 结果 JSON → JS 轮询 getResult(key) 获取
+```
+
+---
+
+## 四、ONNX 模型清单
+
+| 模型 | 输入 | 输出 | 用途 |
+|------|------|------|------|
+| `mathcraft-mfd.onnx` | [1,3,768,768] | [1,6,N] | YOLOv8 公式检测 |
+| `encoder_model.onnx` | [1,3,384,384] | [1,577,384] | TrOCR 编码器 (DeiT) |
+| `decoder_model.onnx` | input_ids + hidden | logits | TrOCR 解码器 |
+| `ppocrv5_mobile_det.onnx` | [1,3,H,W] | [1,1,H,W] | DBNet 文字检测 |
+| `ppocrv5_mobile_rec.onnx` | [1,3,48,320] | [1,seq,vocab] | CRNN 文字识别 |
+| `chinese_detector.onnx` | [N,3,64,64] | [N,2] | 中文/公式分类 |
+| `pplcnet_doc_ori.onnx` | [1,3,224,224] | [1,4] | 0°/90°/180°/270° 方向检测 |
+
+---
+
+## 五、关键参数
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| det 置信度阈值 | 0.25 | 匹配桌面端 |
+| det NMS IoU | 0.45 | 匹配桌面端 |
+| rec max_tokens | 512 | 匹配桌面端 |
+| det thresh | 0.3 | RapidOCR 默认 |
+| box_thresh | 0.5 | RapidOCR 默认 |
+| unclip_ratio | 1.6 | RapidOCR 默认 |
+| min_text_score | 0.45 | 文字置信度过滤 |
+
+---
+
+## 六、多语言系统
 
 ```
 用户切换语言 → setLang(code) → 加载语言包 → translateDOM() 批量更新
                                   └→ onLangChange 回调（更新动态文本）
 ```
 
-### 使用方式
-
-**静态 HTML**：
-```html
-<button data-i18n="btn.saveSettings">保存设置</button>
-<!-- 含子元素的用 data-i18n-html -->
-<div data-i18n="recog.intro" data-i18n-html>...</div>
-<!-- 带标题的元素 -->
-<button data-i18n-title="theme.toggle" title="切换主题">
-```
-
-**动态 JS**：
-```js
-import { t } from './lang/i18n.js';
-el.textContent = t('status.ready');
-el.textContent = t('update.available', { version: '2.0.0' });
-```
-
-### 新增语言
-
-1. 复制 `zh-CN.js` 为 `新语言代码.js`
-2. 翻译所有键值
-3. 在 `i18n.js` 的 `LANG_MAP` 中注册
-4. 在 `index.html` 的语言下拉菜单中添加选项
-
----
-
-## 四、外部模型调用
-
-支持 OpenAI 兼容 API（`/v1/chat/completions`）和 MinerU 原生 API。
-预设值在 `src/main.js` 的 `PRESETS` 对象中配置。
-大图（>1MB）自动压缩到最长 1024px 再上传。
-
----
-
-## 五、更新检查
-
-- `src/update-checker.js`：后台自动检测（启动后 30s）
-- 设置页"检查更新"按钮：手动检查
-- 有新版本弹窗提示，可选择"此版本不再提醒"
-- 从 GitHub Releases API 获取版本信息
-
----
-
-## 六、识别流程
-
-```
-图片输入
-  → 外部模型？（设置中引擎 ≠ builtin）
-    → 是：processImageExternal() → POST API
-    → 否：
-      → mode = 'formula'  → 公式 OCR (encoder-decoder)
-      → mode = 'text'     → PP-OCRv5 文字检测 + 识别 / Tesseract
-      → mode = 'mixed'    → region-detect 版面分析 → 分别识别
-      → PDF               → 逐页渲染 → 逐页识别
-```
+- 静态 HTML：`data-i18n` / `data-i18n-html` / `data-i18n-title`
+- 动态 JS：`import { t } from './lang/i18n.js'`
+- 新增语言：复制 zh-CN.js → 翻译 → 在 LANG_MAP 注册 → 加 HTML 选项
 
 ---
 
 ## 七、构建与部署
 
 ```bash
-npm run dev          # Vite 开发服务器（:5174，带 COOP/COEP）
-npm run build        # 构建到 dist/
-npm run preview      # 预览构建产物
-
-# Android APK 本地构建（需要 Android Studio + Java 21）
-npx cap sync android
-cd android && ./gradlew assembleRelease
+npm run dev              # Vite 开发服务器（:5174）
+npm run build            # 构建到 dist/
+npx cap sync android     # 同步到 Android
+cd android && ./gradlew assembleDebug  # 编译 APK
 
 # GitHub Actions
 # Actions → Build Android APK → 输入版本号 + 勾选 Release → Run workflow
 ```
 
----
-
-## 八、APK 签名
-
-- CI 有 Secrets → 用用户提供的 keystore
-- CI 无 Secrets → 自动生成临时 keystore
-- 本地签名：`android/app/keystore.properties`
-- 本地 keystore：`release.keystore`
-- V1+V2+V3+V4 全方案签名
+### 本地测试模型
+```bash
+conda activate ppocr_finetune
+python -c "import onnxruntime as ort; print(ort.__version__, ort.get_available_providers())"
+```
 
 ---
 
-## 九、已知注意事项
+## 八、注意事项
 
 1. **MathLive 自定义元素** — `<mathlive-field>` 在部分 WebView 中不注册，改用 `new MathfieldElement()` 创建
 2. **相机按钮** — 必须用 `pointerdown` + `stopPropagation`，`click` 在 WebView 中不可靠
-3. **HTML ID 属性** — 不要用中文 ID，JS 引用靠英文 ID
-4. **COOP/COEP 头** — Capacitor 配置和 Vite 配置中都已加，启用多线程 WASM
-5. **iOS 构建** — 需要 Apple Developer（$99/年），CI 只能验证模拟器编译
-6. **`ios/` 目录** — CI 中 `rm -rf ios && npx cap add ios` 重建，不提交到仓库
-7. **角落触控** — 阈值 44px 起步（Apple HIG）
-8. **手写识别** — 深色模式自动反色，全画布直出不做裁剪
-9. **模型加载** — 所有模型内置在 `public/models/` 中，不依赖网络
-10. **国际化** — 所有文本必须通过 i18n 系统，禁止硬编码语言相关字符串
-11. **Tesseract WASM** — 浏览器版功能受限，部分参数会自动忽略（WARNING 不影响使用）
-12. **模型缓存** — 首次加载从本地文件读取到 WASM 内存，后续启用 Service Worker 缓存
+3. **COOP/COEP 头** — Capacitor 和 Vite 中已配置
+4. **iOS 构建** — 需要 Apple Developer（$99/年），CI 只能验证模拟器编译
+5. **模型加载** — 所有模型内置在资产文件中，不依赖网络
+6. **国际化** — 所有文本必须通过 i18n 系统
+7. **大图拍照** — >500KB 自动压缩到最长边 1920px
+8. **分享** — 三阶段降级（Capacitor Share → Web Share API → 剪贴板）

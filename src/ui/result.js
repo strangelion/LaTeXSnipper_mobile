@@ -86,23 +86,11 @@ export function copyResult() {
 
 export async function shareResult() {
   if (!els.resultCode) return;
-  const text = els.resultCode.textContent;
-  if (!navigator.share) { copyResult(); return; }
-  try {
-    const svg = els.mathPreview?.querySelector('svg');
-    const files = [];
-    if (svg) {
-      try {
-        const blob = await svgToPngBlob(svg);
-        if (blob) files.push(new File([blob], 'formula.png', { type: 'image/png' }));
-      } catch (_) { /* render failed */ }
-    }
-    await navigator.share({
-      title: 'LaTeXSnipper OCR Result',
-      text,
-      ...(files.length ? { files } : {}),
-    });
-  } catch (e) { /* user cancelled */ }
+  const { shareText } = await import('../shared/share.js');
+  await shareText(els.resultCode.textContent, {
+    title: 'LaTeXSnipper OCR Result',
+    dialogTitle: '分享识别结果',
+  });
 }
 
 // ── PDF page browser ──
@@ -164,22 +152,37 @@ export function initPDFNav() {
 
 // ── Export formula as PNG / SVG ──
 
-export function exportPNG() {
+export async function exportPNG() {
   const svg = els.mathPreview?.querySelector('svg');
   if (!svg) return;
-  svgToPngBlob(svg).then(blob => {
+  try {
+    const blob = await svgToPngBlob(svg);
     if (!blob) return;
-    downloadBlob(blob, 'formula.png');
-  }).catch(() => {});
+    const { shareText } = await import('../shared/share.js');
+    const file = new File([blob], 'formula.png', { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'LaTeXSnipper' });
+    } else {
+      await shareText(els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
+    }
+  } catch (_) { /* user cancelled */ }
 }
 
-export function exportSVG() {
+export async function exportSVG() {
   const svg = els.mathPreview?.querySelector('svg');
   if (!svg) return;
-  const clone = svg.cloneNode(true);
-  const data = new XMLSerializer().serializeToString(clone);
-  const blob = new Blob([data], { type: 'image/svg+xml' });
-  downloadBlob(blob, 'formula.svg');
+  try {
+    const clone = svg.cloneNode(true);
+    const data = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([data], { type: 'image/svg+xml' });
+    const file = new File([blob], 'formula.svg', { type: 'image/svg+xml' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'LaTeXSnipper' });
+    } else {
+      const { shareText } = await import('../shared/share.js');
+      await shareText(els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
+    }
+  } catch (_) { /* user cancelled */ }
 }
 
 async function svgToPngBlob(svg) {

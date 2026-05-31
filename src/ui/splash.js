@@ -3,13 +3,14 @@
 const MODEL_WEIGHTS = {
   '分词器': 2,
   '编码器模型': 50,
-  'Tesseract': 8,
   '文字检测': 6,
   '公式检测': 8,
   '区域检测': 6,
   '中文OCR': 10,
-  '英文OCR': 6,
   '方向检测': 4,
+  '原生引擎': 1,
+  '加载模型': 50,
+  '就绪': 0,
 };
 
 let splashProgress = {}; // modelName -> pct (0-100, -1=cached)
@@ -37,6 +38,8 @@ export function updateSplash(modelName, pct) {
   if (pctEl) pctEl.textContent = overall + '%';
 
   if (pct < 0) {
+    if (label) label.textContent = modelName;
+  } else if (pct < 0) {
     if (label) label.textContent = modelName + ' (已缓存)';
   } else if (pct === 100) {
     if (label) label.textContent = modelName + ' ✓';

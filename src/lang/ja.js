@@ -77,6 +77,14 @@ export default {
   "dev.clearLogs": "ログ消去",
   "dev.noLogs": "（ログなし）",
   "dev.cleared": "（ログ消去済）",
+  "dev.devMode": "開発者モード",
+  "dev.showLogs": "ログ表示",
+  "dev.exportLogs": "ログ出力",
+
+  "settings.accel": "アクセラレーション",
+  "settings.accelGpu": "GPU (NNAPI)",
+  "settings.accelCpu": "CPU (互換モード)",
+  "settings.accelHint": "GPU加速はAndroid NNAPI（OpenGL/Vulkan/NPU）を使用します。認識品質は同じで、より高速です。",
 
   "update.available": "新バージョン v{{version}} 利用可能",
   "update.download": "更新をダウンロード",

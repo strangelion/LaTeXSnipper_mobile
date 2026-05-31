@@ -87,6 +87,15 @@ export default {
   "dev.clearLogs": "Clear Logs",
   "dev.noLogs": "(no logs)",
   "dev.cleared": "(logs cleared)",
+  "dev.devMode": "Developer Mode",
+  "dev.showLogs": "View Logs",
+  "dev.exportLogs": "Export Logs",
+
+  // ── Acceleration ──
+  "settings.accel": "Acceleration",
+  "settings.accelGpu": "GPU (NNAPI)",
+  "settings.accelCpu": "CPU (Compatible)",
+  "settings.accelHint": "GPU acceleration uses Android NNAPI (OpenGL/Vulkan/NPU). Same accuracy, faster speed.",
 
   // ── Update ──
   "update.available": "New version v{{version}} available",

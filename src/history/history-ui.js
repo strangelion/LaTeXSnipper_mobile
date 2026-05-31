@@ -22,8 +22,8 @@ function copyToClipboard(text) {
 async function shareLatex(text) {
   const lines = text.split('\n').filter(l => l.trim());
   const formatted = lines.map(l => '$$\n' + l.trim() + '\n$$').join('\n');
-  if (!navigator.share) { copyToClipboard(text); return; }
-  try { await navigator.share({ title: 'LaTeXSnipper', text: formatted }); } catch (_) {}
+  const { shareText } = await import('../shared/share.js');
+  await shareText(formatted, { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
 }
 
 function measureSnap(wrap) {

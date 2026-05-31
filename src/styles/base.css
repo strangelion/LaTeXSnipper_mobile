@@ -235,7 +235,7 @@ a:hover { color: var(--accent-hover); }
 
 /* ── Page layout ── */
 #app { max-width: var(--max-w); margin: 0 auto; }
-.page { display: none; padding: 1.5rem 1.25rem calc(5rem + var(--safe-b)); }
+.page { display: none; padding: 1.5rem 1.25rem calc(6.5rem + var(--safe-b)); }
 .page.active { display: block; }
 
 /* ── Bottom tab bar ── */
@@ -287,9 +287,44 @@ a:hover { color: var(--accent-hover); }
   width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border-color);
   border-radius: 10px; background: var(--bg); color: var(--fg);
   font-size: 0.9rem; font-family: inherit; outline: none;
-  transition: border-color 0.2s; appearance: none;
+  transition: border-color 0.2s;
 }
 .set-input:focus, .set-select:focus { border-color: var(--accent); }
+/* ── Custom dropdown ── */
+.set-select-wrap {
+  position: relative; width: 100%;
+}
+.set-select-wrap .set-select { display: none; }
+.set-select-btn {
+  width: 100%; padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color); border-radius: 10px;
+  background: var(--bg); color: var(--fg);
+  font-size: 0.9rem; font-family: inherit; cursor: pointer;
+  text-align: left; user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: border-color 0.2s;
+}
+.set-select-btn:active { border-color: var(--accent); }
+.set-select-btn::after {
+  content: ''; width: 8px; height: 8px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg); margin-left: 8px; flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.set-select-btn.open::after { transform: rotate(-135deg); }
+.set-select-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  background: var(--bg); border: 1px solid var(--border-color);
+  border-radius: 10px; overflow: hidden; display: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.set-select-dropdown.show { display: block; }
+.set-option {
+  padding: 0.55rem 0.75rem; font-size: 0.88rem; color: var(--fg);
+  cursor: pointer; transition: background 0.1s;
+}
+.set-option:active { background: var(--accent); color: #fff; }
+.set-option.selected { color: var(--accent); font-weight: 500; }
 .set-hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; }
 
 /* ── Settings page radio-button groups ── */

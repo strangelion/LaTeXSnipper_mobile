@@ -77,6 +77,14 @@ export default {
   "dev.clearLogs": "로그 지우기",
   "dev.noLogs": "（로그 없음）",
   "dev.cleared": "（로그 삭제됨）",
+  "dev.devMode": "개발자 모드",
+  "dev.showLogs": "로그 보기",
+  "dev.exportLogs": "로그 내보내기",
+
+  "settings.accel": "가속 모드",
+  "settings.accelGpu": "GPU (NNAPI)",
+  "settings.accelCpu": "CPU (호환 모드)",
+  "settings.accelHint": "GPU 가속은 Android NNAPI(OpenGL/Vulkan/NPU)를 사용합니다. 인식 품질은 동일하며 더 빠릅니다.",
 
   "update.available": "새 버전 v{{version}} 사용 가능",
   "update.download": "업데이트 다운로드",

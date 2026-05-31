@@ -87,8 +87,8 @@ pre.result-code {
 .math-line:last-child { margin-bottom: 0; }
 [data-theme="dark"] .math-preview { background: #1a1d28; }
 
-.result-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
-.result-actions .ocr-btn { flex: 1 1 auto; min-width: 72px; font-size: 0.82rem; padding: 8px 12px; }
+.result-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-top: 0.75rem; }
+.result-actions .ocr-btn { font-size: 0.78rem; padding: 8px 4px; text-align: center; min-width: 0; }
 .ocr-btn {
   flex: 1; text-align: center;
   background: var(--card-bg); color: var(--accent);
@@ -118,7 +118,7 @@ pre.result-code {
 }
 .cam-modal.show { display: flex; }
 .cam-modal video { width: 100vw; height: 100vh; object-fit: cover; border-radius: 0; background: #000; }
-.cam-modal canvas { width: 100vw; height: 100vh; border-radius: 0; display: block; object-fit: contain; }
+.cam-modal canvas { display: block; border-radius: 0; background: #000; }
 .cam-modal { position: fixed; inset: 0; z-index: 200; background: #000; flex-direction: column; }
 .cam-modal .cam-actions { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 60px; }
 .cam-modal .cam-actions > * { pointer-events: auto; }
@@ -176,6 +176,26 @@ pre.result-code {
 }
 .cam-bottom-bar .cam-capture { background: rgba(255,255,255,0.9); color: #333; }
 .cam-bottom-bar .cam-close { background: rgba(255,255,255,0.2); color: #fff; }
+
+/* ── Rotation track — horizontal infinite slider ── */
+.cam-rotate-wrap {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 15;
+  display: none; flex-direction: column; align-items: center;
+  gap: 4px; padding-bottom: 8px;
+  pointer-events: none;
+}
+.cam-rotate-wrap.show { display: flex; }
+.cam-rotate-wrap .cam-bottom-bar { pointer-events: auto; }
+
+.cam-rotate-track {
+  position: relative; width: 92%; max-width: 360px; height: 48px;
+  pointer-events: auto; touch-action: none; cursor: ew-resize;
+  border-radius: 24px; overflow: hidden; user-select: none;
+}
+.cam-rotate-track canvas {
+  display: block; width: 100%; height: 100%; border-radius: 24px;
+  pointer-events: auto; background: rgba(0,0,0,0.35);
+}
 
 /* ── Install banner ── */
 .install-banner {

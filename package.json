@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",
+    "@capacitor/share": "^8.0.1",
     "idb": "^8.0.0",
+    "jszip": "^3.10.1",
     "mathjax": "^3.2.2",
     "mathlive": "^0.98.0",
     "onnxruntime-web": "1.21.0",

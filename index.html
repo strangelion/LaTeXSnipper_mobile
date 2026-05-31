@@ -114,12 +114,14 @@
             <button class="cam-mode-btn active" id="camCropModeRect" data-i18n="camera.cropRect">框选</button>
             <button class="cam-mode-btn" id="camCropModeLasso" data-i18n="camera.cropLasso">套索</button>
           </div>
-          <div class="cam-bottom-bar">
-            <button class="cam-btn cam-close" id="camCropRetake" data-i18n="camera.retake">重拍</button>
-            <button class="cam-btn cam-close" id="camCropRotate" data-i18n-title="camera.rotate" title="旋转">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            </button>
-            <button class="cam-btn cam-capture" id="camCropConfirm" data-i18n="camera.confirm">确认</button>
+          <div class="cam-rotate-wrap" id="camRotateOverlay">
+            <div class="cam-rotate-track" id="camRotateTrack">
+              <canvas id="camRotateCanvas"></canvas>
+            </div>
+            <div class="cam-bottom-bar">
+              <button class="cam-btn cam-close" id="camCropRetake" data-i18n="camera.retake">重拍</button>
+              <button class="cam-btn cam-capture" id="camCropConfirm" data-i18n="camera.confirm">确认</button>
+            </div>
           </div>
         </div>
       </div>
@@ -231,11 +233,13 @@
       <div class="settings-body">
         <div class="set-section">
           <div class="set-section-title" data-i18n="settings.engine">识别引擎</div>
-          <select class="set-select" id="setEngineSelect">
-            <option value="builtin" data-i18n="settings.engine.builtin">本地识别</option>
-            <option value="hybrid" selected data-i18n="settings.engine.hybrid">本地识别 + AI整理</option>
-            <option value="external" data-i18n="settings.engine.external">AI全托管</option>
-          </select>
+          <div class="set-select-wrap">
+            <select class="set-select" id="setEngineSelect">
+              <option value="builtin" selected data-i18n="settings.engine.builtin">本地识别</option>
+              <option value="hybrid" data-i18n="settings.engine.hybrid">本地识别 + AI整理</option>
+              <option value="external" data-i18n="settings.engine.external">AI全托管</option>
+            </select>
+          </div>
           <p class="set-hint" data-i18n="settings.engineHint">内置识别使用本地ONNX模型离线运行。AI整理可将识别结果发送到外部LLM纠错。</p>
         </div>
 
@@ -262,6 +266,7 @@
           </div>
         </div>
 
+
         <div class="set-section" id="polishSection" style="margin-top:1rem;">
           <div class="set-section-title" data-i18n="btn.aiPolish">AI 整理 (纠错/格式化)</div>
           <input class="set-input" id="setPolishBaseUrl" placeholder="https://api.deepseek.com">
@@ -273,23 +278,38 @@
         </div>
 
         <div class="set-section" style="margin-top:1rem;">
+          <div class="set-section-title" data-i18n="settings.accel">加速模式</div>
+          <div class="set-select-wrap">
+            <select class="set-select" id="setAccelSelect">
+              <option value="gpu" data-i18n="settings.accelGpu">GPU (NNAPI 加速)</option>
+              <option value="cpu" data-i18n="settings.accelCpu">CPU (兼容模式)</option>
+            </select>
+          </div>
+          <p class="set-hint" data-i18n="settings.accelHint" style="font-size:0.78rem;">GPU加速使用Android NNAPI，自动调用OpenGL/Vulkan NPU。识别效果与CPU一致，速度更快。</p>
+        </div>
+
+        <div class="set-section" style="margin-top:1rem;">
           <div class="set-section-title" data-i18n="settings.skin">皮肤</div>
-          <select class="set-select" id="setSkinSelect">
-            <option value="default">Material 蓝</option>
-            <option value="miui">MIUI 渐变</option>
-            <option value="ios">iOS 蓝</option>
-          </select>
+          <div class="set-select-wrap">
+            <select class="set-select" id="setSkinSelect">
+              <option value="default">Material 蓝</option>
+              <option value="miui">MIUI 渐变</option>
+              <option value="ios">iOS 蓝</option>
+            </select>
+          </div>
         </div>
 
         <div class="set-section" style="margin-top:1rem;">
           <div class="set-section-title" data-i18n="settings.language">语言 / Language</div>
-          <select class="set-select" id="setLangSelect">
-            <option value="zh-CN">中文</option>
-            <option value="zh-TW">繁體中文</option>
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-            <option value="ko">한국어</option>
-          </select>
+          <div class="set-select-wrap">
+            <select class="set-select" id="setLangSelect">
+              <option value="zh-CN">中文</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+            </select>
+          </div>
         </div>
 
         <div class="set-section" style="margin-top:1rem;">
@@ -308,7 +328,7 @@
           <label class="set-toggle">
             <input type="checkbox" id="setDevMode">
             <span class="set-toggle-track"></span>
-            开发者模式
+            <span data-i18n="dev.devMode">开发者模式</span>
           </label>
           <div id="devOptions" style="display:none;margin-top:0.6rem;">
             <label class="set-toggle">
@@ -318,8 +338,9 @@
             </label>
             <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
             <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
-              <button class="ocr-btn secondary" id="devShowLogs" style="flex:1;">查看日志</button>
-              <button class="ocr-btn secondary" id="devClearLogs" style="flex:1;">清空日志</button>
+              <button class="ocr-btn secondary" id="devShowLogs" data-i18n="dev.showLogs" style="flex:1;">查看日志</button>
+              <button class="ocr-btn secondary" id="devClearLogs" data-i18n="dev.clearLogs" style="flex:1;">清空日志</button>
+              <button class="ocr-btn secondary" id="devExportLogs" data-i18n="dev.exportLogs" style="flex:1;">导出日志</button>
             </div>
             <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;" data-i18n="btn.clearCache">清除模型缓存</button>
           </div>

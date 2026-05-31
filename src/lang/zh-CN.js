@@ -87,6 +87,16 @@ export default {
   "dev.clearLogs": "清空日志",
   "dev.noLogs": "(无日志)",
   "dev.cleared": "(日志已清空)",
+  "dev.devMode": "开发者模式",
+  "dev.showLogs": "查看日志",
+  "dev.exportLogs": "导出日志",
+  "dev.multiThread": "ONNX 多线程 (最多8核+SIMD)",
+
+  // ── Acceleration ──
+  "settings.accel": "加速模式",
+  "settings.accelGpu": "GPU (NNAPI 加速)",
+  "settings.accelCpu": "CPU (兼容模式)",
+  "settings.accelHint": "GPU加速使用Android NNAPI，自动调用OpenGL/Vulkan NPU。识别效果与CPU一致，速度更快。",
 
   // ── Update ──
   "update.available": "新版本 v{{version}} 可用",
@@ -163,7 +173,6 @@ export default {
   "settings.connection": "连接配置",
   "recog.privacy": "所有识别均在本地浏览器完成，图片不会上传",
   "recog.intro": "<strong>离线OCR：</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF、拍照和手写识别。",
-  "dev.multiThread": "ONNX 多线程 (最多8核+SIMD)",
   "settings.custom": "自定义",
   "recog.resultLabel": "结果",
   "btn.aiPolish": "AI 整理",

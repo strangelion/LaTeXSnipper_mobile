@@ -40,7 +40,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-35 build-tools;35.0.0'
+          packages: 'platforms;android-36 build-tools;36.0.0'
 
       - name: Generate release keystore
         run: |
@@ -115,12 +115,15 @@ jobs:
 
       - name: Verify APK
         run: |
-          APK="android/app/build/outputs/apk/release/app-release.apk"
-          if [ -f "$APK" ]; then
-            echo "Release APK size: $(du -sh "$APK" | cut -f1)"
-            echo "--- Signature scheme ---"
-            apksigner verify --verbose "$APK" 2>&1 || true
-          fi
+          # With ABI splits, APK names contain architecture
+          APK_DIR="android/app/build/outputs/apk/release"
+          echo "=== APK files ==="
+          ls -lh "$APK_DIR"/
+          echo "--- Architecture-specific APKs ---"
+          for apk in "$APK_DIR"/*.apk; do
+            echo "APK: $(basename "$apk") size: $(du -sh "$apk" | cut -f1)"
+            apksigner verify --verbose "$apk" 2>&1 | head -5 || true
+          done
 
       - name: Get version
         id: version
