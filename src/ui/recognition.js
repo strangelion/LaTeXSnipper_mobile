@@ -146,7 +146,7 @@ export async function processImage(file) {
       }
 
       // Extract text: formula/text modes use latex/text, mixed mode uses formattedText or regions
-      let text = result.latex || result.text || result.formattedText || '';
+      let text = result.latex || result.text || '';
       let confidence = result.confidence || 0;
 
       // Mixed mode: if formattedText is empty, fall back to combining region texts
