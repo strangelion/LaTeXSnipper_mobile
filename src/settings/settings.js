@@ -4,6 +4,7 @@
 import { isNativeOcrAvailable, OcrNative } from '../native/ocr-native.js';
 import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
 import Logger from '../shared/logger.js';
+import { shareFile } from '../shared/share.js';
 
 export function initSettings() {
   const extDiv = document.getElementById('extSettings');
@@ -179,6 +180,23 @@ export function initSettings() {
     langSelect.addEventListener('change', async () => { await setLang(langSelect.value); });
   }
 
+  async function refreshLogDisplay(devLogOutput) {
+    // Pull Java native logs
+    let nativeLogs = '';
+    try {
+      if (isNative() && window.NativeOcr.getLogs) {
+        nativeLogs = window.NativeOcr.getLogs() || '';
+      }
+    } catch (_) {}
+
+    const jsLines = Logger.getLastLines(200);
+    const combined = [];
+    if (nativeLogs) combined.push('=== Java Native Logs ===', nativeLogs);
+    if (jsLines.length) combined.push('=== JS Logs ===', jsLines.join('\n'));
+    devLogOutput.textContent = combined.length ? combined.join('\n') : t('dev.noLogs');
+    devLogOutput.style.display = '';
+  }
+
   // ═══ Developer options ═══
   const devMode = document.getElementById('setDevMode');
   const devOptions = document.getElementById('devOptions');
@@ -196,13 +214,13 @@ export function initSettings() {
   document.getElementById('devShowLogs')?.addEventListener('pointerdown', e => {
     e.preventDefault();
     if (!devLogOutput) return;
-    const lines = Logger.getLastLines(100);
-    devLogOutput.textContent = lines.length ? lines.join('\n') : t('dev.noLogs');
-    devLogOutput.style.display = '';
+    // Pull Java logs first, then show combined
+    refreshLogDisplay(devLogOutput);
   });
   document.getElementById('devClearLogs')?.addEventListener('pointerdown', e => {
     e.preventDefault();
     Logger.clear();
+    try { if (isNative() && window.NativeOcr.getLogs) window.NativeOcr.getLogs(); } catch (_) {}
     if (devLogOutput) { devLogOutput.textContent = t('dev.cleared'); }
   });
   const devExportBtn = document.getElementById('devExportLogs');
