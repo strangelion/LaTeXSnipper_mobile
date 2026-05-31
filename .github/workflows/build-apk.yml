@@ -16,6 +16,7 @@ on:
 
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+  GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g"'
 
 jobs:
   build-apk:
@@ -79,21 +80,26 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*') }}
-          restore-keys: gradle-${{ runner.os }}-
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
 
       - name: Set version
         run: |
           # Update package.json
           node -e "const p=require('./package.json');p.version='${{ inputs.version }}';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
-          # Update Android version
-          VER_CODE=$(echo ${{ inputs.version }} | tr -d '.')
+          # Update Android version — strip dots and strip leading zeros to avoid octal
+          VER_CODE=$(echo "${{ inputs.version }}" | node -e "process.stdin.on('data',d=>console.log(Number(d.toString().replace(/\./g,''))))")
           sed -i "s/versionCode .*/versionCode $VER_CODE/" android/app/build.gradle
           sed -i "s/versionName .*/versionName \"${{ inputs.version }}\"/" android/app/build.gradle
           echo "Version set to ${{ inputs.version }} (code: $VER_CODE)"
