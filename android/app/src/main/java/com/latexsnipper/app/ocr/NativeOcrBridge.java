@@ -66,11 +66,12 @@ public class NativeOcrBridge {
     /** JS calls this to retrieve accumulated native logs for export */
     @JavascriptInterface
     public String getLogs() {
-        synchronized (logBuffer) {
-            String logs = logBuffer.toString();
+        String logs;
+        synchronized (this) {
+            logs = logBuffer.toString();
             logBuffer.setLength(0);
-            return logs;
         }
+        return logs;
     }
 
     @JavascriptInterface

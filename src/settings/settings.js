@@ -181,13 +181,13 @@ export function initSettings() {
   }
 
   async function refreshLogDisplay(devLogOutput) {
-    // Pull Java native logs
+    // Pull Java native logs (synchronous, getLogs is @JavascriptInterface)
     let nativeLogs = '';
     try {
-      if (isNative() && window.NativeOcr.getLogs) {
+      if (isNative() && typeof window.NativeOcr !== 'undefined' && window.NativeOcr.getLogs) {
         nativeLogs = window.NativeOcr.getLogs() || '';
       }
-    } catch (_) {}
+    } catch (_) { nativeLogs = '[Failed to get native logs: ' + _.message + ']\n'; }
 
     const jsLines = Logger.getLastLines(200);
     const combined = [];
