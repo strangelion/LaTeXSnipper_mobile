@@ -38,16 +38,18 @@ export async function shareText(text, opts = {}) {
  * Share a file (Blob) using Capacitor Share + base64 file attachment.
  * Falls back to Web Share API, then triggers a download.
  * NEVER falls back to text share — users expect a file, not text.
+ *
+ * IMPORTANT: In WebView (Capacitor Android), the system "no apps can perform
+ * this action" dialog appears when Capacitor Share throws AND Web Share API
+ * throws with a File object. In that case, we silently fall through to a
+ * direct file download — no system app picker needed.
  */
 export async function shareFile(blob, filename, fallbackText = '', opts = {}) {
   const title = opts.title || 'LaTeXSnipper';
   const dialogTitle = opts.dialogTitle || '分享文件';
   const mimeType = blob.type || 'application/octet-stream';
 
-  // 1. Capacitor Share — try direct file sharing via base64
-  // IMPORTANT: Do NOT pass `text` alongside `files`. On some Android versions
-  // (especially via Capacitor bridge), the share sheet shows only `text` and
-  // ignores the file attachment entirely. We pass a minimal description instead.
+  // 1. Capacitor Share — try base64 file sharing
   if (CapacitorShare) {
     try {
       const base64 = await blobToBase64String(blob);
@@ -58,23 +60,15 @@ export async function shareFile(blob, filename, fallbackText = '', opts = {}) {
       });
       return;
     } catch (_) {
-      // Capacitor Share does not support base64 file sharing on all
-      // Android versions. Continue to Web Share API.
+      // Capacitor Share base64 failed. Continue to download fallback directly
+      // instead of trying Web Share API with a File — that would trigger
+      // "no apps can perform this action" on older Android versions.
     }
   }
 
-  // 2. Web Share API with File object
-  try {
-    const file = new File([blob], filename, { type: mimeType });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title });
-      return;
-    }
-  } catch (_) {}
-
-  // 3. Fallback: download the file.
-  // We do NOT fall back to text sharing — sharing a file and getting
-  // LaTeX text in the share sheet is a confusing user experience.
+  // 2. Direct download — no system share sheet needed.
+  // This is the most reliable path on Android WebView and avoids the
+  // "no apps can perform this action" error.
   downloadBlob(blob, filename);
 }
 
