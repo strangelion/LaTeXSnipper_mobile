@@ -5,14 +5,12 @@ import android.graphics.Bitmap;
 /**
  * FormulaRecPreProcess — image preprocessing for TrOCR formula recognition.
  * <p>
- * Pipeline: resize the SHORTER side to 384 (preserving aspect) → NO center-crop!
- * → normalize to [-1, 1] using mean=0.5 std=0.5.
- *
- * ViTImageProcessor {do_center_crop: false, do_resize: true, size: 384,
- *   resample: 3 (bicubic), rescale_factor: 1/255, mean: [0.5,0.5,0.5], std: [0.5,0.5,0.5]}
- *
- * The processor resizes so the shorter side = 384 (size param), and does NOT center-crop.
- * Bicubic interpolation matches LaTeXSnipper desktop.
+ * ViTImageProcessor config: do_resize=true, size=384, do_center_crop=false,
+ * do_normalize=true, image_mean=[0.5,0.5,0.5], image_std=[0.5,0.5,0.5],
+ * rescale_factor=1/255, resample=BICUBIC(3).
+ * <p>
+ * With do_center_crop=false and size={384,384}, the processor resizes
+ * directly to 384×384 (stretch), NOT preserve-aspect-ratio + pad.
  */
 public class FormulaRecPreProcess {
 
@@ -20,46 +18,21 @@ public class FormulaRecPreProcess {
 
     /**
      * Preprocess a Bitmap for the TrOCR encoder.
-     * Desktop ViTImageProcessor does:
-     *   1. Bicubic resize so shorter side = 384 (size, NOT crop_size!)
-     *   2. NO center crop (do_center_crop: false)
-     *   3. Rescale pixels to [0,1]: pixel / 255
-     *   4. Normalize: (pixel - mean) / std with mean=[0.5,0.5,0.5], std=[0.5,0.5,0.5]
-     *      => (pixel / 255 - 0.5) / 0.5 = (pixel * 2 / 255) - 1 → [-1, 1]
-     *   5. Bicubic resampling (resample=3 = PIL.Image.BICUBIC)
+     * Directly resize to 384×384 (matching ViTImageProcessor with size=384, no center-crop).
      *
      * @param bitmap Input bitmap (any size).
      * @return float array [3][384][384] in CHW layout, values in [-1, 1].
      */
     public static float[] run(Bitmap bitmap) {
-        int iw = bitmap.getWidth();
-        int ih = bitmap.getHeight();
-
-        // ViTImageProcessor: resize so short side = 384, the same as size param.
-        // The longer side is NOT padded — it's cropped by the model's positional encoding.
-        // BUT ONNX model expects fixed [3,384,384], so we must pad the longer side.
-        // IMPORTANT: Pad with 128 (mean pixel value = 0.5 in [0,1] space)
-        // NOT 0 (black) or 255 (white).
-        float scale = (float) IMG_SIZE / Math.min(iw, ih);
-        int newW = Math.round(iw * scale);
-        int newH = Math.round(ih * scale);
-
-        Bitmap resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true);
-        if (resized == bitmap)
+        // Direct stretch resize to exactly 384×384 (ViTImageProcessor size=384, no center-crop)
+        Bitmap resized = Bitmap.createScaledBitmap(bitmap, IMG_SIZE, IMG_SIZE, true);
+        if (resized == bitmap) {
             resized = bitmap.copy(Bitmap.Config.ARGB_8888, false);
-
-        // Pad with mean value 128 (0.5 in normalized space)
-        Bitmap canvas = Bitmap.createBitmap(IMG_SIZE, IMG_SIZE, Bitmap.Config.ARGB_8888);
-        android.graphics.Canvas cv = new android.graphics.Canvas(canvas);
-        cv.drawColor(android.graphics.Color.rgb(128, 128, 128));
-        int dx = (IMG_SIZE - newW) / 2;
-        int dy = (IMG_SIZE - newH) / 2;
-        cv.drawBitmap(resized, Math.max(0, dx), Math.max(0, dy), null);
-        if (resized != bitmap) resized.recycle();
+        }
 
         int[] argb = new int[IMG_SIZE * IMG_SIZE];
-        canvas.getPixels(argb, 0, IMG_SIZE, 0, 0, IMG_SIZE, IMG_SIZE);
-        canvas.recycle();
+        resized.getPixels(argb, 0, IMG_SIZE, 0, 0, IMG_SIZE, IMG_SIZE);
+        if (resized != bitmap) resized.recycle();
 
         final int n = IMG_SIZE * IMG_SIZE;
         float[] data = new float[3 * n];
