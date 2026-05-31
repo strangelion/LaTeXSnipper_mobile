@@ -73,10 +73,6 @@ public class OcrEngine {
             runner.loadTextRecModel(ctx);
             textRecPost.loadKeys(ctx);
             Log.d(TAG, "  text-rec loaded");
-            runner.loadRegionDetModel(ctx);
-            Log.d(TAG, "  region-det loaded");
-            runner.loadDocOriModel(ctx);
-            Log.d(TAG, "  doc-ori loaded");
             modelsLoaded = true;
             Log.d(TAG, "All models loaded (sync)");
         } catch (Exception e) {
