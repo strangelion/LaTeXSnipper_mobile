@@ -4,10 +4,6 @@
  * All logs are persisted to localStorage and can be exported as diagnostic ZIP.
  */
 
-import JSZipModule from 'jszip';
-import { shareFile } from './share.js';
-
-const JSZip = JSZipModule.default || JSZipModule;
 
 const MAX_LOG_LINES = 2000;
 const LOG_KEY = 'ls_log';
@@ -43,6 +39,43 @@ function push(level, tag, msg) {
     console.debug(`[${tag}] ${msg}`);
   }
 }
+
+// Override console.log/warn/error to capture into Logger buffer too.
+// Only captures APP messages (tag prefix), filters out 3rd-party noise.
+const _origLog = console.log;
+const _origWarn = console.warn;
+const _origError = console.error;
+
+console.log = function(...args) {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  const tagMatch = msg.match(/^\[([^\]]+)\]/);
+  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
+  // Also push to logger buffer (avoid recursion by calling push directly)
+  load();
+  logBuffer.push(`[${timestamp()}][INFO][${tag}] ${msg}`);
+  save();
+  _origLog.apply(console, args);
+};
+
+console.warn = function(...args) {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  const tagMatch = msg.match(/^\[([^\]]+)\]/);
+  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
+  load();
+  logBuffer.push(`[${timestamp()}][WARN][${tag}] ${msg}`);
+  save();
+  _origWarn.apply(console, args);
+};
+
+console.error = function(...args) {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  const tagMatch = msg.match(/^\[([^\]]+)\]/);
+  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
+  load();
+  logBuffer.push(`[${timestamp()}][ERROR][${tag}] ${msg}`);
+  save();
+  _origError.apply(console, args);
+};
 
 const Logger = {
   info(tag, msg) { push('INFO', tag, msg); try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog('[JS-INFO][' + tag + '] ' + msg); } catch(_){} },
@@ -86,7 +119,7 @@ const Logger = {
 
   getExportText() {
     load();
-    const lines = logBuffer.slice(-1000);
+    const lines = logBuffer.slice(-MAX_LOG_LINES);
     return [
       '=== LaTeXSnipper 调试日志 ===',
       `导出时间: ${new Date().toLocaleString('zh-CN')}`,
@@ -107,7 +140,7 @@ const Logger = {
     try { localStorage.removeItem(LOG_KEY); } catch (_) {}
   },
 
-  /** Export diagnostic ZIP with log, system info, settings, model info */
+/** Export diagnostic ZIP with log, system info, settings, model info */
   async exportAsZip() {
     const zip = new JSZip();
 
@@ -154,12 +187,14 @@ const Logger = {
     return await zip.generateAsync({ type: 'blob' });
   },
 
-  /** Share diagnostic ZIP via system share dialog */
+  /** Export diagnostic text file and share via system share dialog */
   async exportAndShare() {
-    const blob = await this.exportAsZip();
-    await shareFile(blob, 'latexsnipper-diagnostic.zip', '', {
-      title: 'LaTeXSnipper 诊断日志',
-      dialogTitle: '导出诊断日志',
+    const text = this.getExportText();
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const { shareFile } = await import('./share.js');
+    await shareFile(blob, 'latexsnipper-debug-log.txt', '', {
+      title: 'LaTeXSnipper 调试日志',
+      dialogTitle: '导出调试日志',
     });
   },
 };
