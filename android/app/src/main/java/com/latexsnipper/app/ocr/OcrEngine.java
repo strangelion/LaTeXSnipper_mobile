@@ -144,16 +144,13 @@ public class OcrEngine {
             Log.d(TAG, "DocOri: angle=" + orient.angle + "°, conf=" + String.format("%.2f", orient.confidence)
                 + " img=" + bitmap.getWidth() + "x" + bitmap.getHeight());
 
-            if (orient.angle == 0 || orient.confidence < 0.6f) return bitmap;
-
-            // The model predicts the direction the image is rotated.
-            // To correct, rotate opposite direction.
-            Log.d(TAG, "Auto-rotate: -" + orient.angle + "° (ccw)");
-            Matrix matrix = new Matrix();
-            matrix.postRotate(-orient.angle);
-            int w = bitmap.getWidth(), h = bitmap.getHeight();
-            Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, w, h, matrix, true);
-            return rotated;
+            // The model predicts rotation in [0,90,180,270]. The value is the angle
+            // to rotate the image back to upright. postRotate(positive) = clockwise.
+            // Model says 90: image is rotated 90° clockwise, needs -90° to correct.
+            // BUT: our test shows model consistently returns 90°, so just return bitmap.
+            if (orient.angle == 0 || orient.confidence < 0.6f || orient.angle == 90) return bitmap;
+            // For 180/270, do nop for now (model unreliable on photos)
+            return bitmap;
         } catch (Exception e) {
             Log.w(TAG, "Auto-orient failed", e);
             return bitmap;
