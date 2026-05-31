@@ -50,7 +50,7 @@ npx cap open android                # 在 Android Studio 中打开
 cd android && ./gradlew assembleDebug  # 构建 APK
 ```
 
-APK 约 192MB（含全部模型和离线资源）。
+APK 约 270MB（含全部模型和离线资源）。
 
 ## 桌面端 vs 移动端引擎对比
 
