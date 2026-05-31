@@ -82,7 +82,7 @@ export function initEditor() {
 
   // Create MathfieldElement programmatically (same as desktop app)
   mathField = new MathfieldElement();
-  mathField.mathVirtualKeyboardPolicy = 'onfocus';
+  mathField.mathVirtualKeyboardPolicy = 'sandboxed';
   mathField.smartFence = true;
   mathField.smartMode = false;
   mathField.style.minHeight = '220px';

@@ -361,7 +361,10 @@ public class OcrEngine {
                 detOutput, detPre.origW, detPre.origH,
                 detPre.scale, detPre.padX, detPre.padY);
 
-            // Step 2: Text detection on ORIGINAL (unmasked) image, matching desktop behavior
+            // Step 2: Text detection on original (unmasked) image, matching desktop behavior.
+            // DBNet runs on the original image so it produces contiguous text boxes
+            // spanning both text and formula regions. splitAroundFormulas (Step 3)
+            // then splits these boxes into text/formula segments for recognition.
             TextDetProcessor.PreResult textDetPre = TextDetProcessor.preprocess(bitmap);
             List<TextDetProcessor.Box> textBoxes;
             try {
@@ -394,7 +397,7 @@ public class OcrEngine {
                         if (latex != null && !latex.isEmpty()) {
                             results.add(new MixedResult.RegionResult(
                                 seg.x, textBox.y, seg.w, textBox.h, "formula",
-                                latex, 0.5f));
+                                latex, 0.5f, seg.formulaKind));
                         }
                     } else {
                         String recText = recognizeTextSegment(crop);
@@ -402,7 +405,7 @@ public class OcrEngine {
                         if (recText != null && !recText.isEmpty()) {
                             results.add(new MixedResult.RegionResult(
                                 seg.x, textBox.y, seg.w, textBox.h, "text",
-                                recText, 0.5f));
+                                recText, 0.5f, "text"));
                         }
                     }
                     crop.recycle();
@@ -432,7 +435,7 @@ public class OcrEngine {
                 crop.recycle();
                 if (latex != null && !latex.isEmpty()) {
                     results.add(new MixedResult.RegionResult(
-                        fb.x, fb.y, fb.w, fb.h, "formula", latex, 0.5f));
+                        fb.x, fb.y, fb.w, fb.h, "formula", latex, 0.5f, fb.label));
                 }
             }
 
@@ -447,7 +450,7 @@ public class OcrEngine {
             if (fr.text != null && !fr.text.isEmpty()) {
                 results.add(new MixedResult.RegionResult(
                     0, 0, bitmap.getWidth(), bitmap.getHeight(), "formula",
-                    fr.text, fr.confidence));
+                    fr.text, fr.confidence, "isolated"));
             }
         }
 
@@ -466,19 +469,26 @@ public class OcrEngine {
     }
 
     /**
-     * Format regions into structured text with $$ for formulas and paragraph grouping.
-     * Simplified version of desktop annotate_blocks() + merge_blocks_text().
+     * Format regions into structured text with $/$$ for formulas and paragraph grouping.
+     * Matches desktop merge_blocks_text() + group_blocks_into_lines():
+     * - "isolated" formulas → $$\n...\n$$ (display math, gets its own line)
+     * - "embedding" formulas → $...$ (inline math, stays on same line)
+     * - y-overlap uses line union box (not first element only, matching desktop _union_box)
      */
     private String formatLayoutOutput(List<MixedResult.RegionResult> regions) {
         if (regions.isEmpty()) return "";
         if (regions.size() == 1) {
             MixedResult.RegionResult r = regions.get(0);
-            if ("formula".equals(r.type))
-                return "$$\n" + r.text + "\n$$";
+            if ("formula".equals(r.type)) {
+                if ("isolated".equals(r.formulaKind))
+                    return "$$\n" + r.text + "\n$$";
+                return "$" + r.text + "$";
+            }
             return r.text;
         }
 
         // Group into lines by y-overlap (0.45 threshold, matching desktop)
+        // Desktop group_blocks_into_lines uses the union box of ALL blocks in the line.
         List<List<MixedResult.RegionResult>> lines = new ArrayList<>();
         lines.add(new ArrayList<>());
         lines.get(0).add(regions.get(0));
@@ -487,9 +497,19 @@ public class OcrEngine {
             MixedResult.RegionResult curr = regions.get(i);
             boolean added = false;
             for (List<MixedResult.RegionResult> line : lines) {
-                MixedResult.RegionResult first = line.get(0);
-                int yOverlap = Math.min(first.y + first.h, curr.y + curr.h) - Math.max(first.y, curr.y);
-                int minH = Math.min(first.h, curr.h);
+                // Compute union box of all regions in this line (desktop _union_box)
+                int ux = line.get(0).x, uy = line.get(0).y;
+                int ux2 = line.get(0).x + line.get(0).w, uy2 = line.get(0).y + line.get(0).h;
+                for (MixedResult.RegionResult r : line) {
+                    ux = Math.min(ux, r.x);
+                    uy = Math.min(uy, r.y);
+                    ux2 = Math.max(ux2, r.x + r.w);
+                    uy2 = Math.max(uy2, r.y + r.h);
+                }
+                int uH = uy2 - uy;
+
+                int yOverlap = Math.min(uy2, curr.y + curr.h) - Math.max(uy, curr.y);
+                int minH = Math.min(uH, curr.h);
                 if (minH > 0 && (float) yOverlap / minH >= 0.45f) {
                     line.add(curr);
                     line.sort((a, b) -> a.x - b.x);
@@ -504,22 +524,36 @@ public class OcrEngine {
             }
         }
 
-        // Build output: adjacent text merged with space, formulas wrapped in $$, lines separated by \n
+        // Build output: adjacent text merged with space,
+        // "embedding" (inline) formulas wrapped in $, "isolated" (display) in $$\n...\n$$
         StringBuilder output = new StringBuilder();
         for (int li = 0; li < lines.size(); li++) {
             List<MixedResult.RegionResult> line = lines.get(li);
             StringBuilder lineText = new StringBuilder();
+            boolean hasIsolated = false;
 
             for (MixedResult.RegionResult r : line) {
                 if ("formula".equals(r.type)) {
-                    if (lineText.length() > 0
-                        && lineText.charAt(lineText.length() - 1) != '\n') {
+                    String t = r.text.trim();
+                    if (t.isEmpty()) continue;
+                    if ("isolated".equals(r.formulaKind)) {
+                        hasIsolated = true;
+                        if (lineText.length() > 0
+                            && lineText.charAt(lineText.length() - 1) != '\n') {
+                            lineText.append(' ');
+                        }
+                        lineText.append("$$\n").append(t).append("\n$$");
+                        lineText.append(' ');
+                    } else {
+                        // inline/embedding formula: $...$ (standard LaTeX inline math)
+                        if (lineText.length() > 0
+                            && lineText.charAt(lineText.length() - 1) != '\n') {
+                            lineText.append(' ');
+                        }
+                        lineText.append('$').append(t).append('$');
                         lineText.append(' ');
                     }
-                    lineText.append("$$\n").append(r.text).append("\n$$");
-                    lineText.append(' ');
                 } else {
-                    // Text: trim trailing whitespace, add space separator
                     String t = r.text.trim();
                     if (!t.isEmpty()) {
                         if (lineText.length() > 0
@@ -531,11 +565,21 @@ public class OcrEngine {
                 }
             }
 
-            if (li > 0) output.append('\n');
-            output.append(lineText.toString().trim());
+            // Desktop: isolated formulas trigger line_sep wrapping around the line
+            String merged = lineText.toString().trim();
+            if (!merged.isEmpty()) {
+                if (hasIsolated) {
+                    merged = "\n" + merged + "\n";
+                }
+                if (li > 0) output.append('\n');
+                output.append(merged);
+            }
         }
 
-        return output.toString();
+        // Collapse triple newlines (matching desktop _collapse_line_separators)
+        String result = output.toString();
+        while (result.contains("\n\n\n")) result = result.replace("\n\n\n", "\n\n");
+        return result.trim();
     }
 
     /** Paint formula regions white on a copy of the bitmap. Retained for internal use. */
@@ -545,7 +589,7 @@ public class OcrEngine {
         android.graphics.Paint paint = new android.graphics.Paint();
         paint.setColor(android.graphics.Color.WHITE);
         paint.setStyle(android.graphics.Paint.Style.FILL);
-        int margin = 2;
+        int margin = 8;
         for (FormulaDetPostProcess.Box fb : formulaBoxes) {
             int x = Math.max(0, fb.x - margin);
             int y = Math.max(0, fb.y - margin);
@@ -587,7 +631,7 @@ public class OcrEngine {
                     List<SegInterval> replacements = new ArrayList<>();
                     if (leftW > 6)
                         replacements.add(new SegInterval(s.x, leftW, false));
-                    replacements.add(new SegInterval(fb.x, fb.w, true));
+                    replacements.add(new SegInterval(fb.x, fb.w, true, fb.label));
                     if (rightW > 6)
                         replacements.add(new SegInterval(rightX, rightW, false));
                     segs.remove(i);
@@ -621,8 +665,12 @@ public class OcrEngine {
     private static class SegInterval {
         final int x, w;
         final boolean isFormula;
+        final String formulaKind; // "embedding" or "isolated" for formula segments; "" for text
         SegInterval(int x, int w, boolean isFormula) {
-            this.x = x; this.w = w; this.isFormula = isFormula;
+            this(x, w, isFormula, "");
+        }
+        SegInterval(int x, int w, boolean isFormula, String formulaKind) {
+            this.x = x; this.w = w; this.isFormula = isFormula; this.formulaKind = formulaKind;
         }
     }
 
@@ -1420,12 +1468,18 @@ public class OcrEngine {
             public final String type; // "formula" or "text"
             public final String text;
             public final float confidence;
+            public final String formulaKind; // "embedding" (inline), "isolated" (display), or "text" for text regions
 
             public RegionResult(int x, int y, int w, int h, String type, String text, float confidence) {
+                this(x, y, w, h, type, text, confidence, "embedding");
+            }
+
+            public RegionResult(int x, int y, int w, int h, String type, String text, float confidence, String formulaKind) {
                 this.x = x; this.y = y; this.w = w; this.h = h;
                 this.type = type;
                 this.text = text;
                 this.confidence = confidence;
+                this.formulaKind = formulaKind;
             }
         }
     }

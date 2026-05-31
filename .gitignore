@@ -46,4 +46,8 @@ pp-ocr-train/
 
 # Test scripts (local only, not for production)
 test_onnx_local.py
-test_*
+.claude/test-before-deploy
+test_48h.png
+test_detect.js
+test_upload.png
+test_output/

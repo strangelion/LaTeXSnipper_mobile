@@ -179,7 +179,9 @@ public class NativeOcrBridge {
     public String recognizeMixed(String base64Image) {
         return launchAsync("mixed", base64Image, (bitmap) -> {
             OcrEngine.MixedResult mixed = ocrEngine.recognizeMixed(bitmap);
-            StringBuilder sb = new StringBuilder("{\"done\":true,\"regions\":[");
+            StringBuilder sb = new StringBuilder("{\"done\":true,\"text\":\"");
+            sb.append(escapeJson(mixed.formattedText != null ? mixed.formattedText : ""));
+            sb.append("\",\"regions\":[");
             for (int i = 0; i < mixed.regions.size(); i++) {
                 if (i > 0) sb.append(",");
                 OcrEngine.MixedResult.RegionResult r = mixed.regions.get(i);

@@ -17,7 +17,7 @@ function renderMathPreview(latex) {
   if (lines.length === 0) { els.mathPreview.classList.remove('show'); return; }
   els.mathPreview.innerHTML = '';
   Promise.all(lines.map(line =>
-    MathJax.tex2svgPromise(line, { display: true }).catch(() => null)
+    MathJax.tex2svgPromise(normalizeMixedLine(line), { display: true }).catch(() => null)
   )).then(nodes => {
     nodes.forEach(node => {
       if (node) {
@@ -29,6 +29,74 @@ function renderMathPreview(latex) {
     });
     els.mathPreview.classList.add('show');
   }).catch(() => { els.mathPreview.classList.remove('show'); });
+}
+
+/**
+ * Normalize a mixed text+formula line for MathJax rendering.
+ *
+ * MathJax.tex2svgPromise("hello $x^2$ world") treats the whole string as math
+ * mode (wrapped in \[...\] for display), so bare $ is a literal character.
+ * We need to convert:
+ *   text outside $...$ → \text{...}
+ *   content inside $...$ → stays as math
+ *   pure display math ($$...$$) → unchanged (already a display-only line)
+ *
+ * Examples:
+ *   "hello $x^2$ world"  →  "\text{hello } x^2 \text{ world}"
+ *   "just plain text"    →  "\text{just plain text}"
+ *   "$$\nf(x)dx\n$$"     →  unchanged
+ */
+function normalizeMixedLine(line) {
+  if (line.startsWith('$$') && line.endsWith('$$')) return line;
+
+  const parts = [];
+  let remaining = line;
+
+  while (remaining.length > 0) {
+    const openIdx = remaining.indexOf('$');
+    if (openIdx === -1) {
+      // Remaining text
+      parts.push('\\text{' + escapeTextForMath(remaining) + '}');
+      break;
+    }
+    if (openIdx + 1 < remaining.length && remaining[openIdx + 1] === '$') {
+      // $$ — shouldn't appear mid-line, pass through
+      parts.push(remaining);
+      break;
+    }
+    // Text before inline math
+    if (openIdx > 0) {
+      parts.push('\\text{' + escapeTextForMath(remaining.substring(0, openIdx)) + '}');
+    }
+    remaining = remaining.substring(openIdx + 1);
+    const closeIdx = remaining.indexOf('$');
+    if (closeIdx === -1) {
+      // Unclosed $ — treat rest as math
+      parts.push(remaining);
+      break;
+    }
+    // Math content
+    parts.push(remaining.substring(0, closeIdx));
+    remaining = remaining.substring(closeIdx + 1);
+  }
+
+  return parts.join(' ').trim();
+}
+
+/**
+ * Escape TeX special characters that would break inside \text{} in math mode.
+ * Order matters: backslash first, then other chars, so \textbackslash doesn't
+ * get its braces mangled.
+ */
+function escapeTextForMath(text) {
+  return text
+    .replace(/\\/g, '\\textbackslash ')
+    .replace(/%/g, '\\%')
+    .replace(/#/g, '\\#')
+    .replace(/&/g, '\\&')
+    .replace(/\$/g, '\\$')
+    .replace(/{/g, '\\{')
+    .replace(/}/g, '\\}');
 }
 
 // ── Result display ──

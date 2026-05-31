@@ -48,9 +48,11 @@ async function processPDFNative(file, onProgress) {
 
   const Ocr = OcrNative;
     const result = await Ocr.recognizeMixed({ image: base64 });
-    const text = result.regions?.map(r => r.text).filter(Boolean).join('\n') || '';
+    // Mixed native now returns "text" (formattedText from Java layout engine).
+    // Fall back to raw region texts only if formatted text is empty.
+    const mixedText = result.text || result.regions?.map(r => r.text).filter(Boolean).join('\n') || '';
     const latex = result.regions?.filter(r => r.type === 'formula').map(r => r.text).join(' \\\\ ') || '';
-    pages.push({ latex: latex || text, confidence: result.confidence || 0.5 });
+    pages.push({ latex: mixedText || latex, confidence: result.confidence || 0.5 });
   }
 
   return {

@@ -27,7 +27,8 @@
 .calc-toolbar {
   display: grid; grid-template-columns: repeat(5, 1fr);
   gap: 4px; margin-top: 0.5rem;
-  position: sticky; bottom: calc(65px + var(--safe-b));
+  position: sticky;
+  bottom: calc(45px + var(--safe-b, 0px));
   background: var(--bg); padding: 6px; border-radius: var(--card-radius);
   border: 1px solid var(--border-color); z-index: 5;
 }

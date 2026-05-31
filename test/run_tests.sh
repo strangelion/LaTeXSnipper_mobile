@@ -21,27 +21,37 @@ echo "════════════════════════�
 
 # ═══ 1. 公式检测 (YOLOv8) ═══
 echo ""
-echo "─── [1/5] Formula Detection (YOLOv8) ───"
+echo "─── [1/7] Formula Detection (YOLOv8) ───"
 python test/test_formula_det.py && pass || fail "formula detection"
 
 # ═══ 2. 公式识别 (TrOCR) ═══
 echo ""
-echo "─── [2/5] Formula Recognition (TrOCR) ───"
+echo "─── [2/7] Formula Recognition (TrOCR) ───"
 python test/test_formula_rec.py && pass || fail "formula recognition"
 
 # ═══ 3. 文字检测 (DBNet) ═══
 echo ""
-echo "─── [3/5] Text Detection (DBNet) ───"
+echo "─── [3/7] Text Detection (DBNet) ───"
 python test/test_text_det.py && pass || fail "text detection"
 
 # ═══ 4. 文字识别 (CRNN) ═══
 echo ""
-echo "─── [4/5] Text Recognition (CRNN) ───"
+echo "─── [4/7] Text Recognition (CRNN) ───"
 python test/test_text_rec.py && pass || fail "text recognition"
 
-# ═══ 5. 方向检测 (PP-LCNet) ═══
+# ═══ 5. 文字识别管线 (DBNet + CRNN 端到端) ═══
 echo ""
-echo "─── [5/5] Orientation (PP-LCNet) ───"
+echo "─── [5/7] Text Recognition Pipeline (DBNet → CRNN end-to-end) ───"
+python test/test_text_rec_pipeline.py && pass || fail "text rec pipeline"
+
+# ═══ 6. 混合识别布局 (splitAroundFormulas + formatLayoutOutput) ═══
+echo ""
+echo "─── [6/7] Mixed Recognition Layout Logic ───"
+python test/test_mixed_rec_layout.py && pass || fail "mixed rec layout"
+
+# ═══ 7. 方向检测 (PP-LCNet) ═══
+echo ""
+echo "─── [7/7] Orientation (PP-LCNet) ───"
 python test/test_orientation.py && pass || fail "orientation"
 
 # ═══ 总结 ═══
