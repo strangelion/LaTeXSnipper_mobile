@@ -46,7 +46,7 @@ function push(level, tag, msg) {
 
 const Logger = {
   info(tag, msg) { push('INFO', tag, msg); try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog('[JS-INFO][' + tag + '] ' + msg); } catch(_){} },
-  warn(tag, msg) { push('WARN', tag, msg); try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog(timestamp() + ' [JS-WARN][' + tag + '] ' + msg); } catch(_){} },
+  warn(tag, msg) { push('WARN', tag, msg); try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog('[JS-WARN][' + tag + '] ' + msg); } catch(_){} },
   error(tag, msg, err) {
     let text = msg;
     if (err) {
@@ -54,7 +54,7 @@ const Logger = {
       if (err.stack) text += '\n' + err.stack.split('\n').slice(0, 5).join('\n');
     }
     push('ERROR', tag, text);
-    try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog(timestamp() + ' [JS-ERROR][' + tag + '] ' + text); } catch(_){}
+    try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog('[JS-ERROR][' + tag + '] ' + text); } catch(_){}
   },
 
   /**
