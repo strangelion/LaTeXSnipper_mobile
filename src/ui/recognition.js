@@ -83,9 +83,9 @@ export async function processImage(file) {
   // ── Native mode (Android) ──
   if (isNative()) {
     try {
-      // Compress image before sending to native (camera photos can be huge)
-      const compressed = await compressImage(file, 1920);
-      const base64 = await fileToBase64(compressed);
+      // Pass original file to native — Java side handles all preprocessing/resize
+      // (compressImage only runs for camera output > 500KB)
+      const base64 = await fileToBase64(file);
       const mode = window.__recogMode?.() || 'formula';
       const Ocr = OcrNative;
 
@@ -221,8 +221,8 @@ async function processImageExternal(file, settings) {
  * Returns a compressed File/Blob suitable for OCR.
  */
 async function compressImage(file, maxDimension = 1920) {
-  // Only compress large images (camera photos)
-  if (file.size < 500 * 1024) return file; // < 500KB skip
+  // Only compress camera output (original > 500KB). Portrait files go via original path.
+  if (file.size < 500 * 1024) return file;
 
   const img = await createImageBitmap(file);
   let w = img.width, h = img.height;
