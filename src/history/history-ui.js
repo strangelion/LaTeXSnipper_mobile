@@ -186,25 +186,31 @@ export async function renderHistoryList(filter = 'all') {
 
   listEl.innerHTML = results.map(r => {
     const isFav = r.favorite ? ' active' : '';
-    const favLabel = r.favorite ? '取消收藏' : '收藏';
+    const favLabel = r.favorite ? t('history.favorite') : t('history.delete');
+    const sourceMap = {
+      pdf: t('history.sourcePDF'),
+      camera: t('history.sourceCamera'),
+      handwrite: t('history.sourceHandwrite'),
+    };
+    const sourceLabel = sourceMap[r.source] || t('history.sourceFile');
     return `<div class="history-item-wrap">
-      <div class="hi-swipe-label left">删除</div>
+      <div class="hi-swipe-label left">${t('history.delete')}</div>
       <div class="hi-swipe-label right">${favLabel}</div>
       <div class="hi-swipe-bg">
         <div class="hi-swipe-left">
-          <button class="hi-swipe-btn" data-action="del-swipe" data-id="${r.id}">删除</button>
+          <button class="hi-swipe-btn" data-action="del-swipe" data-id="${r.id}">${t('history.delete')}</button>
         </div>
         <div class="hi-swipe-spacer"></div>
         <div class="hi-swipe-right">
-          <button class="hi-swipe-btn" data-action="share" data-id="${r.id}">分享</button>
-          <button class="hi-swipe-btn" data-action="copy" data-id="${r.id}">复制</button>
-          <button class="hi-swipe-btn" data-action="del-swipe" data-id="${r.id}">删除</button>
+          <button class="hi-swipe-btn" data-action="share" data-id="${r.id}">${t('btn.share')}</button>
+          <button class="hi-swipe-btn" data-action="copy" data-id="${r.id}">${t('editor.copyLatex')}</button>
+          <button class="hi-swipe-btn" data-action="del-swipe" data-id="${r.id}">${t('history.delete')}</button>
         </div>
       </div>
       <div class="history-item" data-id="${r.id}">
         <div class="hi-latex">${escapeHtml(r.latex.substring(0, 120))}${r.latex.length > 120 ? '…' : ''}</div>
         <div class="hi-meta">
-          <span class="hi-tag">${r.source}</span>
+          <span class="hi-tag">${sourceLabel}</span>
           <span>${new Date(r.createdAt).toLocaleString()}</span>
           <span>${(r.confidence * 100).toFixed(0)}%</span>
           <button class="hi-fav${isFav}" data-action="fav" data-id="${r.id}">★</button>
