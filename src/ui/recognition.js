@@ -111,12 +111,15 @@ export async function processImage(file) {
       setStatus('processing', '正在识别…', true);
       showProgress('识别中', 0);
 
-      // Simulated progress while waiting for async result
+      // Smooth progress (always increase, never decrease)
       let progressVal = 0;
       const progressTimer = setInterval(() => {
-        progressVal = Math.min(85, progressVal + Math.random() * 8);
+        // Steady increase: start fast, slow down as it approaches 85%
+        const remaining = 85 - progressVal;
+        const increment = Math.max(0.5, remaining * 0.12);
+        progressVal = Math.min(85, progressVal + increment);
         showProgress('识别中', Math.round(progressVal));
-      }, 300);
+      }, 500);
 
       let result;
       if (mode === 'formula') {

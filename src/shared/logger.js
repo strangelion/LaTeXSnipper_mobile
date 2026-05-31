@@ -1,19 +1,19 @@
 /**
- * Logger — centralized debug logging with persistence.
- * Records system info, errors, model loading, and recognition details.
- * All logs are persisted to localStorage and can be exported from settings.
+ * Logger — centralized debug logging for both JS and Java (NativeOcr) layers.
+ * All logs from Java are posted via @JavascriptInterface to the JS log buffer.
+ * All logs are persisted to localStorage and can be exported as diagnostic ZIP.
  */
 
-    // Static import ensures JSZip is bundled correctly by Vite
 import JSZipModule from 'jszip';
+import { shareFile } from './share.js';
+
 const JSZip = JSZipModule.default || JSZipModule;
 
-const MAX_LOG_LINES = 1000;
+const MAX_LOG_LINES = 2000;
 const LOG_KEY = 'ls_log';
 
 let logBuffer = [];
 
-/** Reload log buffer from localStorage */
 function load() {
   try {
     const saved = localStorage.getItem(LOG_KEY);
@@ -56,7 +56,17 @@ const Logger = {
     push('ERROR', tag, text);
   },
 
-  /** Log system info at startup */
+  /**
+   * Accept logs from Java NativeOcr via @JavascriptInterface.
+   * Called from NativeOcrBridge.exportLogs() which pumps accumulated Java logs.
+   */
+  ingestJavaLogs(line) {
+    if (!line) return;
+    load();
+    logBuffer.push(line);
+    save();
+  },
+
   logSystemInfo() {
     load();
     logBuffer.push('═══════════════════════════════════════');
@@ -73,10 +83,9 @@ const Logger = {
     save();
   },
 
-  /** Get all log text for export */
   getExportText() {
     load();
-    const lines = logBuffer.slice(-500);
+    const lines = logBuffer.slice(-1000);
     return [
       '=== LaTeXSnipper 调试日志 ===',
       `导出时间: ${new Date().toLocaleString('zh-CN')}`,
@@ -87,7 +96,6 @@ const Logger = {
     ].join('\n');
   },
 
-  /** Get last N lines for display */
   getLastLines(n = 100) {
     load();
     return logBuffer.slice(-n);
@@ -98,50 +106,52 @@ const Logger = {
     try { localStorage.removeItem(LOG_KEY); } catch (_) {}
   },
 
-  /** Export all diagnostic info as a ZIP blob (uses JSZip) */
+  /** Export diagnostic ZIP with log, system info, settings, model info */
   async exportAsZip() {
     const zip = new JSZip();
 
-    // 1. Main log
-    zip.file('latexsnipper-log.txt', this.getExportText());
+    // 1. Main log (latest 2000 lines)
+    zip.file('debug-log.txt', this.getExportText());
 
-    // 2. System info JSON
+    // 2. System info
     const sysInfo = {
-      time: new Date().toLocaleString('zh-CN'),
+      exportTime: new Date().toLocaleString('zh-CN'),
       platform: typeof window.NativeOcr !== 'undefined' ? 'Android' : 'Browser',
       userAgent: navigator.userAgent,
       language: navigator.language,
       hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
       deviceMemory: navigator.deviceMemory ? navigator.deviceMemory + 'GB' : 'unknown',
       nativeOcr: typeof window.NativeOcr !== 'undefined' ? 'YES' : 'NO',
-      capacitor: typeof window.Capacitor !== 'undefined' ? 'YES' : 'NO',
-      online: navigator.onLine,
-      localStorage: (() => { try { return !!localStorage; } catch(_) { return false; } })(),
     };
-    zip.file('system-info.json', JSON.stringify(sysInfo, null, 2));
+    zip.file('system.json', JSON.stringify(sysInfo, null, 2));
 
-    // 3. Saved settings
+    // 3. Settings (redacted)
     try {
       const settings = JSON.parse(localStorage.getItem('ls_settings') || '{}');
-      // Redact API keys
       if (settings.apiKey) settings.apiKey = settings.apiKey.substring(0, 8) + '...';
       if (settings.polishApiKey) settings.polishApiKey = settings.polishApiKey.substring(0, 8) + '...';
       zip.file('settings.json', JSON.stringify(settings, null, 2));
     } catch (_) {}
 
-    // 4. Model info
-    const modelInfo = {
+    // 4. Model manifest
+    zip.file('models.json', JSON.stringify({
       formulaDetection: 'mathcraft-mfd.onnx (YOLOv8)',
       formulaRecognition: 'encoder_model.onnx + decoder_model.onnx (TrOCR)',
       textDetection: 'ppocrv5_mobile_det.onnx (DBNet)',
       textRecognition: 'ppocrv5_mobile_rec.onnx (CRNN)',
-      regionDetection: 'chinese_detector.onnx',
       docOrientation: 'pplcnet_doc_ori.onnx',
-    };
-    zip.file('model-info.json', JSON.stringify(modelInfo, null, 2));
+    }, null, 2));
 
-    // Generate blob
     return await zip.generateAsync({ type: 'blob' });
+  },
+
+  /** Share diagnostic ZIP via system share dialog */
+  async exportAndShare() {
+    const blob = await this.exportAsZip();
+    await shareFile(blob, 'latexsnipper-diagnostic.zip', '', {
+      title: 'LaTeXSnipper 诊断日志',
+      dialogTitle: '导出诊断日志',
+    });
   },
 };
 

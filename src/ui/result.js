@@ -175,11 +175,11 @@ export async function exportSVG() {
     const clone = svg.cloneNode(true);
     const data = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([data], { type: 'image/svg+xml' });
+    const { shareText } = await import('../shared/share.js');
     const file = new File([blob], 'formula.svg', { type: 'image/svg+xml' });
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: 'LaTeXSnipper' });
     } else {
-      const { shareText } = await import('../shared/share.js');
       await shareText(els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
     }
   } catch (_) { /* user cancelled */ }

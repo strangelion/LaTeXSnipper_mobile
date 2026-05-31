@@ -62,7 +62,9 @@ public class TextRecPostProcess {
     public DecodeResult ctcDecode(float[] logits, long[] dims) {
         int seqLen = (int) dims[1];
         int vocabSize = (int) dims[2];
-        int spaceId = keys.size() + 1; // Last valid index + 1 = space
+        // RapidOCR: blank=0, keys are 1-indexed, space at len(keys)+1
+        // keys[0] = ideographic space (U+3000), keys[1..] = real chars
+        int spaceId = keys.size() + 1; // Index of actual space token
 
         StringBuilder text = new StringBuilder();
         int prev = -1;

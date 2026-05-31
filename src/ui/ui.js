@@ -145,12 +145,12 @@ export async function initModels(onProgress) {
 
     // Load models (background thread on Java, poll until ready)
     setStatus('loading', '正在加载模型，请耐心等待…', true);
-    if (updateSplash) updateSplash('加载模型', 5);
+    OcrNative._loadProgress = 5;
 
-    // Show progress while loading (estimate based on time)
+    // Show progress while loading (fast ramp to prevent 6% spike)
     const progressInterval = setInterval(() => {
-      if (updateSplash) updateSplash('加载模型', Math.min(90, OcrNative._loadProgress || 5));
-    }, 500);
+      if (updateSplash) updateSplash('加载模型', Math.min(95, OcrNative._loadProgress || 5));
+    }, 200);
 
     const t0 = performance.now();
     const loaded = await loadModelsAndWait(180000);

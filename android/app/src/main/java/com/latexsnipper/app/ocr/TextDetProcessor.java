@@ -111,7 +111,7 @@ public class TextDetProcessor {
         List<Box> candidates = new ArrayList<>();
 
         for (List<int[]> contour : contours) {
-            if (contour.size() < 6) continue;  // min 6 points for a meaningful contour
+            if (contour.size() < 4) continue;  // min 4 points for a meaningful contour
 
             // Real area via Shoelace formula
             float area = shoelaceArea(contour);
@@ -119,7 +119,7 @@ public class TextDetProcessor {
 
             // Real perimeter via cumulative edge length
             float perimeter = contourPerimeter(contour);
-            if (perimeter < 1) continue;
+            if (perimeter < 0.5) continue;
 
             // Unclip distance = area * unclip_ratio / perimeter  (RapidOCR formula)
             float dist = area * UNCLIP_RATIO / perimeter;
@@ -196,7 +196,7 @@ public class TextDetProcessor {
                 int idx = y * w + x;
                 if (binary[idx] == 1 && !visited[idx]) {
                     List<int[]> contour = traceContour(binary, w, h, x, y, visited);
-                    if (contour != null && contour.size() >= 6) {
+                    if (contour != null && contour.size() >= 4) {
                         contours.add(contour);
                     }
                 }
@@ -255,7 +255,7 @@ public class TextDetProcessor {
             dir = nextDir;
         }
 
-        if (contour.size() < 6) return null;
+        if (contour.size() < 4) return null;
         return contour;
     }
 

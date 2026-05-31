@@ -1,10 +1,9 @@
 // Settings module — engine, presets, skin, AI polish, update check
 // Imported once in main.js. All DOM IDs are in index.html.
 
-import Logger from '../shared/logger.js';
 import { isNativeOcrAvailable, OcrNative } from '../native/ocr-native.js';
 import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
-import { shareText } from '../shared/share.js';
+import Logger from '../shared/logger.js';
 
 export function initSettings() {
   const extDiv = document.getElementById('extSettings');
@@ -213,8 +212,8 @@ export function initSettings() {
     if (devExportBtn.disabled) return;
     devExportBtn.disabled = true;
     try {
-      const text = Logger.getExportText();
-      await shareText(text, { title: 'LaTeXSnipper 诊断日志', dialogTitle: '导出诊断日志' });
+      // Export ALL diag info as ZIP via share
+      await Logger.exportAndShare();
     } catch (err) {
       alert('导出失败: ' + (err.message || err));
     }

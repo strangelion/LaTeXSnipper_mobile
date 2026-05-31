@@ -21,7 +21,7 @@ import java.util.List;
 public class OcrEngine {
 
     private static final String TAG = "OcrEngine";
-    private static final float MIN_TEXT_SCORE = 0.45f;  // Desktop text confidence threshold
+    private static final float MIN_TEXT_SCORE = 0.45f;  // Desktop min_text_score
 
     private final OnnxRunner runner;
     private final FormulaRecPostProcess recPostProc;
@@ -170,6 +170,7 @@ public class OcrEngine {
      */
     public RecognizeResult recognizeFormula(Bitmap bitmap) {
         long t0 = System.currentTimeMillis();
+        Log.d(TAG, "recognizeFormula start " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
         // Step 1: Formula detection (find formula regions)
         DetPreProcess.Result detPre = DetPreProcess.run(bitmap);
@@ -194,6 +195,7 @@ public class OcrEngine {
         List<FormulaDetPostProcess.Box> regions = FormulaDetPostProcess.run(
             detOutput, detPre.origW, detPre.origH,
             detPre.scale, detPre.padX, detPre.padY);
+        Log.d(TAG, "FormulaDet: " + regions.size() + " regions");
 
         long t1 = System.currentTimeMillis();
 
@@ -248,6 +250,8 @@ public class OcrEngine {
             // Decoder (beam search)
             FormulaRecPostProcess.DecodeResult decResult = recPostProc.decode(
                 runner, encOutput, encDims);
+            Log.d(TAG, "FormulaRec: '" + decResult.latex + "' conf=" + decResult.confidence
+                + " tokens=" + decResult.numTokens);
 
             long ms = System.currentTimeMillis() - t0;
             return new RecognizeResult(decResult.latex, decResult.confidence, 1, (int) ms);
@@ -268,6 +272,7 @@ public class OcrEngine {
      */
     public RecognizeResult recognizeText(Bitmap bitmap) {
         long t0 = System.currentTimeMillis();
+        Log.d(TAG, "recognizeText start " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
         // Step 1: Text detection
         TextDetProcessor.PreResult detPre = TextDetProcessor.preprocess(bitmap);
@@ -280,6 +285,7 @@ public class OcrEngine {
 
             textBoxes = TextDetProcessor.postprocess(probMap,
                 detPre.height, detPre.width, detPre.scale, detPre.origW, detPre.origH);
+            Log.d(TAG, "TextDet: " + textBoxes.size() + " boxes");
 
             // Fallback: if no boxes, try with lower threshold (treat as single text region)
             if (textBoxes.isEmpty()) {
@@ -306,6 +312,9 @@ public class OcrEngine {
                 long[] dims = tensorShape(recResult, runner.getTextRecOutputName());
 
                 TextRecPostProcess.DecodeResult decoded = textRecPost.ctcDecode(logits, dims);
+                Log.d(TAG, "TextRec box " + box.x + "," + box.y + ": '" + decoded.text
+                    + "' conf=" + decoded.confidence
+                    + " dims=" + dims[0] + "," + dims[1] + "," + dims[2]);
 
                 if (!decoded.text.isEmpty() && decoded.confidence >= MIN_TEXT_SCORE) {
                     if (fullText.length() > 0 && !fullText.toString().endsWith("\n")) {

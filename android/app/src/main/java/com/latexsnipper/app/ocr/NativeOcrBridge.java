@@ -82,10 +82,16 @@ public class NativeOcrBridge {
 
     private String launchAsync(String type, String base64Image, Recognizer rec) {
         String key = type + "_" + (callCounter++);
+        final String logKey = key;
+        Log.d(TAG, "Starting " + type + " (key=" + logKey + ")");
         executor.submit(() -> {
             try {
                 boolean[] exifApplied = new boolean[1];
+                long t0 = System.currentTimeMillis();
                 Bitmap bitmap = decodeImageWithOrientation(base64Image, exifApplied);
+                Log.d(TAG, type + " decode=" + (System.currentTimeMillis()-t0) + "ms "
+                    + bitmap.getWidth() + "x" + bitmap.getHeight()
+                    + " exif=" + exifApplied[0]);
 
                 // Only run ONNX auto-orient if EXIF didn't already correct the image
                 if (!exifApplied[0]) {
@@ -96,12 +102,14 @@ public class NativeOcrBridge {
                     }
                 }
 
+                t0 = System.currentTimeMillis();
                 String result = rec.run(bitmap);
                 bitmap.recycle();
+                Log.d(TAG, type + " done in " + (System.currentTimeMillis()-t0) + "ms");
                 pendingResult = result;
                 pendingKey = key;
             } catch (Exception e) {
-                Log.e(TAG, type + " failed", e);
+                Log.e(TAG, type + " FAILED (key=" + logKey + ")", e);
                 pendingResult = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
                 pendingKey = key;
             }
@@ -302,10 +310,26 @@ public class NativeOcrBridge {
 
     private static String escapeJson(String s) {
         if (s == null) return "";
-        return s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        StringBuilder sb = new StringBuilder(s.length() + 16);
+        for (int i = 0; i < s.length(); i++) {
+            int cp = s.codePointAt(i);
+            if (cp > 0xFFFF) { i++; } // skip low surrogate for supplementary chars
+            switch (cp) {
+                case '\\': sb.append("\\\\"); break;
+                case '"':  sb.append("\\\""); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                case '\b': sb.append("\\b"); break;
+                case '\f': sb.append("\\f"); break;
+                default:
+                    if (cp < 0x20) {
+                        sb.append(String.format("\\u%04x", cp));
+                    } else {
+                        sb.appendCodePoint(cp);
+                    }
+            }
+        }
+        return sb.toString();
     }
 }
