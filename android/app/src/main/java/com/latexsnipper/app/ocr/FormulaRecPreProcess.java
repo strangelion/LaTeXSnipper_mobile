@@ -35,31 +35,26 @@ public class FormulaRecPreProcess {
         int iw = bitmap.getWidth();
         int ih = bitmap.getHeight();
 
-        // Resize so the SHORTER side = IMG_SIZE (MATCHES ViTImageProcessor.do_center_crop=false)
-        // The processor uses size as the target for the shorter side, NOT a crop size.
-        // Shape becomes (384, 384*something) for wide images, or (384*something, 384) for tall.
-        // Actually, ViTImageProcessor with size=384 and do_center_crop=false:
-        //   "resize images so that the short side is 384, the other side may vary."
+        // ViTImageProcessor: resize so short side = 384, the same as size param.
+        // The longer side is NOT padded — it's cropped by the model's positional encoding.
+        // BUT ONNX model expects fixed [3,384,384], so we must pad the longer side.
+        // IMPORTANT: Pad with 128 (mean pixel value = 0.5 in [0,1] space)
+        // NOT 0 (black) or 255 (white).
         float scale = (float) IMG_SIZE / Math.min(iw, ih);
         int newW = Math.round(iw * scale);
         int newH = Math.round(ih * scale);
 
-        // Use BICUBIC resampling (Bitmap.createScaledBitmap uses bilinear — closest available)
         Bitmap resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true);
         if (resized == bitmap)
             resized = bitmap.copy(Bitmap.Config.ARGB_8888, false);
 
-        // The result may be >384 on the long side. We need to PAD the short side with zeros
-        // to make it exactly 384×384 for ONNX. ViT expects fixed [3,384,384].
-        // Pad with the mean pixel value (0.5 → 128) rather than 0 to minimize boundary artifacts.
+        // Pad with mean value 128 (0.5 in normalized space)
         Bitmap canvas = Bitmap.createBitmap(IMG_SIZE, IMG_SIZE, Bitmap.Config.ARGB_8888);
         android.graphics.Canvas cv = new android.graphics.Canvas(canvas);
-        // Fill with grey (128 = mean pixel value after rescale)
         cv.drawColor(android.graphics.Color.rgb(128, 128, 128));
-        // Center the resized image
         int dx = (IMG_SIZE - newW) / 2;
         int dy = (IMG_SIZE - newH) / 2;
-        cv.drawBitmap(resized, dx, dy, null);
+        cv.drawBitmap(resized, Math.max(0, dx), Math.max(0, dy), null);
         if (resized != bitmap) resized.recycle();
 
         int[] argb = new int[IMG_SIZE * IMG_SIZE];
