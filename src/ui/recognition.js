@@ -64,6 +64,8 @@ async function processPDFNative(file, onProgress) {
 // ── Main entry ──
 
 export async function processImage(file) {
+  // Ensure clean state: reset progress BEFORE any recognition attempt
+  hideProgress();
   hideResult();
   if (els.errorMsg) els.errorMsg.style.display = 'none';
 
