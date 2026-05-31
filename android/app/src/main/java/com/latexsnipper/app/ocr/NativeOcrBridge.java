@@ -194,7 +194,8 @@ public class NativeOcrBridge {
                   .append("\",\"confidence\":").append(r.confidence)
                   .append("}");
             }
-            sb.append("],\"timeMs\":").append(mixed.timeMs).append("}");
+            sb.append("],\"confidence\":").append(mixed.confidence)
+              .append(",\"timeMs\":").append(mixed.timeMs).append("}");
             return sb.toString();
         });
     }

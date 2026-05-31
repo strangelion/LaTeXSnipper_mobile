@@ -294,7 +294,8 @@ public class OcrEngine {
 
         // Step 2: Recognize each text box
         StringBuilder fullText = new StringBuilder();
-        float avgConf = 0;
+        float confSum = 0;
+        int confCount = 0;
 
         for (TextDetProcessor.Box box : textBoxes) {
             Bitmap region = cropBitmap(bitmap, box.x, box.y, box.w, box.h);
@@ -316,7 +317,8 @@ public class OcrEngine {
                         fullText.append('\n');
                     }
                     fullText.append(decoded.text);
-                    avgConf += decoded.confidence;
+                    confSum += decoded.confidence;
+                    confCount++;
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Text recognition failed for box", e);
@@ -325,7 +327,7 @@ public class OcrEngine {
             }
         }
 
-        if (textBoxes.size() > 0) avgConf /= textBoxes.size();
+        float avgConf = confCount > 0 ? confSum / confCount : 0;
 
         long ms = System.currentTimeMillis() - t0;
         Log.d(TAG, String.format("Text rec: %d boxes in %dms, conf=%.2f",
@@ -350,6 +352,8 @@ public class OcrEngine {
     public MixedResult recognizeMixed(Bitmap bitmap) {
         long t0 = System.currentTimeMillis();
         List<MixedResult.RegionResult> results = new ArrayList<>();
+        float totalConf = 0;
+        int confCount = 0;
 
         // Step 1: Formula detection
         DetPreProcess.Result detPre = DetPreProcess.run(bitmap);
@@ -388,24 +392,30 @@ public class OcrEngine {
                     if (seg.isFormula) {
                         // Use line splitter for tall formulas (multi-line), fallback to single for simple ones
                         String latex;
+                        float conf = 0.5f;
                         if (crop.getHeight() > crop.getWidth() * 0.8 || crop.getHeight() > 100) {
                             latex = FormulaLineSplitter.recognizeMultiLine(crop, runner, recPostProc);
                         } else {
                             RecognizeResult fr = recognizeFormulaFullImage(crop);
                             latex = fr.text;
+                            conf = fr.confidence;
                         }
                         if (latex != null && !latex.isEmpty()) {
                             results.add(new MixedResult.RegionResult(
                                 seg.x, textBox.y, seg.w, textBox.h, "formula",
-                                latex, 0.5f, seg.formulaKind));
+                                latex, conf, seg.formulaKind));
+                            totalConf += conf;
+                            confCount++;
                         }
                     } else {
-                        String recText = recognizeTextSegment(crop);
+                        TextRecResult textSeg = recognizeTextSegment(crop);
                         // Filter low-confidence text (desktop min_text_score=0.45)
-                        if (recText != null && !recText.isEmpty()) {
+                        if (textSeg != null && textSeg.text != null && !textSeg.text.isEmpty()) {
                             results.add(new MixedResult.RegionResult(
                                 seg.x, textBox.y, seg.w, textBox.h, "text",
-                                recText, 0.5f, "text"));
+                                textSeg.text, textSeg.confidence, "text"));
+                            totalConf += textSeg.confidence;
+                            confCount++;
                         }
                     }
                     crop.recycle();
@@ -436,6 +446,8 @@ public class OcrEngine {
                 if (latex != null && !latex.isEmpty()) {
                     results.add(new MixedResult.RegionResult(
                         fb.x, fb.y, fb.w, fb.h, "formula", latex, 0.5f, fb.label));
+                    totalConf += 0.5f;
+                    confCount++;
                 }
             }
 
@@ -451,8 +463,13 @@ public class OcrEngine {
                 results.add(new MixedResult.RegionResult(
                     0, 0, bitmap.getWidth(), bitmap.getHeight(), "formula",
                     fr.text, fr.confidence, "isolated"));
+                totalConf += fr.confidence;
+                confCount++;
             }
         }
+
+        // Compute overall mixed confidence as average of all regions
+        float mixedConf = confCount > 0 ? totalConf / confCount : 0;
 
         // Sort by reading order (top-to-bottom, left-to-right)
         results.sort((a, b) -> a.y != b.y ? a.y - b.y : a.x - b.x);
@@ -461,10 +478,11 @@ public class OcrEngine {
         String formattedText = formatLayoutOutput(results);
 
         long ms = System.currentTimeMillis() - t0;
-        Log.d(TAG, String.format("Mixed rec: %d regions in %dms", results.size(), ms));
+        Log.d(TAG, String.format("Mixed rec: %d regions in %dms, conf=%.2f", results.size(), ms, mixedConf));
 
         MixedResult mixed = new MixedResult(results, (int) ms);
         mixed.formattedText = formattedText;
+        mixed.confidence = mixedConf;
         return mixed;
     }
 
@@ -643,8 +661,17 @@ public class OcrEngine {
         return segs;
     }
 
+    /** Result of a single text segment recognition — text + confidence. */
+    private static class TextRecResult {
+        final String text;
+        final float confidence;
+        TextRecResult(String text, float confidence) {
+            this.text = text; this.confidence = confidence;
+        }
+    }
+
     /** Recognize a single text segment — direct CRNN on the crop (skip nested detection). */
-    private String recognizeTextSegment(Bitmap crop) {
+    private TextRecResult recognizeTextSegment(Bitmap crop) {
         try {
             float[] recInput = TextRecPreProcess.run(crop);
             ai.onnxruntime.OrtSession.Result recResult = runner.runTextRec(
@@ -653,12 +680,14 @@ public class OcrEngine {
             if (dims.length >= 3) {
                 float[] logits = tensorData(recResult, runner.getTextRecOutputName());
                 TextRecPostProcess.DecodeResult dec = textRecPost.ctcDecode(logits, dims);
-                return dec.confidence >= MIN_TEXT_SCORE ? dec.text : "";
+                return new TextRecResult(
+                    dec.confidence >= MIN_TEXT_SCORE ? dec.text : "",
+                    dec.confidence);
             }
         } catch (Exception e) {
             Log.e(TAG, "Text segment rec failed", e);
         }
-        return "";
+        return new TextRecResult("", 0);
     }
 
     /** Internal segment interval for splitting text around formulas. */
@@ -1456,6 +1485,7 @@ public class OcrEngine {
     public static class MixedResult {
         public final List<RegionResult> regions;
         public final int timeMs;
+        public float confidence;
         public String formattedText = "";
 
         public MixedResult(List<RegionResult> regions, int timeMs) {
