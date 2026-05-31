@@ -86,9 +86,12 @@ public class NativeOcrBridge {
 
         new Thread(() -> {
             try {
+                addLog("MODEL", "Loading models synchronously...");
                 ocrEngine.loadAllModelsSync(context);
+                addLog("MODEL", "All models loaded successfully");
                 Log.d(TAG, "All models loaded");
             } catch (Exception e) {
+                addLog("MODEL", "FAILED: " + e.getMessage());
                 Log.e(TAG, "loadModels failed", e);
             }
         }, "model-loader").start();
@@ -120,6 +123,8 @@ public class NativeOcrBridge {
                 Log.d(TAG, type + " decode=" + (System.currentTimeMillis()-t0) + "ms "
                     + bitmap.getWidth() + "x" + bitmap.getHeight()
                     + " exif=" + exifApplied[0]);
+                addLog("OCR", type + " decode " + (System.currentTimeMillis()-t0) + "ms "
+                    + bitmap.getWidth() + "x" + bitmap.getHeight());
 
                 // Only run ONNX auto-orient if EXIF didn't already correct the image
                 if (!exifApplied[0]) {
@@ -127,13 +132,17 @@ public class NativeOcrBridge {
                     if (oriented != bitmap) {
                         bitmap.recycle();
                         bitmap = oriented;
+                        addLog("OCR", "Auto-rotate applied: " + bitmap.getWidth() + "x" + bitmap.getHeight());
                     }
+                } else {
+                    addLog("OCR", "EXIF already oriented: " + bitmap.getWidth() + "x" + bitmap.getHeight());
                 }
 
                 t0 = System.currentTimeMillis();
                 String result = rec.run(bitmap);
                 bitmap.recycle();
                 Log.d(TAG, type + " done in " + (System.currentTimeMillis()-t0) + "ms");
+                addLog("OCR", type + " done " + (System.currentTimeMillis()-t0) + "ms");
                 pendingResult = result;
                 pendingKey = key;
             } catch (Exception e) {
