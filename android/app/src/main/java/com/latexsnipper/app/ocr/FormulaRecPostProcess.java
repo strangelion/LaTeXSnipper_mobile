@@ -30,8 +30,6 @@ public class FormulaRecPostProcess {
     private static final int BOS_ID = 1;
     private static final int DECODER_START_ID = 2;
     private static final int EOS_ID = 2;
-    // Desktop uses eos_id (2) for padding finished beams, NOT pad_id (0)
-    private static final int PAD_FINISHED_ID = EOS_ID;
 
     // Beam search
     private static final int BEAM_WIDTH = 3;
