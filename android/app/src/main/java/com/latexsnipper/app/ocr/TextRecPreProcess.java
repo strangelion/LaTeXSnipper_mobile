@@ -5,13 +5,12 @@ import android.graphics.Bitmap;
 /**
  * TextRecPreProcess — preprocessing for PP-OCRv5 CRNN text recognition.
  * <p>
- * Matches text-recognition.js :: preprocessText():
- * <ul>
- *   <li>Resize height to 48, width = min(ceil(48 * aspect), 320)</li>
- *   <li>Pad with black (zeros) to [3, 48, 320]</li>
- *   <li>BGR channel order (PaddlePaddle/OpenCV convention)</li>
- *   <li>Normalize: (pixel/255 - 0.5) / 0.5 → [-1, 1]</li>
- * </ul>
+ * Matches RapidOCR TextRecognizer.resize_norm_img():
+ *   - Resize width by aspect ratio, keep height=48
+ *   - Cap width at 320 (but RapidOCR uses max_wh_ratio over all images in batch)
+ *   - Pad RIGHT with zeros (black) to [3, 48, 320] — not centered!
+ *   - BGR channel order, normalize to (pixel/255 - 0.5) / 0.5 → [-1, 1]
+ *   - Output CHW float array
  */
 public class TextRecPreProcess {
 
@@ -20,9 +19,11 @@ public class TextRecPreProcess {
 
     /**
      * Preprocess a Bitmap for CRNN text recognition.
+     * Matches RapidOCR resize_norm_img: keeps height=48, scales width by ratio,
+     * pads RIGHT with black, BGR order.
      *
      * @param bitmap Input bitmap (cropped text line).
-     * @return float array [3][48][320] in CHW layout, BGR order.
+     * @return float array [3][48][320] in CHW layout, BGR order, values [-1, 1].
      */
     public static float[] run(Bitmap bitmap) {
         int iw = bitmap.getWidth();
@@ -36,7 +37,8 @@ public class TextRecPreProcess {
         Bitmap resized = Bitmap.createScaledBitmap(bitmap, targetW, TARGET_H, true);
         Bitmap canvas = Bitmap.createBitmap(MAX_W, TARGET_H, Bitmap.Config.ARGB_8888);
 
-        // Black background (matches np.zeros padding)
+        // Black background (matches np.zeros padding in RapidOCR)
+        // RapidOCR pads on the RIGHT: padding_im[:, :, 0:resized_w] = resized_image
         android.graphics.Canvas cv = new android.graphics.Canvas(canvas);
         cv.drawColor(android.graphics.Color.BLACK);
         cv.drawBitmap(resized, 0, 0, null);
