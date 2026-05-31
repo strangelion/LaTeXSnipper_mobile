@@ -45,6 +45,27 @@ public class NativeOcrBridge {
 
     private volatile boolean loadingStarted = false;
 
+    // Accumulated logs for JS export
+    private final StringBuilder logBuffer = new StringBuilder();
+    private static final int MAX_LOG_BUFFER = 50000;
+
+    private synchronized void addLog(String tag, String msg) {
+        String line = System.currentTimeMillis() + "|" + tag + "|" + msg;
+        if (logBuffer.length() + line.length() > MAX_LOG_BUFFER) {
+            logBuffer.delete(0, logBuffer.length() / 4);
+        }
+        logBuffer.append(line).append("\n");
+    }
+
+    @JavascriptInterface
+    public String getLogs() {
+        synchronized (logBuffer) {
+            String logs = logBuffer.toString();
+            logBuffer.setLength(0);
+            return logs;
+        }
+    }
+
     @JavascriptInterface
     public boolean isReady() {
         return ocrEngine.isReady();

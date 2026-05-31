@@ -43,10 +43,18 @@ export function showResult(latex, confidence, extra) {
     : '置信度 ' + confPct + '%';
   els.resultCard.classList.add('show');
   if (els.copyBtn) els.copyBtn.style.display = 'block';
-  ['shareBtn', 'sendToEditorBtn', 'aiPolishBtn'].forEach(id => {
+  // Only show AI polish when engine != builtin (i.e. has external API configured)
+  const hasExternal = (() => {
+    try { const s = JSON.parse(localStorage.getItem('ls_settings') || '{}'); return s.engine && s.engine !== 'builtin'; } catch (_) { return false; }
+  })();
+  ['shareBtn', 'sendToEditorBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.style.display = 'block';
   });
+  if (hasExternal) {
+    const polishBtn = document.getElementById('aiPolishBtn');
+    if (polishBtn) polishBtn.style.display = 'block';
+  }
   ['exportPngBtn', 'exportSvgBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.style.display = 'inline-block';
@@ -158,14 +166,9 @@ export async function exportPNG() {
   try {
     const blob = await svgToPngBlob(svg);
     if (!blob) return;
-    const { shareText } = await import('../shared/share.js');
-    const file = new File([blob], 'formula.png', { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'LaTeXSnipper' });
-    } else {
-      await shareText(els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
-    }
-  } catch (_) { /* user cancelled */ }
+    const { shareFile } = await import('../shared/share.js');
+    await shareFile(blob, 'formula.png', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式图片' });
+  } catch (_) {}
 }
 
 export async function exportSVG() {
@@ -175,14 +178,9 @@ export async function exportSVG() {
     const clone = svg.cloneNode(true);
     const data = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([data], { type: 'image/svg+xml' });
-    const { shareText } = await import('../shared/share.js');
-    const file = new File([blob], 'formula.svg', { type: 'image/svg+xml' });
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'LaTeXSnipper' });
-    } else {
-      await shareText(els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
-    }
-  } catch (_) { /* user cancelled */ }
+    const { shareFile } = await import('../shared/share.js');
+    await shareFile(blob, 'formula.svg', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式 SVG' });
+  } catch (_) {}
 }
 
 async function svgToPngBlob(svg) {

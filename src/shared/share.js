@@ -1,10 +1,6 @@
 /**
  * Share utility — unified interface for text, images, and files.
- *
- * Strategy chain (ordered by priority):
- *   1. Web Share API with files (picks native Android share sheet)
- *   2. @capacitor/share as fallback
- *   3. Clipboard for text-only
+ * Always tries Capacitor Share FIRST since WebView Web Share API is unreliable.
  */
 
 import { Share as CapacitorShare } from '@capacitor/share';
@@ -17,15 +13,7 @@ export async function shareText(text, opts = {}) {
   const title = opts.title || 'LaTeXSnipper';
   const dialogTitle = opts.dialogTitle || '分享';
 
-  // Try Web Share API first (best integration on Android)
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, text });
-      return;
-    } catch (_) {}
-  }
-
-  // Capacitor Share fallback
+  // 1. Capacitor Share (native Android — most reliable in WebView)
   if (CapacitorShare) {
     try {
       await CapacitorShare.share({ title, text, dialogTitle });
@@ -33,45 +21,25 @@ export async function shareText(text, opts = {}) {
     } catch (_) {}
   }
 
-  // Clipboard fallback
+  // 2. Web Share API
+  if (navigator.share) {
+    try { await navigator.share({ title, text }); return; } catch (_) {}
+  }
+
+  // 3. Clipboard
   try { await navigator.clipboard.writeText(text); } catch (_) {}
 }
 
 /**
- * Share a file (Blob) as image/zip/etc.
- * Uses Web Share API with files when available.
- * Falls back to Capacitor Share.
- * Final fallback: share text instead.
- *
- * @param {Blob} blob - The file blob to share
- * @param {string} filename - Suggested filename with extension (e.g. 'formula.png', 'diagnostic.zip')
- * @param {string} [fallbackText] - Text to share if file sharing fails
- * @param {object} [opts] - Options
+ * Share a file (Blob) using Capacitor Share + base64 file attachment.
+ * Falls back to Web Share API, then text share.
  */
 export async function shareFile(blob, filename, fallbackText = '', opts = {}) {
   const title = opts.title || 'LaTeXSnipper';
   const dialogTitle = opts.dialogTitle || '分享文件';
-
   const mimeType = blob.type || 'application/octet-stream';
-  const file = new File([blob], filename, { type: mimeType });
 
-  // 1. Web Share API with files
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title });
-      return;
-    } catch (_) {}
-  }
-
-  // 2. Try web share with just text as precursor (some browsers need this)
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, text: fallbackText || filename });
-      return;
-    } catch (_) {}
-  }
-
-  // 3. Capacitor Share
+  // 1. Capacitor Share with file attachment
   if (CapacitorShare) {
     try {
       const base64 = await blobToBase64String(blob);
@@ -85,9 +53,21 @@ export async function shareFile(blob, filename, fallbackText = '', opts = {}) {
     } catch (_) {}
   }
 
-  // 4. Fallback: share text
+  // 2. Web Share API with File
+  const file = new File([blob], filename, { type: mimeType });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title }); return; } catch (_) {}
+  }
+
+  // 3. Fallback text share
+  if (navigator.share) {
+    try { await navigator.share({ title, text: fallbackText || filename }); return; } catch (_) {}
+  }
+
   if (fallbackText) {
-    await shareText(fallbackText, opts);
+    if (CapacitorShare) {
+      try { await CapacitorShare.share({ title, text: fallbackText, dialogTitle }); return; } catch (_) {}
+    }
   }
 }
 

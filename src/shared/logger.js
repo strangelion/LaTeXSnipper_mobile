@@ -142,6 +142,14 @@ const Logger = {
       docOrientation: 'pplcnet_doc_ori.onnx',
     }, null, 2));
 
+    // 5. Native Java logs
+    if (typeof window.NativeOcr !== 'undefined' && window.NativeOcr.getLogs) {
+      try {
+        const javaLogs = await window.NativeOcr.getLogs();
+        if (javaLogs) zip.file('native-log.txt', javaLogs);
+      } catch (_) {}
+    }
+
     return await zip.generateAsync({ type: 'blob' });
   },
 
