@@ -192,9 +192,7 @@ public class NativeOcrBridge {
                   .append("\",\"confidence\":").append(r.confidence)
                   .append("}");
             }
-            sb.append("],\"timeMs\":").append(mixed.timeMs)
-              .append(",\"formattedText\":\"").append(escapeJson(mixed.formattedText))
-              .append("}");
+            sb.append("],\"timeMs\":").append(mixed.timeMs).append("}");
             return sb.toString();
         });
     }
