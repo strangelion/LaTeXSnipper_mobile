@@ -50,13 +50,20 @@ public class NativeOcrBridge {
     private static final int MAX_LOG_BUFFER = 50000;
 
     private synchronized void addLog(String tag, String msg) {
-        String line = System.currentTimeMillis() + "|" + tag + "|" + msg;
+        String line = System.currentTimeMillis() + "  [" + tag + "] " + msg;
         if (logBuffer.length() + line.length() > MAX_LOG_BUFFER) {
             logBuffer.delete(0, logBuffer.length() / 4);
         }
         logBuffer.append(line).append("\n");
     }
 
+    /** JS calls this to push a log line from the JavaScript side into the native buffer */
+    @JavascriptInterface
+    public void addLog(String msg) {
+        addLog("JS", msg);
+    }
+
+    /** JS calls this to retrieve accumulated native logs for export */
     @JavascriptInterface
     public String getLogs() {
         synchronized (logBuffer) {
