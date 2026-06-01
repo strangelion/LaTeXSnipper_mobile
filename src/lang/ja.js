@@ -161,5 +161,9 @@ export default {
   "history.sourceCamera": "カメラ",
   "history.sourceHandwrite": "手書き",
   "history.sourcePDF": "PDF",
-  "history.clear": "クリア"
+  "history.clear": "クリア",
+
+  // ── Toast ──
+  "toast.savedToDownload": "ダウンロードフォルダに保存しました",
+  "toast.downloadStarted": "ダウンロード開始: {{filename}}"
 }

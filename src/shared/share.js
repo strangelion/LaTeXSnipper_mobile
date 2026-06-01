@@ -9,6 +9,27 @@
 
 import { Share as CapacitorShare } from '@capacitor/share';
 import Logger from './logger.js';
+import { t } from '../lang/i18n.js';
+
+/**
+ * Show a brief success toast at the bottom of screen.
+ */
+export function showSaveToast(message) {
+  const existing = document.querySelector('.save-toast');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.className = 'save-toast';
+  el.textContent = message;
+  document.body.appendChild(el);
+
+  requestAnimationFrame(() => el.classList.add('save-toast-show'));
+  setTimeout(() => {
+    el.classList.add('save-toast-hide');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 500);
+  }, 3000);
+}
 
 /**
  * Share text content.
@@ -46,6 +67,7 @@ export async function saveFile(blob, filename, opts = {}) {
       const result = native.saveFile(base64, filename);
       if (result === 'ok') {
         Logger.info('SAVE', 'Saved successfully via native bridge: ' + filename);
+        showSaveToast(t('toast.savedToDownload'));
         return;
       }
       Logger.warn('SAVE', 'Native saveFile returned: ' + result);
@@ -65,6 +87,7 @@ export async function saveFile(blob, filename, opts = {}) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  showSaveToast(t('toast.downloadStarted', { filename }));
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 

@@ -257,7 +257,13 @@ export async function exportSVG() {
   }
   try {
     const clone = svg.cloneNode(true);
-    const data = new XMLSerializer().serializeToString(clone);
+    // Ensure xmlns for valid standalone SVG file
+    if (!clone.getAttribute('xmlns')) {
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    }
+    // Add XML declaration for proper rendering
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    const data = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgStr;
     const blob = new Blob([data], { type: 'image/svg+xml' });
     Logger.info('EXPORT', 'Exporting SVG (' + blob.size + ' bytes)');
     const { shareFile } = await import('../shared/share.js');
@@ -269,6 +275,10 @@ export async function exportSVG() {
 
 async function svgToPngBlob(svg) {
   const clone = svg.cloneNode(true);
+  // Ensure xmlns attribute for Data URI loading
+  if (!clone.getAttribute('xmlns')) {
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
   const bbox = svg.getBBox ? svg.getBBox() : { width: 400, height: 200 };
   const w = Math.ceil(bbox.width) + 16;
   const h = Math.ceil(bbox.height) + 16;

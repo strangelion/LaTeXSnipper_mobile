@@ -161,5 +161,9 @@ export default {
   "history.sourceCamera": "카메라",
   "history.sourceHandwrite": "필기",
   "history.sourcePDF": "PDF",
-  "history.clear": "비우기"
+  "history.clear": "비우기",
+
+  // ── Toast ──
+  "toast.savedToDownload": "다운로드 폴더에 저장되었습니다",
+  "toast.downloadStarted": "다운로드 시작됨: {{filename}}"
 }
