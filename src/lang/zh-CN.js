@@ -186,5 +186,9 @@ export default {
   "history.sourceCamera": "拍照",
   "history.sourceHandwrite": "手写",
   "history.sourcePDF": "PDF",
-  "history.clear": "清空"
+  "history.clear": "清空",
+
+  // ── Toast ──
+  "toast.savedToDownload": "已保存到 下载/Download 文件夹",
+  "toast.downloadStarted": "下载已开始: {{filename}}"
 }

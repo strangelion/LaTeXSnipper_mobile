@@ -186,5 +186,9 @@ export default {
   "history.sourceCamera": "Camera",
   "history.sourceHandwrite": "Handwrite",
   "history.sourcePDF": "PDF",
-  "history.clear": "Clear"
+  "history.clear": "Clear",
+
+  // ── Toast ──
+  "toast.savedToDownload": "Saved to Downloads folder",
+  "toast.downloadStarted": "Download started: {{filename}}"
 }
