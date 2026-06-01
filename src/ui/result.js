@@ -229,94 +229,162 @@ export function initPDFNav() {
 
 // ── Export formula as PNG / SVG ──
 
-/** Collect all SVG elements from math preview lines, return as array */
-function getMathSvgs() {
-  return Array.from(els.mathPreview?.querySelectorAll('.math-line svg') || []);
+/**
+ * Render LaTeX lines with MathJax into individual SVG elements,
+ * using an offscreen container (no DOM flicker).
+ */
+async function renderLatexToSvgs(latex) {
+  if (!latex || typeof MathJax === 'undefined' || !MathJax.tex2svgPromise) return null;
+  const lines = latex.split('\n').filter(l => l.trim());
+  if (!lines.length) return null;
+
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(container);
+
+  try {
+    const nodes = await Promise.all(
+      lines.map(line =>
+        MathJax.tex2svgPromise(normalizeMixedLine(line), { display: true }).catch(() => null)
+      )
+    );
+    const svgs = nodes.filter(Boolean).map(n => n.querySelector('svg')).filter(Boolean);
+    return svgs.length ? svgs : null;
+  } finally {
+    document.body.removeChild(container);
+  }
 }
 
 /**
- * Combine multiple SVG elements into a single composite SVG.
- * Each child SVG is placed in a <g transform="translate(0, y)"> stack.
+ * Combine multiple MathJax SVGs into one composite SVG.
+ *
+ * Key fixes versus old approach:
+ *  - Properly handles negative viewBox y (ascenders above baseline)
+ *  - Extracts <defs> to composite level so glyphs / font paths render
+ *  - viewBox covers the full bounding box of all rows
+ *  - Auto-sizes width/height from actual content
  */
 function combineSvgs(svgs) {
   if (!svgs.length) return null;
   if (svgs.length === 1) {
     const c = svgs[0].cloneNode(true);
-    if (!c.getAttribute('xmlns')) c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     return c;
   }
 
-  let maxW = 0, yOff = 0;
-  const groups = svgs.map(svg => {
-    const clone = svg.cloneNode(true);
-    const vb = (clone.getAttribute('viewBox') || '').split(/[ ,]+/).map(Number);
-    const w = vb[2] || parseFloat(clone.getAttribute('width')) || 400;
-    const h = vb[3] || parseFloat(clone.getAttribute('height')) || 200;
-    // Remove width/height on child so they don't clip; use viewBox for scaling
-    clone.removeAttribute('width');
-    clone.removeAttribute('height');
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', 'translate(0,' + yOff + ')');
-    while (clone.firstChild) g.appendChild(clone.firstChild);
-    yOff += h;
-    if (w > maxW) maxW = w;
-    return g;
-  });
+  // Pull defs out of children so they work, compute row bounding boxes
+  const rows = [];
+  let yOff = 0;
+  let contentMaxW = 0;
 
-  const composite = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  composite.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  composite.setAttribute('width', maxW);
-  composite.setAttribute('height', yOff);
-  composite.setAttribute('viewBox', '0 0 ' + maxW + ' ' + yOff);
-  groups.forEach(g => composite.appendChild(g));
+  for (const svg of svgs) {
+    const el = svg.cloneNode(true);
+    const vbStr = el.getAttribute('viewBox') || '0 0 400 200';
+    const [vbx, vby, vbw, vbh] = vbStr.trim().split(/[,\s]+/).map(Number);
+    el.removeAttribute('width');
+    el.removeAttribute('height');
+
+    // Extract <defs> to composite level
+    const defs = el.querySelector('defs');
+    if (defs) defs.remove();
+
+    const rowTop = yOff + vby;
+    const rowBot = yOff + vby + vbh;
+    rows.push({ el, rowTop, rowBot, w: vbw });
+    if (vbw > contentMaxW) contentMaxW = vbw;
+    yOff += vbh;
+  }
+
+  // Full bounding box across all rows
+  const minY = rows.reduce((m, r) => Math.min(m, r.rowTop), Infinity);
+  const maxY = rows.reduce((m, r) => Math.max(m, r.rowBot), -Infinity);
+  const totalH = maxY - minY;
+
+  // Build composite
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const composite = document.createElementNS(svgNs, 'svg');
+  composite.setAttribute('xmlns', svgNs);
+  composite.setAttribute('width', contentMaxW);
+  composite.setAttribute('height', totalH);
+  composite.setAttribute('viewBox', [0, minY, contentMaxW, totalH].join(' '));
+
+  // Add padding around content
+  const PAD = 20;
+  const dispW = contentMaxW + PAD * 2;
+  const dispH = totalH + PAD * 2;
+  composite.setAttribute('width', dispW);
+  composite.setAttribute('height', dispH);
+  composite.setAttribute('viewBox', [-PAD, minY - PAD, dispW, dispH].join(' '));
+
+  // Re-attach defs at composite level
+  const allDefs = [];
+  for (const svg of svgs) {
+    const defs = svg.querySelector('defs');
+    if (defs) allDefs.push(...defs.children);
+  }
+  if (allDefs.length) {
+    const defsEl = document.createElementNS(svgNs, 'defs');
+    allDefs.forEach(d => defsEl.appendChild(d.cloneNode(true)));
+    composite.appendChild(defsEl);
+  }
+
+  // Groups: each row shifted by its baseline offset within the composite
+  yOff = 0;
+  for (const svg of svgs) {
+    const el = svg.cloneNode(true);
+    const vbStr = el.getAttribute('viewBox') || '0 0 400 200';
+    const vbh = vbStr.trim().split(/[,\s]+/).map(Number)[3] || 200;
+    el.removeAttribute('width');
+    el.removeAttribute('height');
+    const defs = el.querySelector('defs');
+    if (defs) defs.remove();
+
+    const g = document.createElementNS(svgNs, 'g');
+    g.setAttribute('transform', 'translate(0,' + yOff + ')');
+    while (el.firstChild) g.appendChild(el.firstChild);
+    composite.appendChild(g);
+    yOff += vbh;
+  }
+
   return composite;
 }
 
 export async function exportPNG() {
-  const svgs = getMathSvgs();
-  if (!svgs.length) {
-    Logger.warn('EXPORT', 'No SVG found in math preview to export as PNG');
-    return;
-  }
+  const latex = els.resultCode?.textContent;
+  if (!latex) { Logger.warn('EXPORT', 'No result text'); return; }
   try {
+    Logger.info('EXPORT', 'Rendering LaTeX for PNG export');
+    const svgs = await renderLatexToSvgs(latex);
+    if (!svgs) { Logger.warn('EXPORT', 'No SVGs from MathJax'); return; }
+    Logger.info('EXPORT', 'Exporting PNG (' + svgs.length + ' rows)');
     const composite = combineSvgs(svgs);
     if (!composite) return;
     const blob = await svgToPngBlob(composite);
-    if (!blob) {
-      Logger.warn('EXPORT', 'SVG→PNG conversion returned null blob');
-      return;
-    }
-    Logger.info('EXPORT', 'Exporting PNG (' + blob.size + ' bytes, ' + svgs.length + ' lines)');
+    if (!blob) return;
     const { shareFile } = await import('../shared/share.js');
-    await shareFile(blob, 'formula.png', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式图片' });
-  } catch (e) {
-    Logger.error('EXPORT', 'exportPNG failed', e);
-  }
+    await shareFile(blob, 'formula.png', latex, { title: 'LaTeXSnipper' });
+  } catch (e) { Logger.error('EXPORT', 'exportPNG failed', e); }
 }
 
 export async function exportSVG() {
-  const svgs = getMathSvgs();
-  if (!svgs.length) {
-    Logger.warn('EXPORT', 'No SVG found in math preview to export');
-    return;
-  }
+  const latex = els.resultCode?.textContent;
+  if (!latex) { Logger.warn('EXPORT', 'No result text'); return; }
   try {
+    Logger.info('EXPORT', 'Rendering LaTeX for SVG export');
+    const svgs = await renderLatexToSvgs(latex);
+    if (!svgs) { Logger.warn('EXPORT', 'No SVGs from MathJax'); return; }
+    Logger.info('EXPORT', 'Exporting SVG (' + svgs.length + ' rows)');
     const composite = combineSvgs(svgs);
     if (!composite) return;
     const svgStr = new XMLSerializer().serializeToString(composite);
-    const data = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgStr;
-    const blob = new Blob([data], { type: 'image/svg+xml' });
-    Logger.info('EXPORT', 'Exporting SVG (' + blob.size + ' bytes, ' + svgs.length + ' lines)');
+    const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + svgStr], { type: 'image/svg+xml' });
     const { shareFile } = await import('../shared/share.js');
-    await shareFile(blob, 'formula.svg', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式 SVG' });
-  } catch (e) {
-    Logger.error('EXPORT', 'exportSVG failed', e);
-  }
+    await shareFile(blob, 'formula.svg', latex, { title: 'LaTeXSnipper' });
+  } catch (e) { Logger.error('EXPORT', 'exportSVG failed', e); }
 }
 
-async function svgToPngBlob(svgElement) {
-  const clone = svgElement.cloneNode(true);
-  // Ensure xmlns attribute for Data URI loading
+async function svgToPngBlob(svgEl) {
+  const clone = svgEl.cloneNode(true);
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   const w = parseFloat(clone.getAttribute('width')) || 400;
   const h = parseFloat(clone.getAttribute('height')) || 200;
@@ -324,17 +392,17 @@ async function svgToPngBlob(svgElement) {
   clone.setAttribute('height', h);
   const data = new XMLSerializer().serializeToString(clone);
   const canvas = document.createElement('canvas');
-  canvas.width = w * 2; canvas.height = h * 2;
+  // 2x retina quality, capped at 4096 to avoid OOM
+  const scale = Math.min(2, 4096 / Math.max(w, h));
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.scale(2, 2);
+  ctx.scale(scale, scale);
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(resolve, 'image/png');
-    };
+    img.onload = () => { ctx.drawImage(img, 0, 0); canvas.toBlob(resolve, 'image/png'); };
     img.onerror = reject;
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(data)));
   });
