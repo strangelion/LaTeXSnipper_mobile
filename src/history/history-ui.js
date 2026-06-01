@@ -1,18 +1,34 @@
 // History list rendering with smooth swipe gestures
+//
+// Swipe bg: card-bg fills the gap; zones pinned to edges and grow dynamically.
+// - RIGHT swipe (dx > 0) → delete zone grows from left  → width = dx
+// - LEFT  swipe (dx < 0) → actions zone grows from right → width = |dx|
+// - Overswipe right → direct delete
+// - Overswipe left  → fav-mode (yellow) → toggle fav + auto-return
+// - Snap thresholds → snap to fixed zone width
+//
+// Inline buttons at card bottom-right (always visible): share, copy
+// Star at top-right corner: toggle favorite
 import { getAllResults, toggleFavorite, deleteResult } from './history-db.js';
 import { setEditorContent } from '../editor/mathlive-config.js';
 import { t } from '../lang/i18n.js';
 
-const SWIPE_THRESHOLD = 60;
-const VELOCITY_SNAP = 0.3;
+// ── Constants ──
+const DELETE_ZONE    = 80;   // fixed width delete zone when snapped
+const ACTIONS_ZONE   = 150;  // fixed width actions zone when snapped
+const SNAP_DELETE   = 40;    // right-swipe snap threshold
+const SNAP_ACTIONS  = 60;    // left-swipe snap threshold
+const DIRECT_DELETE = 260;   // overswipe right → immediate delete
+const FAV_START     = 120;   // past direct-delete on left → fav-mode visual
+const FAV_TRIGGER   = 300;   // max left → toggle fav + auto-return
 
 function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
 }
 
-/** Create confetti particles at the given element's position */
+/** Burst of particles at element center */
 function burstParticles(el, color, count = 12) {
   const rect = el.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
@@ -34,7 +50,8 @@ function burstParticles(el, color, count = 12) {
     const dy = Math.sin(angle) * dist - 30;
     const dur = 300 + Math.random() * 400;
     requestAnimationFrame(() => {
-      dot.style.transition = `transform ${dur}ms cubic-bezier(0,.6,.2,1), opacity ${dur}ms ease`;
+      dot.style.transition =
+        `transform ${dur}ms cubic-bezier(0,.6,.2,1), opacity ${dur}ms ease`;
       dot.style.transform = `translate(${dx}px, ${dy}px)`;
       dot.style.opacity = '0';
     });
@@ -56,314 +73,363 @@ async function shareLatex(text) {
   await shareText(formatted, { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
 }
 
-function measureSnap(wrap) {
-  const bg = wrap.querySelector('.hi-swipe-bg');
-  if (!bg) return { left: 80, right: 200 };
-  const leftEl = bg.querySelector('.hi-swipe-left');
-  const rightEl = bg.querySelector('.hi-swipe-right');
-  return {
-    left: leftEl ? leftEl.offsetWidth : 80,
-    right: rightEl ? rightEl.offsetWidth : 200,
-  };
+// ── Per-card swipe state ──
+const stateMap = new WeakMap();
+
+function getState(el) {
+  if (!stateMap.has(el)) stateMap.set(el, { offsetX: 0, revealed: false });
+  return stateMap.get(el);
 }
 
-function initSwipe(itemEl) {
-  let startX = 0, startY = 0, startTime = 0, translateX = 0;
-  let tracking = false;
-
-  const wrap = itemEl.parentElement;
-  const bg = wrap.querySelector('.hi-swipe-bg');
-  const leftGroup = bg?.querySelector('.hi-swipe-left');
-  const rightGroup = bg?.querySelector('.hi-swipe-right');
-  const leftLabel = wrap.querySelector('.hi-swipe-label.left');
-  const rightLabel = wrap.querySelector('.hi-swipe-label.right');
-
-  function resetVisuals() {
-    if (bg) {
-      bg.style.background = '';
-      bg.classList.remove('overscroll-right', 'overscroll-left');
+function closeAllBut(exclude) {
+  document.querySelectorAll('.history-item').forEach(el => {
+    if (el === exclude) return;
+    const s = getState(el);
+    if (s.revealed) {
+      s.revealed = false;
+      s.offsetX = 0;
+      el.classList.add('returning');
+      el.style.transform = '';
+      const wrap = el.parentElement;
+      const bg = wrap?.querySelector('.hi-swipe-bg');
+      if (bg) {
+        const dz = bg.querySelector('.hi-swipe-delete');
+        const az = bg.querySelector('.hi-swipe-actions');
+        if (dz) dz.style.width = '0';
+        if (az) { az.style.width = '0'; az.classList.remove('fav-mode'); }
+      }
     }
-    leftGroup?.classList.remove('hide');
-    rightGroup?.classList.remove('hide');
-    leftLabel?.classList.remove('show');
-    rightLabel?.classList.remove('show');
+  });
+}
+
+// ── Helper: update zone widths ──
+function setZoneWidths(bg, dx) {
+  if (!bg) return;
+  const dz = bg.querySelector('.hi-swipe-delete');
+  const az = bg.querySelector('.hi-swipe-actions');
+  if (dx > 0) {
+    if (dz) dz.style.width = Math.round(dx) + 'px';
+    if (az) { az.style.width = '0'; az.classList.remove('fav-mode'); }
+    if (az) az.querySelectorAll('.hi-swipe-btn').forEach(b => b.classList.remove('visible'));
+  } else if (dx < 0) {
+    const abs = Math.abs(dx);
+    if (az) az.style.width = Math.round(abs) + 'px';
+    if (dz) dz.style.width = '0';
+    // Show buttons if past snap threshold
+    if (az) {
+      if (abs > SNAP_ACTIONS) {
+        az.querySelectorAll('.hi-swipe-btn').forEach(b => b.classList.add('visible'));
+      } else {
+        az.querySelectorAll('.hi-swipe-btn').forEach(b => b.classList.remove('visible'));
+      }
+    }
+  } else {
+    if (dz) dz.style.width = '0';
+    if (az) {
+      az.style.width = '0';
+      az.classList.remove('fav-mode');
+      az.querySelectorAll('.hi-swipe-btn').forEach(b => b.classList.remove('visible'));
+    }
+  }
+}
+
+// ── Swipe controller ──
+function initSwipe(card) {
+  let startX = 0, startY = 0, startTime = 0;
+  let tracking = false, currentDx = 0;
+
+  const wrap = card.parentElement;
+  const bg = wrap.querySelector('.hi-swipe-bg');
+  const deleteZone = bg?.querySelector('.hi-swipe-delete');
+  const actionZone = bg?.querySelector('.hi-swipe-actions');
+  const actionBtns = actionZone ? [...actionZone.querySelectorAll('.hi-swipe-btn')] : [];
+
+  // ── Return to origin ──
+  function returnToOrigin(smooth = true) {
+    const s = getState(card);
+    s.revealed = false;
+    s.offsetX = 0;
+    if (smooth) {
+      card.classList.remove('swiping');
+      card.classList.add('returning');
+      card.style.transform = '';
+      card.style.opacity = '';
+      // Zone width transitions back with same timing as card
+      if (deleteZone) deleteZone.classList.remove('no-transition');
+      if (actionZone) actionZone.classList.remove('no-transition');
+    } else {
+      card.style.transition = 'none';
+      card.style.transform = '';
+      card.style.opacity = '';
+      if (deleteZone) deleteZone.classList.add('no-transition');
+      if (actionZone) actionZone.classList.add('no-transition');
+      requestAnimationFrame(() => { card.style.transition = ''; });
+    }
+    setZoneWidths(bg, 0);
   }
 
-  function closeOthers(exclude) {
-    document.querySelectorAll('.history-item._revealed').forEach(el => {
-      if (el !== exclude) {
-        el._revealed = false;
-        el._offsetX = 0;
-        el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)';
-        el.style.transform = '';
+  // ── Snap to fixed zone position ──
+  function snapTo(dir) {
+    const s = getState(card);
+    const pos = dir > 0 ? DELETE_ZONE : -ACTIONS_ZONE;
+    s.offsetX = pos;
+    s.revealed = true;
+    card.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+    card.style.transform = `translateX(${pos}px)`;
+    // Let zone width transition with same timing as card
+    if (deleteZone) deleteZone.classList.remove('no-transition');
+    if (actionZone) actionZone.classList.remove('no-transition');
+    // Reset fav-mode on snap (it was set by touchmove)
+    if (actionZone) actionZone.classList.remove('fav-mode');
+    setZoneWidths(bg, pos);
+    setTimeout(() => { card.style.transition = ''; }, 300);
+  }
+
+  // ── Delete (fly out + remove) ──
+  function doDelete() {
+    const s = getState(card);
+    s.revealed = false;
+    s.offsetX = 0;
+    const id = Number(card.dataset.id);
+    card.classList.add('deleting');
+    card.style.transform = 'translateX(100%)';
+    card.style.opacity = '0';
+    setTimeout(() => {
+      deleteResult(id).then(() => {
+        const filter =
+          document.querySelector('.history-toolbar button.active')
+            ?.dataset.filter || 'all';
+        renderHistoryList(filter);
+      });
+    }, 300);
+  }
+
+  // ── Toggle favorite ──
+  function doToggleFav() {
+    const id = Number(card.dataset.id);
+    toggleFavorite(id).then(isFav => {
+      const favBtn = card.querySelector('.hi-fav[data-action="fav"]');
+      if (favBtn) favBtn.classList.toggle('active', isFav);
+    });
+    // Flash glow
+    card.style.transition = 'none';
+    card.style.boxShadow =
+      'inset 0 0 0 2px #f59e0b, 0 0 14px rgba(245,158,11,0.5)';
+    requestAnimationFrame(() => {
+      card.style.transition = 'box-shadow 0.35s ease';
+      card.style.boxShadow = '';
+    });
+  }
+
+  // ── Execute share/copy from swipe-revealed buttons ──
+  function execAction(action) {
+    const id = Number(card.dataset.id);
+    returnToOrigin(true);
+    getAllResults().then(all => {
+      const r = all.find(x => x.id === id);
+      if (!r) return;
+      if (action === 'share') {
+        burstParticles(card, '#22c55e', 10);
+        shareLatex(r.latex);
+      } else if (action === 'copy') {
+        burstParticles(card, '#2563eb', 10);
+        copyToClipboard(r.latex);
       }
     });
   }
 
-  function snapTo(pos) {
-    itemEl._offsetX = pos;
-    itemEl.style.transform = `translateX(${pos}px)`;
-    itemEl._revealed = pos !== 0;
-  }
-
-  function doDelete() {
-    itemEl._revealed = false;
-    itemEl._offsetX = 0;
-    if (bg) bg.style.background = '#ef4444';
-    const id = Number(itemEl.dataset.id);
-    // Fly out to the right (always)
-    itemEl.classList.add('deleting');
-    itemEl.style.transform = 'translateX(100%)';
-    itemEl.style.opacity = '0';
-    setTimeout(() => {
-      deleteResult(id).then(() => {
-        const filter = document.querySelector('.history-toolbar button.active')?.dataset.filter || 'all';
-        renderHistoryList(filter);
-      });
-    }, 250);
-  }
-
-  function doToggleFav() {
-    const id = Number(itemEl.dataset.id);
-    // Flash feedback: glow yellow
-    itemEl.style.transition = 'none';
-    itemEl.style.boxShadow = 'inset 0 0 0 2px #f59e0b, 0 0 12px rgba(245,158,11,0.4)';
-    itemEl.style.background = 'rgba(245,158,11,0.08)';
-    setTimeout(() => {
-      itemEl.style.transition = '';
-      itemEl.style.boxShadow = '';
-      itemEl.style.background = '';
-    }, 300);
-    toggleFavorite(id).then(isFav => {
-      itemEl.querySelector('.hi-fav[data-action="fav"]')?.classList.toggle('active', isFav);
-    });
-  }
-
-  // Animate reveal closed: smooth transition back to 0
-  function animateBack() {
-    itemEl._revealed = false;
-    itemEl._offsetX = 0;
-    itemEl.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease';
-    itemEl.style.transform = 'translateX(0)';
-    itemEl.style.opacity = '1';
-    setTimeout(() => {
-      itemEl.style.transition = '';
-    }, 350);
-  }
-
-  itemEl.addEventListener('touchstart', (e) => {
+  // ══════════════════════════════════════════════
+  // Touch handlers
+  // ══════════════════════════════════════════════
+  card.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) { tracking = false; return; }
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    startTime = performance.now();
-    closeOthers(itemEl);
+    const target = e.target.closest('.hi-fav');
+    if (target) { tracking = false; return; }
 
-    if (itemEl._revealed) {
-      itemEl._revealed = false;
-      itemEl._offsetX = 0;
-      itemEl.style.transform = '';
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    startTime = performance.now();
+
+    const s = getState(card);
+    if (s.revealed) {
+      s.revealed = false;
+      s.offsetX = 0;
+      card.style.transition = 'none';
+      card.style.transform = '';
+      setZoneWidths(bg, 0);
+      requestAnimationFrame(() => { card.style.transition = ''; });
       tracking = false;
       return;
     }
 
-    translateX = itemEl._offsetX || 0;
+    closeAllBut(card);
+    // Live drag: zone width follows finger instantly, no CSS transition
+    if (deleteZone) deleteZone.classList.add('no-transition');
+    if (actionZone) actionZone.classList.add('no-transition');
+    currentDx = 0;
     tracking = true;
-    itemEl.classList.add('swiping');
+    card.classList.add('swiping');
   }, { passive: true });
 
-  itemEl.addEventListener('touchmove', (e) => {
+  card.addEventListener('touchmove', e => {
     if (!tracking || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    if (Math.abs(dy) > Math.abs(dx) * 1.5) { tracking = false; itemEl.classList.remove('swiping'); return; }
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
 
-    const snap = measureSnap(wrap);
-
-    // Past snap point → hide ALL buttons, show label + color
-    // Right swipe = delete (red)
-    if (translateX > snap.left) {
-      leftGroup?.classList.add('hide');
-      rightGroup?.classList.add('hide');
-      leftLabel?.classList.add('show');
-      rightLabel?.classList.remove('show');
-      if (bg) { bg.style.background = '#ef4444'; }
-    } else if (translateX < -snap.right) {
-      // Left swipe = favorite (yellow)
-      leftGroup?.classList.add('hide');
-      rightGroup?.classList.add('hide');
-      rightLabel?.classList.add('show');
-      leftLabel?.classList.remove('show');
-      if (bg) { bg.style.background = '#f59e0b'; }
-    } else {
-      resetVisuals();
+    // Vertical scroll cancels swipe
+    if (Math.abs(dy) > Math.abs(dx) * 1.5) {
+      tracking = false;
+      card.classList.remove('swiping');
+      setZoneWidths(bg, 0);
+      return;
     }
 
-    const maxLeft = -(snap.right * 3);
-    const maxRight = snap.left * 4;
-    translateX = Math.max(maxLeft, Math.min(maxRight, dx + (itemEl._offsetX || 0)));
-    itemEl.style.transform = `translateX(${translateX}px)`;
+    const s = getState(card);
+
+    if (dx > 0) {
+      // RIGHT swipe → delete zone
+      currentDx = Math.min(DELETE_ZONE * 4, dx + s.offsetX);
+      if (actionZone) actionZone.classList.remove('fav-mode');
+    } else {
+      // LEFT swipe → actions zone
+      currentDx = Math.max(-(ACTIONS_ZONE * 4), dx + s.offsetX);
+      // Past fav-start threshold → show yellow fav mode
+      if (actionZone && Math.abs(currentDx) > FAV_START) {
+        actionZone.classList.add('fav-mode');
+      } else if (actionZone) {
+        actionZone.classList.remove('fav-mode');
+      }
+    }
+
+    setZoneWidths(bg, currentDx);
+    card.style.transform = `translateX(${currentDx}px)`;
   }, { passive: true });
 
-  itemEl.addEventListener('touchend', () => {
+  card.addEventListener('touchend', () => {
+    if (!tracking) return;
     tracking = false;
-    itemEl.classList.remove('swiping');
-    resetVisuals();
+    card.classList.remove('swiping');
 
-    const snap = measureSnap(wrap);
     const dt = performance.now() - startTime;
-    const velocity = dt > 10 ? Math.abs(translateX) / dt : 0;
-    const ACTION_THRESHOLD = 260;
+    const vel = dt > 10 ? Math.abs(currentDx) / dt : 0;
 
-    if (translateX < -ACTION_THRESHOLD) {
-      doToggleFav();
-      snapTo(0);
-    } else if (translateX > ACTION_THRESHOLD) {
-      doDelete();
-    } else if (translateX > SWIPE_THRESHOLD || (translateX > 20 && velocity > VELOCITY_SNAP)) {
-      // Right swipe to threshold = reveal share/copy buttons (blue bg)
-      snapTo(snap.left);
-    } else if (translateX < -SWIPE_THRESHOLD || (translateX < -20 && velocity > VELOCITY_SNAP)) {
-      // Left swipe to threshold = reveal share/copy buttons (blue bg)
-      snapTo(-snap.right);
+    if (currentDx > 0) {
+      // ── RIGHT swipe → DELETE ──
+      if (currentDx > DIRECT_DELETE) {
+        doDelete();
+      } else if (currentDx > SNAP_DELETE || (currentDx > 10 && vel > 0.3)) {
+        snapTo(1);
+      } else {
+        returnToOrigin(true);
+      }
+    } else if (currentDx < 0) {
+      // ── LEFT swipe → FAVORITE ──
+      const abs = Math.abs(currentDx);
+      if (abs > FAV_TRIGGER) {
+        doToggleFav();
+        returnToOrigin(false);
+      } else if (abs > SNAP_ACTIONS || (abs > 10 && vel > 0.3)) {
+        snapTo(-1);
+      } else {
+        returnToOrigin(true);
+      }
     } else {
-      animateBack();
+      returnToOrigin(true);
     }
-    translateX = 0;
+
+    currentDx = 0;
   }, { passive: true });
+
+  // ── Clicks on swipe-revealed buttons (action zone) ──
+  if (actionZone) {
+    actionZone.addEventListener('click', e => {
+      const btn = e.target.closest('.hi-swipe-btn');
+      if (!btn) return;
+      e.stopPropagation();
+      execAction(btn.dataset.action);
+    });
+  }
 }
 
+// ── Render ──
 export async function renderHistoryList(filter = 'all') {
   const listEl = document.getElementById('historyList');
   if (!listEl) return;
   const results = await getAllResults({ filter });
   if (results.length === 0) {
-    listEl.innerHTML = `<div class="history-empty">${t('history.empty')}</div>`;
+    listEl.innerHTML =
+      `<div class="history-empty">${t('history.empty')}</div>`;
     return;
   }
 
-  listEl.innerHTML = results.map(r => {
-    const isFav = r.favorite ? ' active' : '';
-    const favLabel = r.favorite ? t('history.favorite') : t('history.delete');
-    const sourceMap = {
-      pdf: t('history.sourcePDF'),
-      camera: t('history.sourceCamera'),
-      handwrite: t('history.sourceHandwrite'),
-    };
-    const sourceLabel = sourceMap[r.source] || t('history.sourceFile');
-    return `<div class="history-item-wrap">
-      <div class="hi-swipe-label left">${t('history.delete')}</div>
-      <div class="hi-swipe-label right">${t('history.favorite')}</div>
-      <div class="hi-swipe-bg">
-        <div class="hi-swipe-spacer"></div>
-        <div class="hi-swipe-right">
-          <button class="hi-swipe-btn" data-action="share" data-id="${r.id}">${t('btn.share')}</button>
-          <button class="hi-swipe-btn" data-action="copy" data-id="${r.id}">${t('editor.copyLatex')}</button>
+  listEl.innerHTML = results
+    .map(r => {
+      const isFav = r.favorite ? ' active' : '';
+      const srcMap = {
+        pdf: t('history.sourcePDF'),
+        camera: t('history.sourceCamera'),
+        handwrite: t('history.sourceHandwrite'),
+      };
+      const srcLabel = srcMap[r.source] || t('history.sourceFile');
+      return `<div class="history-item-wrap">
+        <div class="hi-swipe-bg">
+          <div class="hi-swipe-delete">${t('history.delete')}</div>
+          <div class="hi-swipe-actions">
+            <button class="hi-swipe-btn" data-action="share">${t('btn.share')}</button>
+            <button class="hi-swipe-btn" data-action="copy">${t('btn.copyLatex')}</button>
+            <span class="hi-swipe-fav-label">${t('history.favorite')}</span>
+          </div>
         </div>
-      </div>
-      <div class="history-item" data-id="${r.id}">
-        <div class="hi-latex">${escapeHtml(r.latex.substring(0, 120))}${r.latex.length > 120 ? '…' : ''}</div>
-        <div class="hi-meta">
-          <span class="hi-tag">${sourceLabel}</span>
-          <span>${new Date(r.createdAt).toLocaleString()}</span>
-          <span>${(r.confidence * 100).toFixed(0)}%</span>
-          <button class="hi-fav${isFav}" data-action="fav" data-id="${r.id}">★</button>
+        <div class="history-item" data-id="${r.id}">
+          <div class="hi-latex">${escapeHtml(r.latex.substring(0, 120))}${
+            r.latex.length > 120 ? '…' : ''
+          }</div>
+          <div class="hi-meta">
+            <span class="hi-tag">${srcLabel}</span>
+            <span>${new Date(r.createdAt).toLocaleString()}</span>
+            <span>${(r.confidence * 100).toFixed(0)}%</span>
+            <button class="hi-fav${isFav}" data-action="fav" data-id="${r.id}">★</button>
+          </div>
         </div>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    })
+    .join('');
 
+  // ── Init swipe on each card ──
   listEl.querySelectorAll('.history-item').forEach(item => {
     initSwipe(item);
-    item._offsetX = 0;
-    item._revealed = false;
+    const s = getState(item);
+    s.offsetX = 0;
+    s.revealed = false;
     item.style.transform = '';
-    item.classList.remove('deleting', 'swiping');
     item.style.opacity = '';
+    item.classList.remove('deleting', 'swiping', 'returning');
+    setZoneWidths(item.parentElement.querySelector('.hi-swipe-bg'), 0);
   });
 
-  // Click outside a revealed item closes it with smooth animation
-  const clickOutside = (e) => {
-    const revealed = document.querySelector('.history-item._revealed');
-    if (!revealed) return;
-    // Check if click is inside any history-item-wrap
-    const wrap = e.target.closest('.history-item-wrap');
-    if (wrap && wrap.contains(revealed)) return; // clicked on the same card
-    // Close all revealed cards
-    closeOthersSmooth();
-  };
-  document.addEventListener('pointerdown', clickOutside);
-
-  function closeOthersSmooth() {
-    document.querySelectorAll('.history-item._revealed').forEach(el => {
-      el._revealed = false;
-      el._offsetX = 0;
-      el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)';
-      el.style.transform = '';
-    });
-  }
-
-  listEl.querySelectorAll('[data-action="del-swipe"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const item = btn.closest('.history-item');
-      // Visual feedback: flash the card
-      if (item) {
-        item.style.transition = 'none';
-        item.style.opacity = '0.3';
-        item.style.transform = 'scale(0.95)';
-        await new Promise(r => setTimeout(r, 80));
-        item.style.transition = '';
-        item.classList.add('deleting');
-        item.style.transform = 'translateX(100%)';
-        item.style.opacity = '0';
-        await new Promise(r => setTimeout(r, 300));
+  // ── Close all revealed cards on outside tap ──
+  const closeRevealed = () => {
+    document.querySelectorAll('.history-item').forEach(el => {
+      const s = getState(el);
+      if (s.revealed) {
+        s.revealed = false;
+        s.offsetX = 0;
+        el.classList.add('returning');
+        el.style.transform = '';
+        setZoneWidths(el.parentElement.querySelector('.hi-swipe-bg'), 0);
       }
-      await deleteResult(Number(btn.dataset.id));
-      renderHistoryList(filter);
     });
+  };
+  document.addEventListener('pointerdown', e => {
+    if (e.target.closest('.history-item-wrap')) return;
+    closeRevealed();
   });
 
-  listEl.querySelectorAll('[data-action="copy"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      burstParticles(btn, '#2563eb', 10);
-      closeOthersSmooth();
-      const all = await getAllResults();
-      const r = all.find(x => x.id === Number(btn.dataset.id));
-      if (r) copyToClipboard(r.latex);
-    });
-  });
-
-  listEl.querySelectorAll('[data-action="share"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      burstParticles(btn, '#22c55e', 10);
-      closeOthersSmooth();
-      const all = await getAllResults();
-      const r = all.find(x => x.id === Number(btn.dataset.id));
-      if (r) shareLatex(r.latex);
-    });
-  });
-
-  listEl.querySelectorAll('[data-action="copy"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      // Flash feedback
-      btn.style.transition = 'none';
-      btn.style.background = '#fff';
-      btn.style.color = 'var(--accent)';
-      await new Promise(r => setTimeout(r, 100));
-      btn.style.transition = '';
-      btn.style.background = '';
-      btn.style.color = '';
-      const all = await getAllResults();
-      const r = all.find(x => x.id === Number(btn.dataset.id));
-      if (r) copyToClipboard(r.latex);
-    });
-  });
-
-  listEl.querySelectorAll('[data-action="fav"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+  // ── Star favorite toggle ──
+  listEl.querySelectorAll('.hi-fav[data-action="fav"]').forEach(btn => {
+    btn.addEventListener('click', async e => {
       e.stopPropagation();
       const id = Number(btn.dataset.id);
       const isFav = await toggleFavorite(id);
@@ -371,35 +437,24 @@ export async function renderHistoryList(filter = 'all') {
     });
   });
 
-  // Delete button (✕) — fly out effect before removal
-  listEl.querySelectorAll('[data-action="del-btn"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const item = btn.closest('.history-item');
-      const id = Number(btn.dataset.id);
-      if (item) {
-        item.classList.add('deleting');
-        item.style.transform = 'translateX(-100%)';
-        item.style.opacity = '0';
-        await new Promise(r => setTimeout(r, 300));
-      }
-      await deleteResult(id);
-      renderHistoryList(filter);
-    });
-  });
-
+  // ── Click card to fill editor ──
   listEl.querySelectorAll('.history-item').forEach(item => {
-    item.addEventListener('click', async () => {
-      if (item._revealed) {
-        item._revealed = false;
-        item._offsetX = 0;
+    item.addEventListener('click', e => {
+      if (e.target.closest('.hi-fav')) return;
+
+      const s = getState(item);
+      if (s.revealed) {
+        s.revealed = false;
+        s.offsetX = 0;
+        item.classList.add('returning');
         item.style.transform = '';
         return;
       }
       const id = Number(item.dataset.id);
-      const all = await getAllResults();
-      const record = all.find(r => r.id === id);
-      if (record) setEditorContent(record.latex);
+      getAllResults().then(all => {
+        const record = all.find(r => r.id === id);
+        if (record) setEditorContent(record.latex);
+      });
     });
   });
 }
