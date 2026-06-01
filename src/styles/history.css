@@ -92,14 +92,14 @@
 }
 .history-item .hi-fav.active { color: #f59e0b; }
 
-/* ── Inline delete button (right side of meta bar) ── */
+/* ── Inline delete button (right side of meta bar, red text) ── */
 .hi-del-btn {
   background: none; border: none; cursor: pointer;
-  font-size: 0.85rem; color: #ef4444; padding: 2px 6px;
-  line-height: 1; opacity: 0.6;
-  transition: opacity 0.15s;
+  font-size: 0.82rem; color: #ef4444; padding: 4px 8px;
+  line-height: 1; border-radius: 6px;
+  transition: background 0.15s, opacity 0.15s;
 }
-.hi-del-btn:hover { opacity: 1; }
+.hi-del-btn:hover, .hi-del-btn:active { background: rgba(239,68,68,0.1); }
 
 /* ── History toolbar ── */
 .history-toolbar {

@@ -12,6 +12,36 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/** Create confetti particles at the given element's position */
+function burstParticles(el, color, count = 12) {
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  for (let i = 0; i < count; i++) {
+    const dot = document.createElement('div');
+    dot.style.cssText = `
+      position: fixed; z-index: 9999; pointer-events: none;
+      left: ${cx}px; top: ${cy}px;
+      width: ${4 + Math.random() * 4}px; height: ${4 + Math.random() * 4}px;
+      border-radius: 50%; background: ${color};
+      box-shadow: 0 0 4px ${color};
+      transition: none;
+    `;
+    document.body.appendChild(dot);
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 80;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist - 30;
+    const dur = 300 + Math.random() * 400;
+    requestAnimationFrame(() => {
+      dot.style.transition = `transform ${dur}ms cubic-bezier(0,.6,.2,1), opacity ${dur}ms ease`;
+      dot.style.transform = `translate(${dx}px, ${dy}px)`;
+      dot.style.opacity = '0';
+    });
+    setTimeout(() => dot.remove(), dur + 50);
+  }
+}
+
 function copyToClipboard(text) {
   const lines = text.split('\n').filter(l => l.trim());
   const formatted = lines.map(l => '$$\n' + l.trim() + '\n$$').join('\n');
@@ -64,6 +94,7 @@ function initSwipe(itemEl) {
       if (el !== exclude) {
         el._revealed = false;
         el._offsetX = 0;
+        el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)';
         el.style.transform = '';
       }
     });
@@ -80,9 +111,10 @@ function initSwipe(itemEl) {
     itemEl._offsetX = 0;
     if (bg) bg.style.background = '#ef4444';
     const id = Number(itemEl.dataset.id);
-    // Fly out in the direction of the swipe
+    // Fly out to the right (always)
     itemEl.classList.add('deleting');
-    itemEl.style.transform = `translateX(${translateX > 0 ? '100%' : '-100%'})`;
+    itemEl.style.transform = 'translateX(100%)';
+    itemEl.style.opacity = '0';
     setTimeout(() => {
       deleteResult(id).then(() => {
         const filter = document.querySelector('.history-toolbar button.active')?.dataset.filter || 'all';
@@ -93,6 +125,15 @@ function initSwipe(itemEl) {
 
   function doToggleFav() {
     const id = Number(itemEl.dataset.id);
+    // Flash feedback: glow yellow
+    itemEl.style.transition = 'none';
+    itemEl.style.boxShadow = 'inset 0 0 0 2px #f59e0b, 0 0 12px rgba(245,158,11,0.4)';
+    itemEl.style.background = 'rgba(245,158,11,0.08)';
+    setTimeout(() => {
+      itemEl.style.transition = '';
+      itemEl.style.boxShadow = '';
+      itemEl.style.background = '';
+    }, 300);
     toggleFavorite(id).then(isFav => {
       itemEl.querySelector('.hi-fav[data-action="fav"]')?.classList.toggle('active', isFav);
     });
@@ -139,18 +180,20 @@ function initSwipe(itemEl) {
     const snap = measureSnap(wrap);
 
     // Past snap point → hide ALL buttons, show label + color
+    // Right swipe = favorite (yellow)
     if (translateX > snap.left) {
-      leftGroup?.classList.add('hide');
-      rightGroup?.classList.add('hide');
-      leftLabel?.classList.add('show');
-      rightLabel?.classList.remove('show');
-      if (bg) { bg.style.background = '#ef4444'; }
-    } else if (translateX < -snap.right) {
       leftGroup?.classList.add('hide');
       rightGroup?.classList.add('hide');
       rightLabel?.classList.add('show');
       leftLabel?.classList.remove('show');
       if (bg) { bg.style.background = '#f59e0b'; }
+    } else if (translateX < -snap.right) {
+      // Left swipe = delete (red)
+      leftGroup?.classList.add('hide');
+      rightGroup?.classList.add('hide');
+      leftLabel?.classList.add('show');
+      rightLabel?.classList.remove('show');
+      if (bg) { bg.style.background = '#ef4444'; }
     } else {
       resetVisuals();
     }
@@ -172,13 +215,15 @@ function initSwipe(itemEl) {
     const ACTION_THRESHOLD = 260;
 
     if (translateX > ACTION_THRESHOLD) {
-      doDelete();
-    } else if (translateX < -ACTION_THRESHOLD) {
       doToggleFav();
       snapTo(0);
+    } else if (translateX < -ACTION_THRESHOLD) {
+      doDelete();
     } else if (translateX > SWIPE_THRESHOLD || (translateX > 20 && velocity > VELOCITY_SNAP)) {
+      // Right swipe to threshold = reveal share/copy buttons (blue bg)
       snapTo(snap.left);
     } else if (translateX < -SWIPE_THRESHOLD || (translateX < -20 && velocity > VELOCITY_SNAP)) {
+      // Left swipe to threshold = reveal share/copy buttons (blue bg)
       snapTo(-snap.right);
     } else {
       animateBack();
@@ -207,7 +252,7 @@ export async function renderHistoryList(filter = 'all') {
     const sourceLabel = sourceMap[r.source] || t('history.sourceFile');
     return `<div class="history-item-wrap">
       <div class="hi-swipe-label left">${t('history.delete')}</div>
-      <div class="hi-swipe-label right">${favLabel}</div>
+      <div class="hi-swipe-label right">${t('history.favorite')}</div>
       <div class="hi-swipe-bg">
         <div class="hi-swipe-spacer"></div>
         <div class="hi-swipe-right">
@@ -222,7 +267,6 @@ export async function renderHistoryList(filter = 'all') {
           <span>${new Date(r.createdAt).toLocaleString()}</span>
           <span>${(r.confidence * 100).toFixed(0)}%</span>
           <button class="hi-fav${isFav}" data-action="fav" data-id="${r.id}">★</button>
-          <button class="hi-del-btn" data-action="del-btn" data-id="${r.id}" title="${t('history.delete')}">✕</button>
         </div>
       </div>
     </div>`;
@@ -237,9 +281,43 @@ export async function renderHistoryList(filter = 'all') {
     item.style.opacity = '';
   });
 
+  // Click outside a revealed item closes it with smooth animation
+  const clickOutside = (e) => {
+    const revealed = document.querySelector('.history-item._revealed');
+    if (!revealed) return;
+    // Check if click is inside any history-item-wrap
+    const wrap = e.target.closest('.history-item-wrap');
+    if (wrap && wrap.contains(revealed)) return; // clicked on the same card
+    // Close all revealed cards
+    closeOthersSmooth();
+  };
+  document.addEventListener('pointerdown', clickOutside);
+
+  function closeOthersSmooth() {
+    document.querySelectorAll('.history-item._revealed').forEach(el => {
+      el._revealed = false;
+      el._offsetX = 0;
+      el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)';
+      el.style.transform = '';
+    });
+  }
+
   listEl.querySelectorAll('[data-action="del-swipe"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      const item = btn.closest('.history-item');
+      // Visual feedback: flash the card
+      if (item) {
+        item.style.transition = 'none';
+        item.style.opacity = '0.3';
+        item.style.transform = 'scale(0.95)';
+        await new Promise(r => setTimeout(r, 80));
+        item.style.transition = '';
+        item.classList.add('deleting');
+        item.style.transform = 'translateX(100%)';
+        item.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 300));
+      }
       await deleteResult(Number(btn.dataset.id));
       renderHistoryList(filter);
     });
@@ -248,6 +326,7 @@ export async function renderHistoryList(filter = 'all') {
   listEl.querySelectorAll('[data-action="copy"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      burstParticles(btn, '#2563eb', 10);
       const all = await getAllResults();
       const r = all.find(x => x.id === Number(btn.dataset.id));
       if (r) copyToClipboard(r.latex);
@@ -257,9 +336,27 @@ export async function renderHistoryList(filter = 'all') {
   listEl.querySelectorAll('[data-action="share"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
+      burstParticles(btn, '#22c55e', 10);
       const all = await getAllResults();
       const r = all.find(x => x.id === Number(btn.dataset.id));
       if (r) shareLatex(r.latex);
+    });
+  });
+
+  listEl.querySelectorAll('[data-action="copy"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      // Flash feedback
+      btn.style.transition = 'none';
+      btn.style.background = '#fff';
+      btn.style.color = 'var(--accent)';
+      await new Promise(r => setTimeout(r, 100));
+      btn.style.transition = '';
+      btn.style.background = '';
+      btn.style.color = '';
+      const all = await getAllResults();
+      const r = all.find(x => x.id === Number(btn.dataset.id));
+      if (r) copyToClipboard(r.latex);
     });
   });
 
