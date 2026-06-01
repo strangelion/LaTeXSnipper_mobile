@@ -8,6 +8,7 @@
  */
 
 import { Share as CapacitorShare } from '@capacitor/share';
+import Logger from './logger.js';
 
 /**
  * Share text content.
@@ -36,20 +37,27 @@ export async function shareText(text, opts = {}) {
  * Falls back to <a download> if native bridge unavailable.
  */
 export async function saveFile(blob, filename, opts = {}) {
+  Logger.info('SAVE', 'Saving file: ' + filename + ' (' + blob.size + ' bytes)');
   // 1. Native Android bridge (writes to Downloads via MediaStore)
   const native = window.NativeOcr;
   if (native && native.saveFile) {
     try {
       const base64 = await blobToBase64String(blob);
       const result = native.saveFile(base64, filename);
-      if (result === 'ok') return;
-      console.warn('[saveFile] native saveFile returned:', result);
+      if (result === 'ok') {
+        Logger.info('SAVE', 'Saved successfully via native bridge: ' + filename);
+        return;
+      }
+      Logger.warn('SAVE', 'Native saveFile returned: ' + result);
     } catch (e) {
-      console.warn('[saveFile] native saveFile threw:', e);
+      Logger.error('SAVE', 'Native saveFile threw', e);
     }
+  } else {
+    Logger.warn('SAVE', 'Native saveFile not available, fallback to download');
   }
 
   // 2. Download fallback
+  Logger.info('SAVE', 'Falling back to download link for: ' + filename);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

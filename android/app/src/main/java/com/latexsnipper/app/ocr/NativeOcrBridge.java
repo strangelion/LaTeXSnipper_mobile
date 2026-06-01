@@ -273,6 +273,7 @@ public class NativeOcrBridge {
                 ContentValues values = new ContentValues();
                 values.put(MediaStore.Downloads.DISPLAY_NAME, filename);
                 values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+                values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     values.put(MediaStore.Downloads.IS_PENDING, 1);
                 }

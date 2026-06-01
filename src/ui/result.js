@@ -1,5 +1,6 @@
 // Result display, math preview, copy/share/export, PDF browser
 import { els } from './dom-refs.js';
+import Logger from '../shared/logger.js';
 
 // ── PDF page browser state ──
 let _pdfPages = [];
@@ -230,25 +231,40 @@ export function initPDFNav() {
 
 export async function exportPNG() {
   const svg = els.mathPreview?.querySelector('svg');
-  if (!svg) return;
+  if (!svg) {
+    Logger.warn('EXPORT', 'No SVG found in math preview to export as PNG');
+    return;
+  }
   try {
     const blob = await svgToPngBlob(svg);
-    if (!blob) return;
+    if (!blob) {
+      Logger.warn('EXPORT', 'SVG→PNG conversion returned null blob');
+      return;
+    }
+    Logger.info('EXPORT', 'Exporting PNG (' + blob.size + ' bytes)');
     const { shareFile } = await import('../shared/share.js');
     await shareFile(blob, 'formula.png', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式图片' });
-  } catch (_) {}
+  } catch (e) {
+    Logger.error('EXPORT', 'exportPNG failed', e);
+  }
 }
 
 export async function exportSVG() {
   const svg = els.mathPreview?.querySelector('svg');
-  if (!svg) return;
+  if (!svg) {
+    Logger.warn('EXPORT', 'No SVG found in math preview to export');
+    return;
+  }
   try {
     const clone = svg.cloneNode(true);
     const data = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([data], { type: 'image/svg+xml' });
+    Logger.info('EXPORT', 'Exporting SVG (' + blob.size + ' bytes)');
     const { shareFile } = await import('../shared/share.js');
     await shareFile(blob, 'formula.svg', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式 SVG' });
-  } catch (_) {}
+  } catch (e) {
+    Logger.error('EXPORT', 'exportSVG failed', e);
+  }
 }
 
 async function svgToPngBlob(svg) {
