@@ -1,10 +1,10 @@
 /**
  * Share utility — unified interface for text, images, and files.
- * Always tries Capacitor Share FIRST since WebView Web Share API is unreliable.
  *
- * For file sharing (PNG/SVG/ZIP), if all native share methods fail,
- * we trigger a download instead of falling back to text — users expect
- * a file, not LaTeX content in the share sheet.
+ * For text sharing: Capacitor Share → Web Share → Clipboard.
+ * For file sharing (PNG/SVG/TXT): uses native Android saveFile bridge
+ * to write to Downloads via MediaStore (Android 10+) or legacy storage,
+ * then triggers a download fallback if native bridge unavailable.
  */
 
 import { Share as CapacitorShare } from '@capacitor/share';
@@ -17,7 +17,6 @@ export async function shareText(text, opts = {}) {
   const title = opts.title || 'LaTeXSnipper';
   const dialogTitle = opts.dialogTitle || '分享';
 
-  // 1. Capacitor Share (native Android — most reliable in WebView)
   if (CapacitorShare) {
     try {
       await CapacitorShare.share({ title, text, dialogTitle });
@@ -25,54 +24,32 @@ export async function shareText(text, opts = {}) {
     } catch (_) {}
   }
 
-  // 2. Web Share API
   if (navigator.share) {
     try { await navigator.share({ title, text }); return; } catch (_) {}
   }
 
-  // 3. Clipboard
   try { await navigator.clipboard.writeText(text); } catch (_) {}
 }
 
 /**
- * Share a file (Blob) using Capacitor Share + base64 file attachment.
- * Falls back to Web Share API, then triggers a download.
- * NEVER falls back to text share — users expect a file, not text.
- *
- * IMPORTANT: In WebView (Capacitor Android), the system "no apps can perform
- * this action" dialog appears when Capacitor Share throws AND Web Share API
- * throws with a File object. In that case, we silently fall through to a
- * direct file download — no system app picker needed.
+ * Save a file to Downloads folder using native Android bridge.
+ * Falls back to <a download> if native bridge unavailable.
  */
-export async function shareFile(blob, filename, fallbackText = '', opts = {}) {
-  const title = opts.title || 'LaTeXSnipper';
-  const dialogTitle = opts.dialogTitle || '分享文件';
-  const mimeType = blob.type || 'application/octet-stream';
-
-  // 1. Capacitor Share — try base64 file sharing
-  if (CapacitorShare) {
+export async function saveFile(blob, filename, opts = {}) {
+  // 1. Native Android bridge (writes to Downloads via MediaStore)
+  const native = window.NativeOcr;
+  if (native && native.saveFile) {
     try {
       const base64 = await blobToBase64String(blob);
-      await CapacitorShare.share({
-        title,
-        dialogTitle,
-        files: [{ name: filename, format: mimeType, data: base64 }],
-      });
-      return;
-    } catch (_) {
-      // Capacitor Share base64 failed. Continue to download fallback directly
-      // instead of trying Web Share API with a File — that would trigger
-      // "no apps can perform this action" on older Android versions.
+      const result = native.saveFile(base64, filename);
+      if (result === 'ok') return;
+      console.warn('[saveFile] native saveFile returned:', result);
+    } catch (e) {
+      console.warn('[saveFile] native saveFile threw:', e);
     }
   }
 
-  // 2. Direct download — no system share sheet needed.
-  // This is the most reliable path on Android WebView and avoids the
-  // "no apps can perform this action" error.
-  downloadBlob(blob, filename);
-}
-
-function downloadBlob(blob, filename) {
+  // 2. Download fallback
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -81,6 +58,11 @@ function downloadBlob(blob, filename) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/** @deprecated Use saveFile() instead. */
+export async function shareFile(blob, filename, fallbackText = '', opts = {}) {
+  await saveFile(blob, filename, opts);
 }
 
 async function blobToBase64String(blob) {

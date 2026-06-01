@@ -1,14 +1,19 @@
 package com.latexsnipper.app.ocr;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 
 import java.io.ByteArrayInputStream;
+import java.io.OutputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -242,6 +247,83 @@ public class NativeOcrBridge {
     @JavascriptInterface
     public void release() {
         ocrEngine.release();
+    }
+
+    // ── Save file to Downloads (via MediaStore, lets user choose location) ──
+
+    /**
+     * Save a base64-encoded file to the Android Downloads folder.
+     * On Android 10+ (Q), uses MediaStore.Downloads to write via ContentResolver.
+     * The file appears in the Downloads app / Files app, where the user can
+     * open, share, or move it. No "no apps can perform this action" error.
+     *
+     * JS calls: NativeOcr.saveFile(base64data, filename)
+     * where base64data is the raw base64 string (no data: URI prefix).
+     *
+     * Returns "ok" on success, or an error message string.
+     */
+    @JavascriptInterface
+    public String saveFile(String base64Data, String filename) {
+        try {
+            byte[] decoded = Base64.decode(base64Data, Base64.DEFAULT);
+            String mimeType = guessMimeType(filename);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+: use MediaStore
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Downloads.DISPLAY_NAME, filename);
+                values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    values.put(MediaStore.Downloads.IS_PENDING, 1);
+                }
+
+                android.net.Uri uri = context.getContentResolver().insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                if (uri == null)
+                    return "error: ContentResolver insert returned null";
+
+                try (OutputStream os = context.getContentResolver().openOutputStream(uri)) {
+                    if (os == null) return "error: openOutputStream null";
+                    os.write(decoded);
+                    os.flush();
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    values.clear();
+                    values.put(MediaStore.Downloads.IS_PENDING, 0);
+                    context.getContentResolver().update(uri, values, null, null);
+                }
+
+                addLog("SAVE", "Saved: " + filename + " (" + decoded.length + " bytes)");
+                return "ok";
+            } else {
+                // Android 9 and below: write to external storage Downloads
+                java.io.File downloadsDir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS);
+                if (!downloadsDir.exists()) downloadsDir.mkdirs();
+                java.io.File outFile = new java.io.File(downloadsDir, filename);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile);
+                fos.write(decoded);
+                fos.close();
+                addLog("SAVE", "Saved (legacy): " + outFile.getAbsolutePath());
+                return "ok";
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "saveFile failed", e);
+            return "error: " + e.getMessage();
+        }
+    }
+
+    private String guessMimeType(String filename) {
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".txt")) return "text/plain";
+        if (lower.endsWith(".zip")) return "application/zip";
+        if (lower.endsWith(".json")) return "application/json";
+        if (lower.endsWith(".onnx")) return "application/octet-stream";
+        return "application/octet-stream";
     }
 
     // ── Image decoding with EXIF auto-rotation ──

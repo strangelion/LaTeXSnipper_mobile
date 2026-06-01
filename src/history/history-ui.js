@@ -98,6 +98,18 @@ function initSwipe(itemEl) {
     });
   }
 
+  // Animate reveal closed: smooth transition back to 0
+  function animateBack() {
+    itemEl._revealed = false;
+    itemEl._offsetX = 0;
+    itemEl.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease';
+    itemEl.style.transform = 'translateX(0)';
+    itemEl.style.opacity = '1';
+    setTimeout(() => {
+      itemEl.style.transition = '';
+    }, 350);
+  }
+
   itemEl.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) { tracking = false; return; }
     startX = e.touches[0].clientX;
@@ -169,7 +181,7 @@ function initSwipe(itemEl) {
     } else if (translateX < -SWIPE_THRESHOLD || (translateX < -20 && velocity > VELOCITY_SNAP)) {
       snapTo(-snap.right);
     } else {
-      snapTo(0);
+      animateBack();
     }
     translateX = 0;
   }, { passive: true });
@@ -197,14 +209,10 @@ export async function renderHistoryList(filter = 'all') {
       <div class="hi-swipe-label left">${t('history.delete')}</div>
       <div class="hi-swipe-label right">${favLabel}</div>
       <div class="hi-swipe-bg">
-        <div class="hi-swipe-left">
-          <button class="hi-swipe-btn" data-action="del-swipe" data-id="${r.id}">${t('history.delete')}</button>
-        </div>
         <div class="hi-swipe-spacer"></div>
         <div class="hi-swipe-right">
           <button class="hi-swipe-btn" data-action="share" data-id="${r.id}">${t('btn.share')}</button>
           <button class="hi-swipe-btn" data-action="copy" data-id="${r.id}">${t('editor.copyLatex')}</button>
-          <button class="hi-swipe-btn" data-action="del-swipe" data-id="${r.id}">${t('history.delete')}</button>
         </div>
       </div>
       <div class="history-item" data-id="${r.id}">
@@ -214,6 +222,7 @@ export async function renderHistoryList(filter = 'all') {
           <span>${new Date(r.createdAt).toLocaleString()}</span>
           <span>${(r.confidence * 100).toFixed(0)}%</span>
           <button class="hi-fav${isFav}" data-action="fav" data-id="${r.id}">★</button>
+          <button class="hi-del-btn" data-action="del-btn" data-id="${r.id}" title="${t('history.delete')}">✕</button>
         </div>
       </div>
     </div>`;
@@ -260,6 +269,23 @@ export async function renderHistoryList(filter = 'all') {
       const id = Number(btn.dataset.id);
       const isFav = await toggleFavorite(id);
       btn.classList.toggle('active', isFav);
+    });
+  });
+
+  // Delete button (✕) — fly out effect before removal
+  listEl.querySelectorAll('[data-action="del-btn"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const item = btn.closest('.history-item');
+      const id = Number(btn.dataset.id);
+      if (item) {
+        item.classList.add('deleting');
+        item.style.transform = 'translateX(-100%)';
+        item.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 300));
+      }
+      await deleteResult(id);
+      renderHistoryList(filter);
     });
   });
 

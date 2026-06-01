@@ -92,6 +92,15 @@
 }
 .history-item .hi-fav.active { color: #f59e0b; }
 
+/* ── Inline delete button (right side of meta bar) ── */
+.hi-del-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.85rem; color: #ef4444; padding: 2px 6px;
+  line-height: 1; opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.hi-del-btn:hover { opacity: 1; }
+
 /* ── History toolbar ── */
 .history-toolbar {
   display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;

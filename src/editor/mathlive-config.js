@@ -181,10 +181,10 @@ function syncPreview() {
   }
   if (previewActions) previewActions.style.display = 'flex';
 
-  if (typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
-    MathJax.tex2svgPromise(latex).then(node => {
-      if (preview) { preview.innerHTML = ''; preview.appendChild(node); preview.classList.add('show'); }
-    }).catch(() => {});
+  // Show raw LaTeX source instead of MathJax rendered preview
+  if (preview) {
+    preview.textContent = latex;
+    preview.classList.add('show');
   }
 }
 

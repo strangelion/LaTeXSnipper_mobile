@@ -1,4 +1,4 @@
-/* editor.css — MathLive field + MathJax preview */
+/* editor.css — MathLive field + LaTeX source preview */
 
 .editor-wrap {
   display: flex; flex-direction: column; gap: 0.6rem;
@@ -12,16 +12,18 @@
   line-height: 1.6;
 }
 
-.latex-source {
+/* ── LaTeX source preview (replaces MathJax rendered preview) ── */
+#editorPreview {
   width: 100%; padding: 0.7rem;
   border: 1px solid var(--border-color);
   border-radius: 10px; background: var(--card-bg);
-  color: var(--fg); font-family: "SF Mono","Cascadia Code","Consolas",monospace;
-  font-size: 0.95rem; line-height: 1.6;
-  resize: vertical; outline: none;
-  touch-action: manipulation;
+  color: var(--fg);
+  font-family: "SF Mono","Cascadia Code","Consolas",monospace;
+  font-size: 0.85rem; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-all;
+  display: none; min-height: 40px; box-sizing: border-box;
 }
-.latex-source:focus { border-color: var(--accent); }
+#editorPreview.show { display: block; }
 
 /* ── Calculator toolbar ── */
 .calc-toolbar {
