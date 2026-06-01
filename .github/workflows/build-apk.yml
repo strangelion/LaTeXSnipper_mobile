@@ -98,6 +98,8 @@ jobs:
         run: |
           # Update package.json
           node -e "const p=require('./package.json');p.version='${{ inputs.version }}';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
+          # Update index.html version meta
+          sed -i "s/<meta name=\"version\" content=\"[^\"]*\">/<meta name=\"version\" content=\"${{ inputs.version }}\">/" index.html
           # Update Android version — strip dots and strip leading zeros to avoid octal
           VER_CODE=$(echo "${{ inputs.version }}" | node -e "process.stdin.on('data',d=>console.log(Number(d.toString().replace(/\./g,''))))")
           sed -i "s/versionCode .*/versionCode $VER_CODE/" android/app/build.gradle

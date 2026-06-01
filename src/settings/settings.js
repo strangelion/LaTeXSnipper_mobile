@@ -261,7 +261,7 @@ export function initSettings() {
   });
 
   import('../update-checker.js').then(({ initUpdateChecker, checkForUpdateNow }) => {
-    // Version from package.json — keep in sync to avoid false update prompts
+    // Version from index.html <meta name="version"> — always matches the build
     const appVersion = document.querySelector('meta[name="version"]')
       ?.getAttribute('content') || '1.0.0';
     initUpdateChecker(appVersion);
