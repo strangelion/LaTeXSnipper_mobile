@@ -180,20 +180,20 @@ function initSwipe(itemEl) {
     const snap = measureSnap(wrap);
 
     // Past snap point → hide ALL buttons, show label + color
-    // Right swipe = favorite (yellow)
+    // Right swipe = delete (red)
     if (translateX > snap.left) {
-      leftGroup?.classList.add('hide');
-      rightGroup?.classList.add('hide');
-      rightLabel?.classList.add('show');
-      leftLabel?.classList.remove('show');
-      if (bg) { bg.style.background = '#f59e0b'; }
-    } else if (translateX < -snap.right) {
-      // Left swipe = delete (red)
       leftGroup?.classList.add('hide');
       rightGroup?.classList.add('hide');
       leftLabel?.classList.add('show');
       rightLabel?.classList.remove('show');
       if (bg) { bg.style.background = '#ef4444'; }
+    } else if (translateX < -snap.right) {
+      // Left swipe = favorite (yellow)
+      leftGroup?.classList.add('hide');
+      rightGroup?.classList.add('hide');
+      rightLabel?.classList.add('show');
+      leftLabel?.classList.remove('show');
+      if (bg) { bg.style.background = '#f59e0b'; }
     } else {
       resetVisuals();
     }
@@ -214,10 +214,10 @@ function initSwipe(itemEl) {
     const velocity = dt > 10 ? Math.abs(translateX) / dt : 0;
     const ACTION_THRESHOLD = 260;
 
-    if (translateX > ACTION_THRESHOLD) {
+    if (translateX < -ACTION_THRESHOLD) {
       doToggleFav();
       snapTo(0);
-    } else if (translateX < -ACTION_THRESHOLD) {
+    } else if (translateX > ACTION_THRESHOLD) {
       doDelete();
     } else if (translateX > SWIPE_THRESHOLD || (translateX > 20 && velocity > VELOCITY_SNAP)) {
       // Right swipe to threshold = reveal share/copy buttons (blue bg)
@@ -327,6 +327,7 @@ export async function renderHistoryList(filter = 'all') {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       burstParticles(btn, '#2563eb', 10);
+      closeOthersSmooth();
       const all = await getAllResults();
       const r = all.find(x => x.id === Number(btn.dataset.id));
       if (r) copyToClipboard(r.latex);
@@ -337,6 +338,7 @@ export async function renderHistoryList(filter = 'all') {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       burstParticles(btn, '#22c55e', 10);
+      closeOthersSmooth();
       const all = await getAllResults();
       const r = all.find(x => x.id === Number(btn.dataset.id));
       if (r) shareLatex(r.latex);

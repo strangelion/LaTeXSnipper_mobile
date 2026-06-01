@@ -17,12 +17,15 @@
 }
 .hi-swipe-spacer { flex: 1 1 auto; }
 
-/* Left/right hold buttons in flex, never shrink — opacity transition for hide */
-.hi-swipe-left, .hi-swipe-right {
+/* Only right side has buttons; left side is hidden */
+.hi-swipe-left { display: none; }
+
+/* Right side buttons */
+.hi-swipe-right {
   display: flex; flex-direction: row; align-items: stretch; flex-shrink: 0;
   transition: opacity 0.12s ease;
 }
-.hi-swipe-left.hide, .hi-swipe-right.hide { opacity: 0; }
+.hi-swipe-right.hide { opacity: 0; }
 
 .hi-swipe-btn {
   pointer-events: auto;
