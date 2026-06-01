@@ -261,7 +261,10 @@ export function initSettings() {
   });
 
   import('../update-checker.js').then(({ initUpdateChecker, checkForUpdateNow }) => {
-    initUpdateChecker('1.0.0');
+    // Version from package.json — keep in sync to avoid false update prompts
+    const appVersion = document.querySelector('meta[name="version"]')
+      ?.getAttribute('content') || '1.0.0';
+    initUpdateChecker(appVersion);
     const btn = document.getElementById('checkUpdateBtn');
     btn?.addEventListener('pointerdown', async e => {
       e.preventDefault();
