@@ -229,19 +229,64 @@ export function initPDFNav() {
 
 // ── Export formula as PNG / SVG ──
 
+/** Collect all SVG elements from math preview lines, return as array */
+function getMathSvgs() {
+  return Array.from(els.mathPreview?.querySelectorAll('.math-line svg') || []);
+}
+
+/**
+ * Combine multiple SVG elements into a single composite SVG.
+ * Each child SVG is placed in a <g transform="translate(0, y)"> stack.
+ */
+function combineSvgs(svgs) {
+  if (!svgs.length) return null;
+  if (svgs.length === 1) {
+    const c = svgs[0].cloneNode(true);
+    if (!c.getAttribute('xmlns')) c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    return c;
+  }
+
+  let maxW = 0, yOff = 0;
+  const groups = svgs.map(svg => {
+    const clone = svg.cloneNode(true);
+    const vb = (clone.getAttribute('viewBox') || '').split(/[ ,]+/).map(Number);
+    const w = vb[2] || parseFloat(clone.getAttribute('width')) || 400;
+    const h = vb[3] || parseFloat(clone.getAttribute('height')) || 200;
+    // Remove width/height on child so they don't clip; use viewBox for scaling
+    clone.removeAttribute('width');
+    clone.removeAttribute('height');
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', 'translate(0,' + yOff + ')');
+    while (clone.firstChild) g.appendChild(clone.firstChild);
+    yOff += h;
+    if (w > maxW) maxW = w;
+    return g;
+  });
+
+  const composite = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  composite.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  composite.setAttribute('width', maxW);
+  composite.setAttribute('height', yOff);
+  composite.setAttribute('viewBox', '0 0 ' + maxW + ' ' + yOff);
+  groups.forEach(g => composite.appendChild(g));
+  return composite;
+}
+
 export async function exportPNG() {
-  const svg = els.mathPreview?.querySelector('svg');
-  if (!svg) {
+  const svgs = getMathSvgs();
+  if (!svgs.length) {
     Logger.warn('EXPORT', 'No SVG found in math preview to export as PNG');
     return;
   }
   try {
-    const blob = await svgToPngBlob(svg);
+    const composite = combineSvgs(svgs);
+    if (!composite) return;
+    const blob = await svgToPngBlob(composite);
     if (!blob) {
       Logger.warn('EXPORT', 'SVG→PNG conversion returned null blob');
       return;
     }
-    Logger.info('EXPORT', 'Exporting PNG (' + blob.size + ' bytes)');
+    Logger.info('EXPORT', 'Exporting PNG (' + blob.size + ' bytes, ' + svgs.length + ' lines)');
     const { shareFile } = await import('../shared/share.js');
     await shareFile(blob, 'formula.png', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式图片' });
   } catch (e) {
@@ -250,22 +295,18 @@ export async function exportPNG() {
 }
 
 export async function exportSVG() {
-  const svg = els.mathPreview?.querySelector('svg');
-  if (!svg) {
+  const svgs = getMathSvgs();
+  if (!svgs.length) {
     Logger.warn('EXPORT', 'No SVG found in math preview to export');
     return;
   }
   try {
-    const clone = svg.cloneNode(true);
-    // Ensure xmlns for valid standalone SVG file
-    if (!clone.getAttribute('xmlns')) {
-      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    }
-    // Add XML declaration for proper rendering
-    const svgStr = new XMLSerializer().serializeToString(clone);
+    const composite = combineSvgs(svgs);
+    if (!composite) return;
+    const svgStr = new XMLSerializer().serializeToString(composite);
     const data = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgStr;
     const blob = new Blob([data], { type: 'image/svg+xml' });
-    Logger.info('EXPORT', 'Exporting SVG (' + blob.size + ' bytes)');
+    Logger.info('EXPORT', 'Exporting SVG (' + blob.size + ' bytes, ' + svgs.length + ' lines)');
     const { shareFile } = await import('../shared/share.js');
     await shareFile(blob, 'formula.svg', els.resultCode?.textContent || '', { title: 'LaTeXSnipper', dialogTitle: '分享公式 SVG' });
   } catch (e) {
@@ -273,15 +314,12 @@ export async function exportSVG() {
   }
 }
 
-async function svgToPngBlob(svg) {
-  const clone = svg.cloneNode(true);
+async function svgToPngBlob(svgElement) {
+  const clone = svgElement.cloneNode(true);
   // Ensure xmlns attribute for Data URI loading
-  if (!clone.getAttribute('xmlns')) {
-    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  }
-  const bbox = svg.getBBox ? svg.getBBox() : { width: 400, height: 200 };
-  const w = Math.ceil(bbox.width) + 16;
-  const h = Math.ceil(bbox.height) + 16;
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const w = parseFloat(clone.getAttribute('width')) || 400;
+  const h = parseFloat(clone.getAttribute('height')) || 200;
   clone.setAttribute('width', w);
   clone.setAttribute('height', h);
   const data = new XMLSerializer().serializeToString(clone);
