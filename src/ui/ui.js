@@ -127,7 +127,7 @@ export async function initModels(onProgress) {
   const bridgeReady = await waitForNativeOcr(8000);
   if (!bridgeReady) {
     Logger.warn('init', 'NativeOcr bridge not found after 8s, browser mode');
-    setStatus('ready', t('status.browserMode'), false);
+    try { setStatus('ready', t('status.browserMode'), false); } catch(_) {}
     return;
   }
 
@@ -140,7 +140,7 @@ export async function initModels(onProgress) {
     } catch (_) {}
 
     // Load models (background thread on Java, poll until ready)
-    setStatus('loading', t('status.loadingModel'), true);
+    try { setStatus('loading', t('status.loadingModel'), true); } catch(_) {}
     OcrNative._loadProgress = 5;
 
     // Show progress while loading (fast ramp to prevent 6% spike)
@@ -162,9 +162,9 @@ export async function initModels(onProgress) {
     window.__modelsReady = true;
     if (updateSplash) updateSplash('就绪', 100);
     await new Promise(r => setTimeout(r, 300));
-    setStatus('ready', t('status.ready'), false);
+    try { setStatus('ready', t('status.ready'), false); } catch(_) {}
   } catch (e) {
     Logger.error('init', 'Native OCR init failed', e);
-    setStatus('ready', t('status.browserMode'), false);
+    try { setStatus('ready', t('status.browserMode'), false); } catch(_) {}
   }
 }
