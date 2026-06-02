@@ -336,17 +336,9 @@ async function boot() {
   // 8. Hide splash screen — all interactive UI ready
   hideSplash();
 
-  // Show loading progress in status bar
-  setStatus('loading', t('status.loadingEngine'), true);
-  showProgress('模型', 0);
-
-  // 9. Load models (async, may take 1-15s; status bar shows progress)
-  // If user starts recognition before models ready, it waits.
-  initModels().then(() => {
-    hideProgress();
-  }).catch(() => {
-    hideProgress();
-  });
+  // 9. Load models (async, may take 1-15s; uses status bar progress)
+  // initModels handles its own status updates internally
+  initModels();
 }
 
 setupTabs();
