@@ -333,12 +333,19 @@ async function boot() {
     if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
   });
 
-  // 8. Hide splash screen — all interactive UI ready
-  hideSplash();
-
-  // 9. Load models (async, may take 1-15s; uses status bar progress)
-  // initModels handles its own status updates internally
+  // 8. Hide splash screen — all interactive UI and models ready
+  // initModels will update status bar when models are loaded
   initModels();
+
+  // Show initial status immediately after splash
+  setStatus('initializing', t('status.initializing'), true);
+  setTimeout(() => {
+    if (!window.__modelsReady) {
+      setStatus('loading', t('status.loadingModel'), true);
+    }
+  }, 500);
+
+  hideSplash();
 }
 
 setupTabs();
