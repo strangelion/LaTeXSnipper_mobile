@@ -278,53 +278,31 @@ document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListe
 });
 
 /* ── Editor tab ── */
-initEditor();
-
-// Keyboard toggle button
-document.getElementById('editorKbdToggle')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  // Dynamic import — top-level await not available in this scope,
-  // use .then() pattern
-  import('./editor/mathlive-config.js').then(mod => mod.toggleKeyboard());
-});
-
-// Clear button
-document.getElementById('editorClearBtn')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  const mf = document.getElementById('mathField');
-  if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
-});
-
 
 /* ── Startup: load models ── */
 async function boot() {
-  // Init logging
+  // 1. Init logging (loads localStorage — fast)
   const { default: Logger } = await import('./shared/logger.js');
   Logger.logSystemInfo();
 
-  // Init i18n + translate static text
+  // 2. Init i18n + translate static text (dynamic import language file)
   await initI18n();
   translateDOM();
 
-  // Init custom dropdowns (before settings reads values)
+  // 3. Init custom dropdowns + settings (localStorage reads only)
   initCustomSelects();
-
-  // Init settings (dropdowns, save/load)
   initSettings();
-  // Sync custom button text with restored values
   syncCustomSelects();
-
-  // Re-sync custom selects when language changes
   onLangChange(() => syncCustomSelects());
 
-  // ── Init export dropdowns (after i18n is loaded) ──
-  // Lazy import; pandoc-export.js dynamically imports pandoc-wasm only on demand
-  let _exportDropdownInit = false;
-  async function initExportDropdowns() {
-    if (_exportDropdownInit) return;
-    _exportDropdownInit = true;
-    const { createExportDropdown } = await import('./export/pandoc-export.js');
+  // 4. Init editor (may retry if MathfieldElement script not loaded yet)
+  initEditor();
 
+  // 5. Load history (IndexedDB — async but quick)
+  renderHistoryList();
+
+  // 6. Init export dropdowns (defers importing pandoc-export chunk)
+  import('./export/pandoc-export.js').then(({ createExportDropdown }) => {
     const ocrContainer = document.getElementById('exportDropdownContainer');
     if (ocrContainer) {
       createExportDropdown(ocrContainer, {
@@ -332,7 +310,6 @@ async function boot() {
         t,
       });
     }
-
     const editorExportContainer = document.getElementById('editorExportContainer');
     if (editorExportContainer) {
       createExportDropdown(editorExportContainer, {
@@ -343,25 +320,25 @@ async function boot() {
         t,
       });
     }
-  }
+  }).catch(() => {});
 
-  // Defer export dropdown init — it triggers Vite chunk loading for pandoc-wasm
-  initExportDropdowns();
+  // 7. Bind editor buttons
+  document.getElementById('editorKbdToggle')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    import('./editor/mathlive-config.js').then(mod => mod.toggleKeyboard());
+  });
+  document.getElementById('editorClearBtn')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const mf = document.getElementById('mathField');
+    if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
 
-  // Failsafe: hide splash after 30s regardless
-  const failsafe = setTimeout(() => hideSplash(), 30000);
-  try {
-    renderHistoryList();
-    await initModels();
-  } catch (e) {
-    if (!document.getElementById('errorMsg')?.style.display || document.getElementById('errorMsg')?.style.display === 'none') {
-      const errEl = document.getElementById('errorMsg');
-      if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Initialization failed: ' + (e.message || e); }
-    }
-  } finally {
-    clearTimeout(failsafe);
-    hideSplash();
-  }
+  // 8. Hide splash screen — all interactive UI ready
+  hideSplash();
+
+  // 9. Load models (async, may take 1-15s; status bar shows progress)
+  // If user starts recognition before models ready, it waits.
+  initModels().catch(() => {});
 }
 
 setupTabs();
