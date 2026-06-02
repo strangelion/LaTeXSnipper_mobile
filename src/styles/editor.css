@@ -1,4 +1,4 @@
-/* editor.css — MathLive field + LaTeX source preview */
+/* editor.css — MathLive field + LaTeX preview */
 
 .editor-wrap {
   display: flex; flex-direction: column; gap: 0.6rem;
@@ -8,24 +8,45 @@
 
 /* MathfieldElement inherits base styles; ensure consistent caret height */
 #mathField {
-  /* When empty, the field still needs visible height for keyboard to anchor properly */
   line-height: 1.6;
 }
 
-/* ── LaTeX source preview (replaces MathJax rendered preview) ── */
+/* ── KaTeX rendered preview ── */
 #editorPreview {
   width: 100%; padding: 0.7rem;
   border: 1px solid var(--border-color);
   border-radius: 10px; background: var(--card-bg);
   color: var(--fg);
-  font-family: "SF Mono","Cascadia Code","Consolas",monospace;
-  font-size: 0.85rem; line-height: 1.6;
-  white-space: pre-wrap; word-break: break-all;
+  font-size: 1rem; line-height: 1.8;
+  white-space: normal; word-break: break-word;
+  overflow-x: auto;
   display: none; min-height: 40px; box-sizing: border-box;
 }
 #editorPreview.show { display: block; }
+#editorPreview .katex { font-size: 1.15em; }
 
-/* ── Calculator toolbar ── */
+/* ── Editor action buttons ── */
+.editor-preview-actions {
+  display: flex; align-items: center; gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.editor-preview-actions .ocr-btn,
+.editor-preview-actions .export-dropdown-btn {
+  padding: 6px 10px; font-size: 0.78rem; font-weight: 500;
+}
+
+/* ── Keyboard toggle bar ── */
+.editor-footer-actions {
+  display: flex; justify-content: center; margin-top: 0.2rem;
+}
+#editorKbdToggle {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.8rem; padding: 6px 16px;
+  opacity: 0.7;
+}
+#editorKbdToggle:active { opacity: 1; }
+
+/* ── Quick formula toolbar ── */
 .calc-toolbar {
   display: grid; grid-template-columns: repeat(5, 1fr);
   gap: 4px; margin-top: 0.5rem;
@@ -33,9 +54,6 @@
   bottom: calc(45px + var(--safe-b, 0px));
   background: var(--bg); padding: 6px; border-radius: var(--card-radius);
   border: 1px solid var(--border-color); z-index: 5;
-}
-.editor-preview-actions {
-  display: flex; justify-content: flex-end; margin-top: 0.3rem;
 }
 .calc-btn {
   padding: 10px 4px; border: 1px solid var(--border-color);

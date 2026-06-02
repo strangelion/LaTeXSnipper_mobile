@@ -11,7 +11,7 @@ import Logger from '../shared/logger.js';
 // ── Re-exports (main.js imports via ui.js) ──
 export { hideSplash, updateSplash } from './splash.js';
 export { setStatus, showError, showProgress, hideProgress } from './status.js';
-export { showResult, hideResult, copyResult, shareResult, exportPNG, exportSVG, showPDFBrowser, hidePDFBrowser, gotoPDFPage } from './result.js';
+export { showResult, hideResult, copyResult, shareResult, showPDFBrowser, hidePDFBrowser, gotoPDFPage } from './result.js';
 export { processImage } from './recognition.js';
 export { polishResult } from './polish.js';
 

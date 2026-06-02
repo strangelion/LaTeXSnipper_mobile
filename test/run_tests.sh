@@ -54,6 +54,21 @@ echo ""
 echo "─── [7/7] Orientation (PP-LCNet) ───"
 python test/test_orientation.py && pass || fail "orientation"
 
+# ═══ 8. Pandoc WASM 导出 ═══
+echo ""
+echo "─── [8] Pandoc WASM Export ───"
+node test/test_pandoc_export.js && pass || fail "pandoc export"
+
+# ═══ 9. KaTeX 公式渲染 ═══
+echo ""
+echo "─── [9] KaTeX Formula Rendering ───"
+node test/test_katex.js && pass || fail "katex"
+
+# ═══ 10. 集成测试（项目结构检查）═══════
+echo ""
+echo "─── [10] Integration Tests ───"
+node test/test_integration.js && pass || fail "integration"
+
 # ═══ 总结 ═══
 echo ""
 echo "═══════════════════════════════════════════════"

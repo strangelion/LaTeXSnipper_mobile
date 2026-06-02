@@ -16,13 +16,15 @@ export function exportMarkdown(latex, format = 'block') {
 }
 
 export function exportMathML(latex) {
-  // Simple conversion using MathJax if available
-  if (typeof MathJax !== 'undefined' && MathJax.tex2mmlPromise) {
-    return MathJax.tex2mmlPromise(latex).then(node => {
-      return new XMLSerializer().serializeToString(node);
-    });
+  // Use KaTeX's built-in MathML output if available
+  if (typeof katex !== 'undefined' && katex.renderToString) {
+    try {
+      const html = katex.renderToString(latex, { throwOnError: false, output: 'mathml' });
+      const match = html.match(/<math[\s\S]*?<\/math>/);
+      if (match) return Promise.resolve(match[0]);
+    } catch (_) {}
   }
-  return Promise.resolve('<!-- MathML requires MathJax -->');
+  return Promise.resolve('<!-- MathML requires KaTeX -->');
 }
 
 export function exportText(latex) {

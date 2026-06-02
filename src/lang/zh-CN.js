@@ -47,9 +47,10 @@ export default {
   // ── Editor ──
   "editor.copyLatex": "复制 LaTeX",
   "editor.copyText": "复制文本",
+  "editor.clear": "清空",
+  "editor.showKeyboard": "键盘",
   "editor.exportMd": "导出 Markdown",
   "editor.exportMathML": "导出 MathML",
-  "editor.clear": "清空",
 
   // ── History ──
   "history.title": "历史记录",
@@ -191,5 +192,18 @@ export default {
 
   // ── Toast ──
   "toast.savedToDownload": "已保存到 下载/Download 文件夹",
-  "toast.downloadStarted": "下载已开始: {{filename}}"
+  "toast.downloadStarted": "下载已开始: {{filename}}",
+
+  // ── Export ──
+  "export.trigger": "导出…",
+  "export.exporting": "导出中…",
+  "export.format.png": "PNG",
+  "export.format.svg": "SVG",
+  "export.format.markdown": "Markdown",
+  "export.format.plain": "Plain Text（纯文本）",
+  "export.format.html": "HTML",
+  "export.format.typst": "Typst",
+  "export.format.asciidoc": "AsciiDoc",
+  "export.format.rst": "reStructuredText",
+  "export.format.opml": "OPML",
 }

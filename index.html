@@ -156,8 +156,7 @@
           <button class="ocr-btn secondary" id="aiPolishBtn" style="display:none;" data-i18n="btn.aiPolish">AI 整理</button>
           <button class="ocr-btn secondary" id="shareBtn" style="display:none;" data-i18n="btn.share">分享</button>
           <button class="ocr-btn secondary" id="sendToEditorBtn" style="display:none;" data-i18n="btn.sendToEditor">填入编辑器</button>
-          <button class="ocr-btn secondary" id="exportPngBtn" style="display:none;" data-i18n="btn.exportPng">导出 PNG</button>
-          <button class="ocr-btn secondary" id="exportSvgBtn" style="display:none;" data-i18n="btn.exportSvg">导出 SVG</button>
+          <div id="exportDropdownContainer" style="display:none;"></div>
         </div>
       </div>
 
@@ -184,34 +183,40 @@
         <div class="math-preview" id="editorPreview"></div>
         <div class="editor-preview-actions" id="editorPreviewActions" style="display:none;">
           <button class="ocr-btn secondary" id="editorCopy" style="font-size:0.8rem;padding:6px 12px;" data-i18n="editor.copyLatex">复制 LaTeX</button>
+          <button class="ocr-btn secondary" id="editorClearBtn" style="font-size:0.8rem;padding:6px 12px;" data-i18n="editor.clear">清空</button>
+          <div id="editorExportContainer" style="flex:1;max-width:160px;margin-left:auto;"></div>
         </div>
-        <!-- Calculator toolbar (5x5 grid) -->
+        <!-- Quick formula toolbar (5x5 grid with symbol shortcuts) -->
         <div class="calc-toolbar" id="calcToolbar">
-          <button class="calc-btn" data-latex="7">7</button>
-          <button class="calc-btn" data-latex="8">8</button>
-          <button class="calc-btn" data-latex="9">9</button>
-          <button class="calc-btn calc-op" data-latex="+">+</button>
-          <button class="calc-btn calc-fn" data-latex="\lim_{x \to \infty}">lim</button>
-          <button class="calc-btn" data-latex="4">4</button>
-          <button class="calc-btn" data-latex="5">5</button>
-          <button class="calc-btn" data-latex="6">6</button>
-          <button class="calc-btn calc-op" data-latex="-">−</button>
-          <button class="calc-btn calc-fn" data-latex="\int_{}^{}">∫</button>
-          <button class="calc-btn" data-latex="1">1</button>
-          <button class="calc-btn" data-latex="2">2</button>
-          <button class="calc-btn" data-latex="3">3</button>
-          <button class="calc-btn calc-op" data-latex="\times">×</button>
+          <button class="calc-btn" data-latex="\sqrt{}">√</button>
+          <button class="calc-btn calc-fn" data-latex="\frac{}{}">a/b</button>
+          <button class="calc-btn calc-fn" data-latex="x^{}">xⁿ</button>
+          <button class="calc-btn calc-fn" data-latex="x_{}">xₙ</button>
+          <button class="calc-btn calc-op" data-latex="\int_{}^{}">∫</button>
           <button class="calc-btn calc-fn" data-latex="\sum_{}^{}">∑</button>
-          <button class="calc-btn" data-latex="0">0</button>
+          <button class="calc-btn calc-fn" data-latex="\prod_{}^{}">∏</button>
+          <button class="calc-btn calc-fn" data-latex="\lim_{}">lim</button>
+          <button class="calc-btn calc-fn" data-latex="\binom{}{}">C(n,k)</button>
+          <button class="calc-btn calc-op" data-latex="\pm">±</button>
+          <button class="calc-btn calc-fn" data-latex="\alpha">α</button>
+          <button class="calc-btn calc-fn" data-latex="\beta">β</button>
+          <button class="calc-btn calc-fn" data-latex="\pi">π</button>
+          <button class="calc-btn calc-fn" data-latex="\theta">θ</button>
+          <button class="calc-btn calc-fn" data-latex="\omega">ω</button>
+          <button class="calc-btn calc-fn" data-latex="\infty">∞</button>
+          <button class="calc-btn calc-op" data-latex="\rightarrow">→</button>
+          <button class="calc-btn calc-op" data-latex="\Rightarrow">⇒</button>
+          <button class="calc-btn calc-op" data-latex="\leq">≤</button>
+          <button class="calc-btn calc-op" data-latex="\geq">≥</button>
+          <button class="calc-btn calc-back" data-action="backspace"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg></button>
           <button class="calc-btn" data-latex="(">(</button>
           <button class="calc-btn" data-latex=")">)</button>
-          <button class="calc-btn calc-op" data-latex="\div">÷</button>
-          <button class="calc-btn calc-back" data-action="backspace"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg></button>
-          <button class="calc-btn calc-fn" data-latex="^{}">x²</button>
-          <button class="calc-btn calc-fn" data-latex="_{}">x₂</button>
-          <button class="calc-btn calc-fn" data-latex="\frac{}{}">frac</button>
-          <button class="calc-btn calc-fn" data-latex="\sqrt{}">sqrt</button>
+          <button class="calc-btn" data-latex="\cdot">·</button>
           <button class="calc-btn calc-eval" data-action="evaluate">=</button>
+        </div>
+        <!-- Keyboard toggle bar -->
+        <div class="editor-footer-actions">
+          <button class="ocr-btn secondary" id="editorKbdToggle" data-i18n="editor.showKeyboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h12"/></svg> 键盘</button>
         </div>
       </div>
     </div>
@@ -384,6 +389,9 @@
     <button class="close-banner" id="dismissInstall">&times;</button>
   </div>
 
+  <!-- ═══ KaTeX CSS (vendor, local) ═══ -->
+  <link rel="stylesheet" href="/vendor/katex.min.css">
+
   <!-- ═══ Libraries (bundled, local, no CDN) ═══ -->
   <script src="/vendor/ort.all.min.js"></script>
   <script src="/vendor/pdf.min.js"></script>
@@ -391,15 +399,8 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
   </script>
 
-  <!-- ═══ MathJax global config ═══ -->
-  <script>
-    MathJax = {
-      tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
-      svg: { fontCache: 'global' },
-      options: { enableMenu: false },
-    };
-  </script>
-  <script src="/vendor/mathjax/tex-svg.js"></script>
+  <!-- ═══ KaTeX (replaces MathJax) ═══ -->
+  <script src="/vendor/katex.min.js"></script>
   <script src="/vendor/mathlive/mathlive.min.js"></script>
 
   <!-- ═══ Entry point ═══ -->

@@ -44,6 +44,7 @@ export default {
   "editor.exportMd": "Markdown 내보내기",
   "editor.exportMathML": "MathML 내보내기",
   "editor.clear": "지우기",
+  "editor.showKeyboard": "키보드",
 
   "history.title": "기록",
   "history.empty": "인식 기록이 없습니다.<br>수식 이미지를 업로드하세요.",
@@ -166,5 +167,18 @@ export default {
 
   // ── Toast ──
   "toast.savedToDownload": "다운로드 폴더에 저장되었습니다",
-  "toast.downloadStarted": "다운로드 시작됨: {{filename}}"
+  "toast.downloadStarted": "다운로드 시작됨: {{filename}}",
+
+  // ── Export ──
+  "export.trigger": "내보내기…",
+  "export.exporting": "내보내는 중…",
+  "export.format.png": "PNG",
+  "export.format.svg": "SVG",
+  "export.format.markdown": "Markdown",
+  "export.format.plain": "일반 텍스트",
+  "export.format.html": "HTML",
+  "export.format.typst": "Typst",
+  "export.format.asciidoc": "AsciiDoc",
+  "export.format.rst": "reStructuredText",
+  "export.format.opml": "OPML",
 }
