@@ -494,6 +494,7 @@ export function createExportDropdown(container, { getText, t }) {
     e.preventDefault();
     e.stopPropagation();
     const isOpen = list.classList.contains('show');
+    // Close any other export dropdowns first
     closeExportDropdowns();
     if (!isOpen) {
       list.classList.add('show');
@@ -502,7 +503,6 @@ export function createExportDropdown(container, { getText, t }) {
   });
 
   container.appendChild(wrap);
-  return wrap;
 }
 
 function closeExportDropdowns() {

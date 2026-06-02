@@ -45,30 +45,60 @@ function renderMathPreview(latex) {
 function renderMixedLine(line) {
   if (!hasKatex()) return escapeHtml(line);
 
-  // Pure text (no $ delimiters, no backslash commands) → escape, skip KaTeX
+  // Pure text (no $, no \) → escape, skip KaTeX
   if (!line.includes('$') && !line.includes('\\')) {
     return escapeHtml(line);
   }
 
-  // Strip outer $$…$$ if whole line is display math — KaTeX handles it
-  // better without the delimiters when not in mixed mode
+  // Pure display math $$...$$ — strip delimiters, render directly
   const trimmed = line.trim();
-  let processLine = line;
-  let displayMode = false;
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
-    // Pure display math — strip delimiters and force display mode
-    processLine = trimmed.slice(2, -2).trim();
-    displayMode = true;
+    try {
+      return katex.renderToString(trimmed.slice(2, -2).trim(), {
+        throwOnError: false, displayMode: true, output: 'html', strict: false,
+      });
+    } catch (_) {
+      return escapeHtml(line);
+    }
   }
 
-  // For lines containing $...$ inline math, KaTeX.renderToString handles
-  // them correctly: text outside $ stays as text, math inside $ is rendered.
-  return katex.renderToString(processLine, {
-    throwOnError: false,
-    displayMode,
-    output: 'html',
-    strict: false, // suppress irritating warnings like 'Unicode text in math mode'
-  });
+  // Mixed text+formula: split on $...$ segments
+  //   text outside $ → escapeHtml (safe for Chinese)
+  //   content inside $ → katex.renderToString
+  const parts = [];
+  let remaining = line;
+
+  while (remaining.length > 0) {
+    const openIdx = remaining.indexOf('$');
+    if (openIdx === -1) {
+      // No more formula delimiters → text segment
+      parts.push(escapeHtml(remaining));
+      break;
+    }
+    // Text before $
+    if (openIdx > 0) {
+      parts.push(escapeHtml(remaining.slice(0, openIdx)));
+    }
+    remaining = remaining.slice(openIdx + 1);
+    const closeIdx = remaining.indexOf('$');
+    if (closeIdx === -1) {
+      // Unclosed $ → treat rest as text
+      parts.push(escapeHtml('$' + remaining));
+      break;
+    }
+    // Math segment between $...$
+    const mathContent = remaining.slice(0, closeIdx);
+    try {
+      parts.push(katex.renderToString(mathContent, {
+        throwOnError: false, displayMode: false, output: 'html', strict: false,
+      }));
+    } catch (_) {
+      parts.push(escapeHtml('$' + mathContent + '$'));
+    }
+    remaining = remaining.slice(closeIdx + 1);
+  }
+
+  return parts.join('');
 }
 
 function escapeHtml(text) {
@@ -90,9 +120,10 @@ export function showResult(latex, confidence, extra) {
   els.resultCard.classList.add('show');
   if (els.copyBtn) els.copyBtn.style.display = 'block';
   // Only show AI polish when engine != builtin (i.e. has external API configured)
-  const hasExternal = (() => {
-    try { const s = JSON.parse(localStorage.getItem('ls_settings') || '{}'); return s.engine && s.engine !== 'builtin'; } catch (_) { return false; }
-  })();
+  const engine = (() => {
+    try { const s = JSON.parse(localStorage.getItem('ls_settings') || '{}'); return s.engine; } catch (_) { return null; }
+  })() || localStorage.getItem('ls_engine') || 'builtin';
+  const hasExternal = engine && engine !== 'builtin';
   ['shareBtn', 'sendToEditorBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.style.display = 'block';

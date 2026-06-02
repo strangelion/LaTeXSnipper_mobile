@@ -18,6 +18,7 @@ export function initSettings() {
   if (engineSelect) {
     engineSelect.addEventListener('change', () => {
       const v = engineSelect.value;
+      localStorage.setItem('ls_engine', v);
       if (extDiv) extDiv.style.display = v === 'external' ? '' : 'none';
       if (polishSection) polishSection.style.display = v === 'builtin' ? 'none' : '';
     });
@@ -188,7 +189,7 @@ export function initSettings() {
         nativeLogs = window.NativeOcr.getLogs() || '';
       }
     } catch (_) {
-      nativeLogs = '[获取原生日志失败: ' + _.message + ']\n';
+      nativeLogs = '[Failed to get native logs: ' + _.message + ']';
     }
 
     // Get JS logs — use more lines (500) when showing all, 200 for auto-refresh
