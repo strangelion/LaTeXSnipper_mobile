@@ -190,29 +190,32 @@ export function initEditor() {
 function syncPreview() {
   const latex = mathField?.value || '';
   const preview = document.getElementById('editorPreview');
+  const source = document.getElementById('editorLatexSource');
   const previewActions = document.getElementById('editorPreviewActions');
 
   if (!latex.trim()) {
     if (preview) { preview.classList.remove('show'); preview.innerHTML = ''; }
+    if (source) { source.classList.remove('show'); source.textContent = ''; }
     if (previewActions) previewActions.style.display = 'none';
     return;
   }
   if (previewActions) previewActions.style.display = 'flex';
 
-  // Render with KaTeX for WYSIWYG preview
+  // Top: KaTeX rendered preview
   if (preview && typeof katex !== 'undefined') {
     try {
       const html = katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       preview.innerHTML = html;
       preview.classList.add('show');
     } catch (_) {
-      // Fallback: show raw LaTeX
-      preview.textContent = latex;
+      preview.innerHTML = '<em style="color:var(--muted)">Rendering error</em>';
       preview.classList.add('show');
     }
-  } else if (preview) {
-    preview.textContent = latex;
-    preview.classList.add('show');
+  }
+  // Bottom: raw LaTeX source
+  if (source) {
+    source.textContent = latex;
+    source.classList.add('show');
   }
 }
 
