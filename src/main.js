@@ -318,26 +318,35 @@ async function boot() {
   onLangChange(() => syncCustomSelects());
 
   // ── Init export dropdowns (after i18n is loaded) ──
-  const { createExportDropdown } = await import('./export/pandoc-export.js');
+  // Lazy import; pandoc-export.js dynamically imports pandoc-wasm only on demand
+  let _exportDropdownInit = false;
+  async function initExportDropdowns() {
+    if (_exportDropdownInit) return;
+    _exportDropdownInit = true;
+    const { createExportDropdown } = await import('./export/pandoc-export.js');
 
-  const ocrContainer = document.getElementById('exportDropdownContainer');
-  if (ocrContainer) {
-    createExportDropdown(ocrContainer, {
-      getText: () => document.getElementById('resultCode')?.textContent || '',
-      t,
-    });
+    const ocrContainer = document.getElementById('exportDropdownContainer');
+    if (ocrContainer) {
+      createExportDropdown(ocrContainer, {
+        getText: () => document.getElementById('resultCode')?.textContent || '',
+        t,
+      });
+    }
+
+    const editorExportContainer = document.getElementById('editorExportContainer');
+    if (editorExportContainer) {
+      createExportDropdown(editorExportContainer, {
+        getText: () => {
+          const mf = document.getElementById('mathField');
+          return mf?.value?.trim() || '';
+        },
+        t,
+      });
+    }
   }
 
-  const editorExportContainer = document.getElementById('editorExportContainer');
-  if (editorExportContainer) {
-    createExportDropdown(editorExportContainer, {
-      getText: () => {
-        const mf = document.getElementById('mathField');
-        return mf?.value?.trim() || '';
-      },
-      t,
-    });
-  }
+  // Defer export dropdown init — it triggers Vite chunk loading for pandoc-wasm
+  initExportDropdowns();
 
   // Failsafe: hide splash after 30s regardless
   const failsafe = setTimeout(() => hideSplash(), 30000);
