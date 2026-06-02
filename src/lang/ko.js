@@ -101,6 +101,7 @@ export default {
   "btn.cacheCleared": "삭제됨 ✓",
   "btn.clearCache": "모델 캐시 삭제",
   "btn.copied": "복사됨 ✓",
+  "btn.copy": "복사",
   "btn.copyLatex": "LaTeX 복사",
   "btn.exportPng": "PNG 내보내기",
   "btn.exportSvg": "SVG 내보내기",

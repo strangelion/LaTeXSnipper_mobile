@@ -149,6 +149,7 @@ export default {
   "pdf.confidence": "Confidence {{pct}}%",
 
   // ── Buttons (dynamic text) ──
+  "btn.copy": "Copy",
   "btn.copyLatex": "Copy LaTeX",
   "btn.copied": "Copied ✓",
   "btn.saveSettings": "Save Settings",
