@@ -108,27 +108,25 @@ export function initEditor() {
   mathField.id = 'mathField';
 
   // Virtual keyboard container
-  if (window.mathVirtualKeyboard) {
-    // Place keyboard above the bottom nav, not at viewport bottom
-    window.mathVirtualKeyboard.container = document.body;
-    // Ensure keyboard respects safe-area (prevents tab overlap)
-    window.mathVirtualKeyboard.style = {
-      ...(window.mathVirtualKeyboard.style || {}),
-      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)', // above bottom nav
-    };
-    // Show built-in toggle button
-    window.mathVirtualKeyboard.showKeyboardButton = true;
+  try {
+    if (window.mathVirtualKeyboard) {
+      window.mathVirtualKeyboard.container = document.body;
+      window.mathVirtualKeyboard.style = {
+        ...(window.mathVirtualKeyboard.style || {}),
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)',
+      };
+      window.mathVirtualKeyboard.showKeyboardButton = true;
 
-    // Close keyboard when tapping outside mathfield + keyboard
-    const closeOnOutsideTap = (e) => {
-      if (!window.mathVirtualKeyboard.visible) return;
-      const kbd = document.querySelector('math-virtual-keyboard');
-      if (kbd && (kbd.contains(e.target) || e.target.closest('math-field'))) return;
-      if (e.target.closest('#editorKbdToggle')) return;
-      window.mathVirtualKeyboard.visible = false;
-    };
-    document.addEventListener('pointerdown', closeOnOutsideTap);
-  }
+      const closeOnOutsideTap = (e) => {
+        if (!window.mathVirtualKeyboard.visible) return;
+        const kbd = document.querySelector('math-virtual-keyboard');
+        if (kbd && (kbd.contains(e.target) || e.target.closest('math-field'))) return;
+        if (e.target.closest('#editorKbdToggle')) return;
+        window.mathVirtualKeyboard.visible = false;
+      };
+      document.addEventListener('pointerdown', closeOnOutsideTap);
+    }
+  } catch (_) {}
 
   // Append to editor page
   hostEl = document.getElementById('page-editor')?.querySelector('.editor-wrap');
