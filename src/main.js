@@ -234,30 +234,6 @@ window.__recogMode = () => recogMode;
 document.getElementById('shareBtn')?.addEventListener('click', shareResult);
 document.getElementById('aiPolishBtn')?.addEventListener('click', () => polishResult().catch(() => {}));
 
-/* ── Export dropdown (OCR result + Editor) ── */
-import { createExportDropdown } from './export/pandoc-export.js';
-
-// OCR result export dropdown
-const ocrContainer = document.getElementById('exportDropdownContainer');
-if (ocrContainer) {
-  createExportDropdown(ocrContainer, {
-    getText: () => document.getElementById('resultCode')?.textContent || '',
-    t,
-  });
-}
-
-// Editor export dropdown
-const editorExportContainer = document.getElementById('editorExportContainer');
-if (editorExportContainer) {
-  createExportDropdown(editorExportContainer, {
-    getText: () => {
-      const mf = document.getElementById('mathField');
-      return mf?.value?.trim() || '';
-    },
-    t,
-  });
-}
-
 document.getElementById('sendToEditorBtn')?.addEventListener('click', () => {
   const latex = document.getElementById('resultCode')?.textContent;
   if (latex) setEditorContent(latex);
@@ -340,6 +316,28 @@ async function boot() {
 
   // Re-sync custom selects when language changes
   onLangChange(() => syncCustomSelects());
+
+  // ── Init export dropdowns (after i18n is loaded) ──
+  const { createExportDropdown } = await import('./export/pandoc-export.js');
+
+  const ocrContainer = document.getElementById('exportDropdownContainer');
+  if (ocrContainer) {
+    createExportDropdown(ocrContainer, {
+      getText: () => document.getElementById('resultCode')?.textContent || '',
+      t,
+    });
+  }
+
+  const editorExportContainer = document.getElementById('editorExportContainer');
+  if (editorExportContainer) {
+    createExportDropdown(editorExportContainer, {
+      getText: () => {
+        const mf = document.getElementById('mathField');
+        return mf?.value?.trim() || '';
+      },
+      t,
+    });
+  }
 
   // Failsafe: hide splash after 30s regardless
   const failsafe = setTimeout(() => hideSplash(), 30000);

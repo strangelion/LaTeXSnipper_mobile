@@ -45,20 +45,29 @@ function renderMathPreview(latex) {
 function renderMixedLine(line) {
   if (!hasKatex()) return escapeHtml(line);
 
-  // KaTeX can handle $$...$$ and $...$ inline natively via renderToString
-  // We use displayMode=false so inline $...$ renders inline, and $$...$$
-  // is automatically treated as display math by KaTeX when we pass displayMode.
-  // But for mixed lines we need to split on $$ and $ ourselves.
-  // Simplest: try rendering the line directly in display mode.
-  // If it has $...$, KaTeX treats them as inline math.
-  // If the whole line is $$...$$, KaTeX handles it as display math.
+  // Pure text (no $ delimiters, no backslash commands) → escape, skip KaTeX
+  if (!line.includes('$') && !line.includes('\\')) {
+    return escapeHtml(line);
+  }
 
-  // KaTeX.renderToString("hello $x^2$ world") works correctly:
-  // text outside $ stays as text, math inside $ is rendered.
-  return katex.renderToString(line, {
+  // Strip outer $$…$$ if whole line is display math — KaTeX handles it
+  // better without the delimiters when not in mixed mode
+  const trimmed = line.trim();
+  let processLine = line;
+  let displayMode = false;
+  if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
+    // Pure display math — strip delimiters and force display mode
+    processLine = trimmed.slice(2, -2).trim();
+    displayMode = true;
+  }
+
+  // For lines containing $...$ inline math, KaTeX.renderToString handles
+  // them correctly: text outside $ stays as text, math inside $ is rendered.
+  return katex.renderToString(processLine, {
     throwOnError: false,
-    displayMode: false,
+    displayMode,
     output: 'html',
+    strict: false, // suppress irritating warnings like 'Unicode text in math mode'
   });
 }
 
