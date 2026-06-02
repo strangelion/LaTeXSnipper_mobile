@@ -256,9 +256,10 @@ pre.result-code {
 .export-dropdown-btn.open::after { transform: rotate(-135deg); }
 .export-dropdown-btn:disabled { opacity: 0.5; }
 .export-dropdown-list {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 200;
   background: var(--bg); border: 1px solid var(--border-color);
-  border-radius: 10px; overflow: hidden; display: none;
+  border-radius: 10px; overflow-y: auto; max-height: 50vh; min-width: 200px;
+  display: none;
   box-shadow: 0 4px 20px rgba(0,0,0,0.12);
 }
 .export-dropdown-list.show { display: block; }

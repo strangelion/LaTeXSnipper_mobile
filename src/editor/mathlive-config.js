@@ -109,9 +109,25 @@ export function initEditor() {
 
   // Virtual keyboard container
   if (window.mathVirtualKeyboard) {
+    // Place keyboard above the bottom nav, not at viewport bottom
     window.mathVirtualKeyboard.container = document.body;
-    // Show keyboard toggle button built into MathLive
+    // Ensure keyboard respects safe-area (prevents tab overlap)
+    window.mathVirtualKeyboard.style = {
+      ...(window.mathVirtualKeyboard.style || {}),
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)', // above bottom nav
+    };
+    // Show built-in toggle button
     window.mathVirtualKeyboard.showKeyboardButton = true;
+
+    // Close keyboard when tapping outside mathfield + keyboard
+    const closeOnOutsideTap = (e) => {
+      if (!window.mathVirtualKeyboard.visible) return;
+      const kbd = document.querySelector('math-virtual-keyboard');
+      if (kbd && (kbd.contains(e.target) || e.target.closest('math-field'))) return;
+      if (e.target.closest('#editorKbdToggle')) return;
+      window.mathVirtualKeyboard.visible = false;
+    };
+    document.addEventListener('pointerdown', closeOnOutsideTap);
   }
 
   // Append to editor page
@@ -119,7 +135,7 @@ export function initEditor() {
   if (hostEl) {
     const preview = document.getElementById('editorPreview');
     if (preview) {
-      hostEl.insertBefore(mathField, preview);
+      hostEl.insertBefore(mathField, hostEl.firstChild);
     } else {
       hostEl.appendChild(mathField);
     }
