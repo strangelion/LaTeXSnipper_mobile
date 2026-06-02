@@ -132,3 +132,6 @@ LaTeXSnipper_mobile/
 | AsciiDoc | Pandoc WASM | 轻量标记语言 |
 | reStructuredText | Pandoc WASM | Python 文档生态 |
 | OPML | Pandoc WASM | 大纲/思维导图 |
+
+## 许可证
+Apache License 2.0
