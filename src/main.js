@@ -336,9 +336,17 @@ async function boot() {
   // 8. Hide splash screen — all interactive UI ready
   hideSplash();
 
+  // Show loading progress in status bar
+  setStatus('loading', '正在加载 OCR 引擎…', true);
+  showProgress('模型', 0);
+
   // 9. Load models (async, may take 1-15s; status bar shows progress)
   // If user starts recognition before models ready, it waits.
-  initModels().catch(() => {});
+  initModels().then(() => {
+    hideProgress();
+  }).catch(() => {
+    hideProgress();
+  });
 }
 
 setupTabs();

@@ -6,6 +6,7 @@ import { setStatus, showError, showProgress, hideProgress } from './status.js';
 import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from './result.js';
 import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
 import Logger from '../shared/logger.js';
+import { t } from '../lang/i18n.js';
 
 let lastRecognitionTime = 0;
 
@@ -94,9 +95,9 @@ export async function processImage(file) {
       const Ocr = OcrNative;
 
       if (file.type === 'application/pdf') {
-        setStatus('processing', '正在解析 PDF…', true);
+        setStatus('processing', t('status.recognizingPdf'), true);
         const pdfResult = await processPDFNative(file, (info) => {
-          showProgress('PDF 第 ' + info.page + '/' + info.total + ' 页', info.pct);
+          showProgress('PDF ' + info.page + '/' + info.total, info.pct);
         });
         hideProgress();
         lastRecognitionTime = Date.now();
@@ -106,15 +107,15 @@ export async function processImage(file) {
         } else {
           showResult(pdfResult.latex, pdfResult.confidence, pdfResult.pageCount + ' 页');
         }
-        setStatus('done', '识别完成（' + pdfResult.pageCount + ' 页）', false);
+        setStatus('done', t('status.donePages', {count: pdfResult.pageCount}), false);
         const fh = getFileInputHandler(); if (fh) fh(pdfResult, file);
         return pdfResult;
       }
 
       // ── Run recognition ──
-      setStatus('processing', '正在识别…', true);
+      setStatus('processing', t('status.recognizing'), true);
       // Reset progress to 0% before starting new recognition
-      showProgress('识别中', 0);
+      showProgress(t('recog.processing'), 0);
 
       // Smooth progress (always increase, never decrease)
       let progressVal = 0;
@@ -123,7 +124,7 @@ export async function processImage(file) {
         const remaining = 85 - progressVal;
         const increment = Math.max(0.5, remaining * 0.12);
         progressVal = Math.min(85, progressVal + increment);
-        showProgress('识别中', Math.round(progressVal));
+        showProgress(t('recog.processing'), Math.round(progressVal));
       }, 500);
 
       let result;
@@ -142,8 +143,8 @@ export async function processImage(file) {
       lastRecognitionTime = Date.now();
 
       if (result && result.error) {
-        showError('识别失败: ' + result.error);
-        setStatus('ready', '模型就绪！请重新上传图片', false);
+        showError(t('recog.recognitionFailed', {msg: result.error}));
+        setStatus('ready', t('status.readyRetry'), false);
         return null;
       }
 
@@ -159,26 +160,26 @@ export async function processImage(file) {
       }
 
       if (!text) {
-        showError('未识别到内容' + (confidence ? '（置信度 ' + (confidence * 100).toFixed(1) + '% 过低）' : ''));
-        setStatus('ready', '模型就绪！请重新上传图片', false);
+        showError((confidence ? t('recog.confidenceTooLow', {pct: (confidence*100).toFixed(1)}) : t('recog.emptyResult')));
+        setStatus('ready', t('status.readyRetry'), false);
         return null;
       }
 
       showResult(text, confidence);
-      setStatus('done', '识别完成', false);
+      setStatus('done', t('status.done'), false);
       const fh = getFileInputHandler(); if (fh) fh({ latex: text, confidence }, file);
       return { latex: text, confidence };
     } catch (e) {
       URL.revokeObjectURL(url);
-      showError('识别失败: ' + (e.message || e));
-      setStatus('ready', '模型就绪！请拖入公式图片或粘贴', false);
+      showError(t('recog.recognitionFailed', {msg: e.message || e}));
+      setStatus('ready', t('status.readyRetry'), false);
       return null;
     }
   }
 
   // ── Browser dev mode: no local models available ──
-  showError('浏览器模式下仅支持外部 API。请在设置中配置 OpenAI 兼容 API，或在 Android App 中使用。');
-  setStatus('ready', '请配置外部 API 或使用 Android App', false);
+  showError(t('error.initFailed', {msg: 'Browser mode'}));
+  setStatus('ready', t('status.browserMode'), false);
   throw new Error('JS pipeline removed — use Native or External API');
 }
 
@@ -187,7 +188,7 @@ export async function processImage(file) {
 async function processImageExternal(file, settings) {
   hideResult();
   if (els.errorMsg) els.errorMsg.style.display = 'none';
-  setStatus('processing', '正在调用云端模型…', true);
+  setStatus('processing', t('status.recognizingCloud'), true);
   try {
     const base64 = await new Promise((resolve) => {
       const reader = new FileReader();
@@ -216,9 +217,9 @@ async function processImageExternal(file, settings) {
     let latex = data.choices?.[0]?.message?.content || '';
     latex = latex.replace(/```latex\n?/g, '').replace(/```\n?/g, '').trim();
     lastRecognitionTime = Date.now();
-    if (latex) { showResult(latex, 1.0); setStatus('done', '云端识别完成', false); const fh = getFileInputHandler(); if (fh) fh({ latex, confidence: 1.0 }, file); }
-    else { showError('云端未返回有效结果'); setStatus('ready', '模型就绪！拖入公式图片开始识别', false); }
-  } catch (e) { showError('云端识别失败: ' + (e.message || e)); setStatus('ready', '模型就绪！拖入公式图片开始识别', false); }
+    if (latex) { showResult(latex, 1.0); setStatus('done', t('status.cloudDone'), false); const fh = getFileInputHandler(); if (fh) fh({ latex, confidence: 1.0 }, file); }
+    else { showError(t('recog.cloudEmpty')); setStatus('ready', t('status.ready'), false); }
+  } catch (e) { showError(t('recog.cloudFailed', {msg: e.message || e})); setStatus('ready', t('status.ready'), false); }
 }
 
 /**

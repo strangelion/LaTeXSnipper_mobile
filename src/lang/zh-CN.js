@@ -131,6 +131,9 @@ export default {
   "status.loadFailed": "加载失败",
   "status.initializing": "正在初始化…",
   "status.loadingEngine": "正在加载 OCR 引擎…",
+  "status.loadingModel": "正在加载模型，请耐心等待…",
+  "status.modelTimeout": "模型加载超时，请重启应用",
+  "status.browserMode": "浏览器模式 — 请在设置中配置外部 API",
 
   // ── Errors ──
   "error.modelNotReady": "模型尚未加载完成，请稍等",
@@ -177,6 +180,12 @@ export default {
   "recog.intro": "<strong>离线OCR：</strong> 完全离线运行：ONNX Runtime 本地推理，模型内置在 App 中，安装后无需网络。支持图片、PDF、拍照和手写识别。",
   "settings.custom": "自定义",
   "recog.resultLabel": "结果",
+  "recog.emptyResult": "未识别到内容",
+  "recog.confidenceTooLow": "未识别到内容（置信度 {{pct}}% 过低）",
+  "recog.recognitionFailed": "识别失败: {{msg}}",
+  "recog.cloudEmpty": "云端未返回有效结果",
+  "recog.cloudFailed": "云端识别失败: {{msg}}",
+  "recog.processing": "识别中",
   "btn.aiPolish": "AI 整理",
   "settings.engine.builtin": "本地识别",
   "settings.engine.hybrid": "内置识别 + AI整理",

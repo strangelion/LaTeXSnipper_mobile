@@ -131,6 +131,9 @@ export default {
   "status.loadFailed": "Load failed",
   "status.initializing": "Initializing…",
   "status.loadingEngine": "Loading OCR engine…",
+  "status.loadingModel": "Loading models, please wait…",
+  "status.modelTimeout": "Model loading timed out, please restart",
+  "status.browserMode": "Browser mode — configure an external API in Settings",
 
   // ── Errors ──
   "error.modelNotReady": "Models not ready yet, please wait",
@@ -178,6 +181,12 @@ export default {
   "dev.multiThread": "ONNX Multi-thread (up to 8 cores + SIMD)",
   "settings.custom": "Custom",
   "recog.resultLabel": "Result",
+  "recog.emptyResult": "No content detected",
+  "recog.confidenceTooLow": "No content detected (confidence {{pct}}% too low)",
+  "recog.recognitionFailed": "Recognition failed: {{msg}}",
+  "recog.cloudEmpty": "Cloud returned no valid results",
+  "recog.cloudFailed": "Cloud recognition failed: {{msg}}",
+  "recog.processing": "Recognizing",
   "btn.aiPolish": "AI Polish",
   "settings.engine.builtin": "Offline Only",
   "settings.engine.hybrid": "Built-in + AI Polish",
