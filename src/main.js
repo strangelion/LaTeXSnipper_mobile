@@ -337,7 +337,7 @@ async function boot() {
   hideSplash();
 
   // Show loading progress in status bar
-  setStatus('loading', '正在加载 OCR 引擎…', true);
+  setStatus('loading', t('status.loadingEngine'), true);
   showProgress('模型', 0);
 
   // 9. Load models (async, may take 1-15s; status bar shows progress)

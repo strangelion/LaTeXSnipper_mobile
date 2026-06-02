@@ -1,6 +1,7 @@
 // Status bar + progress bar
 import { els } from './dom-refs.js';
 import { ICONS } from '../constants.js';
+import { t } from '../lang/i18n.js';
 
 export function setStatus(type, text, showSpin) {
   if (!els.statusIcon || !els.statusText || !els.spinner) return;
@@ -13,7 +14,7 @@ export function showError(msg) {
   if (!els.errorMsg) return;
   els.errorMsg.style.display = 'block';
   els.errorMsg.textContent = msg;
-  setStatus('error', '加载失败', false);
+  setStatus('error', t('status.loadFailed'), false);
 }
 
 export function showProgress(label, pct) {
