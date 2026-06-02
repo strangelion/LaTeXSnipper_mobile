@@ -67,6 +67,22 @@ async function processPDFNative(file, onProgress) {
 // ── Main entry ──
 
 export async function processImage(file) {
+  // ── Check models are ready before processing ──
+  // If native mode but models haven't finished loading, wait.
+  if (isNative() && !window.__modelsReady) {
+    setStatus('loading', t('status.loadingModel'), true);
+    // Poll for models up to 3 minutes
+    for (let i = 0; i < 180; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      if (window.__modelsReady) break;
+    }
+    if (!window.__modelsReady) {
+      showError(t('status.modelTimeout'));
+      setStatus('ready', t('status.modelTimeout'), false);
+      return null;
+    }
+  }
+
   // Ensure clean state: reset progress BEFORE any recognition attempt
   hideProgress();
   hideResult();

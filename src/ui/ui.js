@@ -163,6 +163,7 @@ export async function initModels(onProgress) {
     }
 
     Logger.info('init', 'Models loaded in ' + ((performance.now() - t0) / 1000).toFixed(1) + 's');
+    window.__modelsReady = true;
     if (updateSplash) updateSplash('就绪', 100);
     await new Promise(r => setTimeout(r, 300));
     setStatus('ready', t('status.ready'), false);
