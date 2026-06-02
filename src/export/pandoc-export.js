@@ -25,7 +25,14 @@ export const EXPORT_FORMATS = [
 ];
 
 export function getFormatLabel(fmt, t) {
-  return (t && t('export.format.' + fmt.id)) || fmt.label;
+  const key = 'export.format.' + fmt.id;
+  if (t) {
+    const val = t(key);
+    // t() returns the key string itself when not found (i18n not loaded yet);
+    // fall back to hardcoded label in that case.
+    if (val && val !== key) return val;
+  }
+  return fmt.label;
 }
 
 const PANDOC_FORMAT_MAP = {
