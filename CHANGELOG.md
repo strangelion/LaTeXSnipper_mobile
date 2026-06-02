@@ -1,6 +1,6 @@
 ## v1.1.0 — 导出增强、KaTeX 替换、编辑器升级、测试全覆盖 (2026-06-02)
 
-### 🚀 新功能
+### 新功能
 
 - **Pandoc WASM 集成** — 新增 7 种文档格式导出：Markdown、Plain Text、HTML、**Typst**、AsciiDoc、reStructuredText、OPML
 - **Typst 纯 JS 转换器** — 含 200+ LaTeX→Typst 符号映射 + 结构转换（不依赖 Pandoc WASM 的受限 LaTeX 支持）
@@ -12,7 +12,7 @@
   - 快速符号工具栏：希腊字母（α β π θ ω）、运算符（√ ∫ ∑ ∏）、关系符（≤ ≥ → ⇒ ∞）
 - **编辑器 KaTeX 实时预览** — 输入即见渲染效果，不再显示源码文本
 
-### 🔄 改进
+### 改进
 
 - **KaTeX 替换 MathJax 3** — 公式渲染体积从 ~2.5MB→265KB，HTML 输出模式原生支持中文混合显示，不再有中文字体渲染问题
 - **构建配置** — 添加 `vite-plugin-wasm` + `vite-plugin-top-level-await`，正确打包 pandoc-wasm 的 WASM 二进制
@@ -25,13 +25,13 @@
 - **开发者日志面板** — 更清晰的日志格式和分隔线
 - **exporter.js MathML** — 改用 KaTeX 的 MathML 输出，移除 MathJax 残留引用
 
-### 🐛 修复
+### 修复
 
 - 彻底移除 MathJax 所有文件和引用（节省 ~2.5MB APK 空间）
 - `normalizeMixedLine` 等陈旧兼容代码已删除
 - 修复旧版 exportPNG/exportSVG 残留导出引用
 
-### 🧪 测试
+### 测试
 
 **4 套新测试套件，616 项测试全部通过：**
 
