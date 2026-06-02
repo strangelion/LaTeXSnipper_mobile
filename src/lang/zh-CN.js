@@ -150,6 +150,7 @@ export default {
   "pdf.confidence": "置信度 {{pct}}%",
 
   // ── Buttons (dynamic text) ──
+  "btn.copy": "复制",
   "btn.copyLatex": "复制 LaTeX",
   "btn.copied": "已复制 ✓",
   "btn.saveSettings": "保存设置",

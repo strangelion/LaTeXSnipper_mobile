@@ -101,6 +101,7 @@ export default {
   "btn.cacheCleared": "已清除 ✓",
   "btn.clearCache": "清除模型快取",
   "btn.copied": "已複製 ✓",
+  "btn.copy": "複製",
   "btn.copyLatex": "複製 LaTeX",
   "btn.exportPng": "匯出 PNG",
   "btn.exportSvg": "匯出 SVG",

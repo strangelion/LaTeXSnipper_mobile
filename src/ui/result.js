@@ -1,5 +1,6 @@
 // Result display, math preview, copy/share/export, PDF browser
 import { els } from './dom-refs.js';
+import { t } from '../lang/i18n.js';
 import Logger from '../shared/logger.js';
 
 // ── PDF page browser state ──
@@ -148,10 +149,10 @@ export function copyResult() {
   const formatted = lines.map(l => '$$\n' + l.trim() + '\n$$').join('\n');
   navigator.clipboard.writeText(formatted).then(() => {
     if (els.copyBtn) {
-      els.copyBtn.textContent = '已复制 ✓';
+      els.copyBtn.textContent = t('btn.copied');
       els.copyBtn.classList.add('copied');
       setTimeout(() => {
-        els.copyBtn.textContent = '复制 LaTeX';
+        els.copyBtn.textContent = t('btn.copyLatex');
         els.copyBtn.classList.remove('copied');
       }, 1500);
     }

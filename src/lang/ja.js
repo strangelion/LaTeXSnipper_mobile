@@ -101,6 +101,7 @@ export default {
   "btn.cacheCleared": "消去済 ✓",
   "btn.clearCache": "モデルキャッシュを消去",
   "btn.copied": "コピー済 ✓",
+  "btn.copy": "コピー",
   "btn.copyLatex": "LaTeX コピー",
   "btn.exportPng": "PNG出力",
   "btn.exportSvg": "SVG出力",

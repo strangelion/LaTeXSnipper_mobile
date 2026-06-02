@@ -378,7 +378,7 @@ export async function renderHistoryList(filter = 'all') {
           <div class="hi-swipe-delete">${t('history.delete')}</div>
           <div class="hi-swipe-actions">
             <button class="hi-swipe-btn" data-action="share">${t('btn.share')}</button>
-            <button class="hi-swipe-btn" data-action="copy">${t('btn.copyLatex')}</button>
+            <button class="hi-swipe-btn" data-action=\"copy\">\${t('btn.copy')}</button>
             <span class="hi-swipe-fav-label">${t('history.favorite')}</span>
           </div>
         </div>
