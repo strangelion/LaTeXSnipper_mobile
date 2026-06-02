@@ -159,13 +159,14 @@ export function initEditor() {
     });
   });
 
-  // Copy button
-  document.getElementById('editorCopy')?.addEventListener('click', () => {
+  // Copy button in preview actions bar
+  document.getElementById('editorCopy')?.addEventListener('click', async () => {
     const latex = mathField.value?.trim();
     if (!latex) return;
+    const { t } = await import('../lang/i18n.js');
     navigator.clipboard.writeText(latex).then(() => {
       const b = document.getElementById('editorCopy');
-      if (b) { b.textContent = '已复制 ✓'; setTimeout(() => b.textContent = '复制 LaTeX', 1500); }
+      if (b) { b.textContent = t('btn.copied'); setTimeout(() => b.textContent = t('editor.copyLatex'), 1500); }
     });
   });
 
