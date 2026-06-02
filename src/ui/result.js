@@ -119,7 +119,7 @@ export function showResult(latex, confidence, extra) {
     : '置信度 ' + confPct + '%';
   els.resultCard.classList.add('show');
   if (els.copyBtn) els.copyBtn.style.display = 'block';
-  // Only show AI polish when engine != builtin (i.e. has external API configured)
+  // i18n for engine check
   const engine = (() => {
     try { const s = JSON.parse(localStorage.getItem('ls_settings') || '{}'); return s.engine; } catch (_) { return null; }
   })() || localStorage.getItem('ls_engine') || 'builtin';

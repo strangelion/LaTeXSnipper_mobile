@@ -9,9 +9,14 @@
 /* MathfieldElement inherits base styles; ensure consistent caret height */
 #mathField {
   line-height: 1.6;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 40vh;
 }
 
-/* ── KaTeX rendered preview ── */
+/* ── KaTeX rendered preview (top) ── */
 #editorPreview {
   width: 100%; padding: 0.7rem;
   border: 1px solid var(--border-color);
@@ -24,6 +29,20 @@
 }
 #editorPreview.show { display: block; }
 #editorPreview .katex { font-size: 1.15em; }
+
+/* ── Raw LaTeX source (bottom) ── */
+#editorLatexSource {
+  width: 100%; padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px; background: var(--bg);
+  color: var(--muted);
+  font-family: "SF Mono","Cascadia Code","Consolas",monospace;
+  font-size: 0.8rem; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-all;
+  display: none; min-height: 24px; box-sizing: border-box;
+  user-select: all;
+}
+#editorLatexSource.show { display: block; }
 
 /* ── Editor action buttons ── */
 .editor-preview-actions {

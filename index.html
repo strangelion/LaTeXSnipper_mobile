@@ -180,7 +180,10 @@
     <!-- ── Tab 2: Editor (MathLive created by JS) ── -->
     <div class="page" id="page-editor">
       <div class="editor-wrap">
-        <div class="math-preview" id="editorPreview"></div>
+        <!-- KaTeX rendered preview on top -->
+        <div class="editor-preview-box" id="editorPreview"></div>
+        <!-- Raw LaTeX source below -->
+        <div class="editor-latex-source" id="editorLatexSource"></div>
         <div class="editor-preview-actions" id="editorPreviewActions" style="display:none;">
           <button class="ocr-btn secondary" id="editorCopy" style="font-size:0.8rem;padding:6px 12px;" data-i18n="editor.copyLatex">复制 LaTeX</button>
           <button class="ocr-btn secondary" id="editorClearBtn" style="font-size:0.8rem;padding:6px 12px;" data-i18n="editor.clear">清空</button>

@@ -333,19 +333,11 @@ async function boot() {
     if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
   });
 
-  // 8. Hide splash screen — all interactive UI and models ready
-  // initModels will update status bar when models are loaded
-  initModels();
-
-  // Show initial status immediately after splash
-  setStatus('initializing', t('status.initializing'), true);
-  setTimeout(() => {
-    if (!window.__modelsReady) {
-      setStatus('loading', t('status.loadingModel'), true);
-    }
-  }, 500);
-
+  // 8. Hide splash screen
   hideSplash();
+
+  // 9. Load models — initModels handles its own status bar updates
+  initModels();
 }
 
 setupTabs();
