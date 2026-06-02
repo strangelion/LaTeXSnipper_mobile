@@ -127,7 +127,7 @@ export async function initModels(onProgress) {
   const bridgeReady = await waitForNativeOcr(8000);
   if (!bridgeReady) {
     Logger.warn('init', 'NativeOcr bridge not found after 8s, browser mode');
-    try { setStatus('ready', t('status.browserMode'), false); } catch(_) {}
+    setStatusSafe('ready', 'status.browserMode', false);
     return;
   }
 
@@ -140,21 +140,15 @@ export async function initModels(onProgress) {
     } catch (_) {}
 
     // Load models (background thread on Java, poll until ready)
-    try { setStatus('loading', t('status.loadingModel'), true); } catch(_) {}
+    setStatusSafe('loading', 'status.loadingModel', true);
     OcrNative._loadProgress = 5;
-
-    // Show progress while loading (fast ramp to prevent 6% spike)
-    const progressInterval = setInterval(() => {
-      if (updateSplash) updateSplash('加载模型', Math.min(95, OcrNative._loadProgress || 5));
-    }, 200);
 
     const t0 = performance.now();
     const loaded = await loadModelsAndWait(180000);
-    clearInterval(progressInterval);
 
     if (!loaded) {
       Logger.error('init', 'Model loading timed out after 3 minutes');
-      setStatus('ready', t('status.modelTimeout'), false);
+      setStatusSafe('ready', 'status.modelTimeout', false);
       return;
     }
 
@@ -162,9 +156,25 @@ export async function initModels(onProgress) {
     window.__modelsReady = true;
     if (updateSplash) updateSplash('就绪', 100);
     await new Promise(r => setTimeout(r, 300));
-    try { setStatus('ready', t('status.ready'), false); } catch(_) {}
+    setStatusSafe('ready', 'status.ready', false);
   } catch (e) {
     Logger.error('init', 'Native OCR init failed', e);
-    try { setStatus('ready', t('status.browserMode'), false); } catch(_) {}
+    setStatusSafe('ready', 'status.browserMode', false);
+  }
+}
+
+// Safe setStatus that falls back to raw text if t() not ready
+function setStatusSafe(type, key, showSpin) {
+  try {
+    setStatus(type, t(key), showSpin);
+  } catch (_) {
+    // i18n not loaded yet — show bare message
+    const fallbacks = {
+      'status.ready': 'Ready',
+      'status.loadingModel': 'Loading models...',
+      'status.modelTimeout': 'Model loading timed out',
+      'status.browserMode': 'Browser mode — configure external API',
+    };
+    setStatus(type, fallbacks[key] || key, showSpin);
   }
 }

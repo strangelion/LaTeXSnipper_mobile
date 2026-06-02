@@ -9,6 +9,11 @@
 /* MathfieldElement inherits base styles; ensure consistent caret height */
 #mathField {
   line-height: 1.6;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 40vh;
 }
 
 /* ── KaTeX rendered preview ── */
