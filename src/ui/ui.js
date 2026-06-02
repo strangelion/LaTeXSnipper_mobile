@@ -127,13 +127,13 @@ export async function initModels(onProgress) {
   const bridgeReady = await waitForNativeOcr(8000);
   if (!bridgeReady) {
     Logger.warn('init', 'NativeOcr bridge not found after 8s, browser mode');
-    setStatus('ready', '浏览器模式 — 请在设置中配置外部 API', false);
+    setStatus('ready', t('status.browserMode'), false);
     return;
   }
 
   Logger.info('init', 'NativeOcr bridge detected');
   try {
-    setStatus('loading', '正在加载本地模型…', true);
+    setStatus('loading', t('status.loadingModel'), true);
     if (updateSplash) updateSplash('原生引擎', 0);
     await new Promise(r => setTimeout(r, 50));
 
@@ -144,7 +144,7 @@ export async function initModels(onProgress) {
     } catch (_) {}
 
     // Load models (background thread on Java, poll until ready)
-    setStatus('loading', '正在加载模型，请耐心等待…', true);
+    setStatus('loading', t('status.loadingModel'), true);
     OcrNative._loadProgress = 5;
 
     // Show progress while loading (fast ramp to prevent 6% spike)
@@ -158,16 +158,16 @@ export async function initModels(onProgress) {
 
     if (!loaded) {
       Logger.error('init', 'Model loading timed out after 3 minutes');
-      setStatus('ready', '模型加载超时，请重启应用', false);
+      setStatus('ready', t('status.modelTimeout'), false);
       return;
     }
 
     Logger.info('init', 'Models loaded in ' + ((performance.now() - t0) / 1000).toFixed(1) + 's');
     if (updateSplash) updateSplash('就绪', 100);
     await new Promise(r => setTimeout(r, 300));
-    setStatus('ready', '模型就绪！拖入公式图片或 Ctrl+V 粘贴', false);
+    setStatus('ready', t('status.ready'), false);
   } catch (e) {
     Logger.error('init', 'Native OCR init failed', e);
-    setStatus('ready', '浏览器模式 — 请在设置中配置外部 API', false);
+    setStatus('ready', t('status.browserMode'), false);
   }
 }

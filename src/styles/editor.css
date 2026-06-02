@@ -38,6 +38,7 @@
 /* ── Keyboard toggle bar ── */
 .editor-footer-actions {
   display: flex; justify-content: center; margin-top: 0.2rem;
+  position: relative; z-index: 10;
 }
 #editorKbdToggle {
   display: flex; align-items: center; gap: 4px;
@@ -45,6 +46,16 @@
   opacity: 0.7;
 }
 #editorKbdToggle:active { opacity: 1; }
+
+/* ── Prevent bottom nav tap when keyboard is open ── */
+math-virtual-keyboard {
+  --math-virtual-keyboard-z-index: 20;
+}
+/* When keyboard is visible, add padding so bottom nav doesn't overlap */
+body:has(math-virtual-keyboard[visible]) .bottom-nav {
+  z-index: 1;
+  pointer-events: none;  /* taps fall through to keyboard dismiss */
+}
 
 /* ── Quick formula toolbar ── */
 .calc-toolbar {
