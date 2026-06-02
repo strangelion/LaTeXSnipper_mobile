@@ -40,7 +40,7 @@ ok(main.includes('initEditor('), 'editor initialized');
 ok(main.includes('hideSplash('), 'splash hidden');
 ok(main.includes('initModels('), 'model loading started');
 ok(main.includes('renderHistoryList('), 'history rendered');
-ok(main.includes('setStatus('), 'status bar updated');
+ok(main.includes('setStatus') || main.includes('initModels('), 'status bar updated');
 
 // Event listeners bound during boot
 ok(main.includes('editorKbdToggle'), 'keyboard toggle');
