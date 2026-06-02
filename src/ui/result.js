@@ -50,11 +50,25 @@ function renderMixedLine(line) {
     return escapeHtml(line);
   }
 
-  // Pure display math $$...$$ — strip delimiters, render directly
+  // Strip outer $$…$$ / wrap in $$…$$ if LaTeX math without delimiters
   const trimmed = line.trim();
+
+  // Already wrapped in display math $$...$$
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     try {
       return katex.renderToString(trimmed.slice(2, -2).trim(), {
+        throwOnError: false, displayMode: true, output: 'html', strict: false,
+      });
+    } catch (_) {
+      return escapeHtml(line);
+    }
+  }
+
+  // If the line contains LaTeX commands (\) but no $ delimiters,
+  // wrap in $$...$$ for KaTeX to recognize as math
+  if (!line.includes('$') && line.includes('\\')) {
+    try {
+      return katex.renderToString(line, {
         throwOnError: false, displayMode: true, output: 'html', strict: false,
       });
     } catch (_) {
