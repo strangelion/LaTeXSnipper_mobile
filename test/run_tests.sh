@@ -69,6 +69,11 @@ echo ""
 echo "─── [10] Integration Tests ───"
 node test/test_integration.js && pass || fail "integration"
 
+# ═══ 11. 用户工作流测试 (完整生命周期) ═══
+echo ""
+echo "─── [11] User Workflow Tests ───"
+node test/test_user_workflows.js && pass || fail "user workflows"
+
 # ═══ 总结 ═══
 echo ""
 echo "═══════════════════════════════════════════════"

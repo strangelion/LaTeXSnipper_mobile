@@ -133,10 +133,6 @@ export async function initModels(onProgress) {
 
   Logger.info('init', 'NativeOcr bridge detected');
   try {
-    setStatus('loading', t('status.loadingModel'), true);
-    if (updateSplash) updateSplash('原生引擎', 0);
-    await new Promise(r => setTimeout(r, 50));
-
     // Apply saved acceleration mode before loading
     try {
       const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
@@ -163,6 +159,7 @@ export async function initModels(onProgress) {
     }
 
     Logger.info('init', 'Models loaded in ' + ((performance.now() - t0) / 1000).toFixed(1) + 's');
+    window.__modelsReady = true;
     if (updateSplash) updateSplash('就绪', 100);
     await new Promise(r => setTimeout(r, 300));
     setStatus('ready', t('status.ready'), false);

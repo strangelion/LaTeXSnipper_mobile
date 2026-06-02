@@ -333,20 +333,19 @@ async function boot() {
     if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
   });
 
-  // 8. Hide splash screen — all interactive UI ready
+  // 8. Hide splash screen — all interactive UI and models ready
+  // initModels will update status bar when models are loaded
+  initModels();
+
+  // Show initial status immediately after splash
+  setStatus('initializing', t('status.initializing'), true);
+  setTimeout(() => {
+    if (!window.__modelsReady) {
+      setStatus('loading', t('status.loadingModel'), true);
+    }
+  }, 500);
+
   hideSplash();
-
-  // Show loading progress in status bar
-  setStatus('loading', t('status.loadingEngine'), true);
-  showProgress('模型', 0);
-
-  // 9. Load models (async, may take 1-15s; status bar shows progress)
-  // If user starts recognition before models ready, it waits.
-  initModels().then(() => {
-    hideProgress();
-  }).catch(() => {
-    hideProgress();
-  });
 }
 
 setupTabs();
