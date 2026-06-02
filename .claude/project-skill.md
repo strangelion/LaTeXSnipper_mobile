@@ -16,15 +16,19 @@
 
 ```
 LaTeXSnipper_mobile/
-├── index.html                 # 单页面 SPA，5 个 Tab 页面
+├── index.html                 # 单页面 SPA，4 个 Tab 页面
 ├── public/
+│   ├── vendor/                # 内置库
+│   │   ├── katex.min.js       # KaTeX 公式渲染 (265KB)
+│   │   ├── katex.min.css      # KaTeX CSS + fonts/ 字体
+│   │   ├── mathlive/          # MathLive 编辑器
+│   │   └── pdf.min.js         # PDF.js
 │   ├── models/                # ONNX 模型文件
 │   │   ├── mathcraft-formula-det/   # YOLOv8 公式检测
 │   │   ├── mathcraft-formula-rec/   # TrOCR 公式识别
 │   │   ├── mathcraft-text-det/      # DBNet 文字检测
 │   │   ├── mathcraft-text-rec/      # CRNN 文字识别 + 方向检测 + 区域分类
 │   │   └── chinese_detector.onnx    # 中文/公式分类
-│   ├── vendor/                # 内置库 (mathjax/mathlive/pdfjs)
 │   ├── fonts/                 # 中文字体
 │   ├── sw.js                  # Service Worker
 │   └── manifest.json          # PWA 清单
@@ -37,22 +41,28 @@ LaTeXSnipper_mobile/
 │   │   └── ocr-native.js      # window.NativeOcr 异步调用封装
 │   ├── shared/                # 通用工具模块
 │   │   ├── share.js           # 分享功能（Capacitor → 下载降级）
-│   │   └── logger.js          # 日志收集与诊断导出
-│   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手
+│   │   └── logger.js          # 日志收集（localStorage + Java 桥接 + DOM 事件）
+│   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手/旋转
 │   ├── handwriting/           # Canvas 手写板 + 导出
-│   ├── editor/                # MathLive 编辑器 + 中文翻译
+│   ├── editor/                # MathLive 编辑器 + 虚拟键盘 + KaTeX 预览
+│   ├── export/                # 导出模块
+│   │   └── pandoc-export.js   # 统一导出系统（下拉菜单 + 9 种格式）
 │   ├── history/               # IndexedDB 存储（idb 封装）
 │   ├── settings/              # 设置页面逻辑
 │   ├── ui/                    # UI 组件
-│   │   ├── ui.js              # 状态栏/进度条/结果展示等
+│   │   ├── ui.js              # 状态栏/进度条/拖放/模式切换
 │   │   ├── recognition.js     # 识别入口（Native → External API → fallback）
-│   │   ├── result.js          # 结果显示/分享/PNG/SVG导出/MathJax渲染
+│   │   ├── result.js          # 结果显示/KaTeX预览/复制/分享/PDF分页/导出
 │   │   ├── splash.js          # 启动加载进度
-│   │   └── custom-select.js   # 自定义下拉选择器
+│   │   ├── custom-select.js   # 自定义下拉选择器
+│   │   ├── status.js          # 状态栏（带图标）
+│   │   ├── theme.js           # 日/夜主题切换
+│   │   ├── polish.js          # AI 整理（DeepSeek API）
+│   │   └── dom-refs.js        # DOM 元素引用共享
 │   └── styles/                # CSS 样式模块
 │       ├── base.css           # CSS 变量、布局、导航、自定义下拉
-│       ├── ocr.css            # 识别页面
-│       ├── editor.css         # MathLive + 计算器工具栏
+│       ├── ocr.css            # 识别页面 + 导出下拉菜单样式
+│       ├── editor.css         # MathLive + KaTeX 预览 + 符号工具栏
 │       ├── handwriting.css    # 手写板
 │       ├── history.css        # 历史记录滑动
 │       └── mobile.css         # 移动端适配
@@ -73,17 +83,15 @@ LaTeXSnipper_mobile/
 │           ├── TextRecPostProcess.java     # CTC 解码
 │           ├── DocOriPreProcess.java       # 方向检测
 │           └── ImagePreProcess.java        # 图像增强
-├── test/                      # Python 模型测试套件
-│   ├── test_formula_det.py    # YOLOv8 检测测试
-│   ├── test_formula_rec.py    # TrOCR 识别测试
-│   ├── test_text_det.py       # DBNet 检测测试
-│   ├── test_text_rec.py       # CRNN 识别测试
-│   ├── test_text_rec_pipeline.py # DBNet+CRNN 端到端管线测试
-│   ├── test_mixed_rec_layout.py  # 混合识别排版逻辑测试（13 项）
-│   ├── test_orientation.py    # 方向检测测试
-│   └── test_utils.py          # 共享后处理工具
-├── vite.config.js           # Vite 配置
-├── capacitor.config.json    # Capacitor 配置
+├── test/                      # 测试套件
+│   ├── run_tests.sh           # 一键运行全部（10 项）
+│   ├── test_*.py              # OCR 模型测试（7 项 Python）
+│   ├── test_pandoc_export.js  # Pandoc WASM + Typst 导出（45 项）
+│   ├── test_katex.js          # KaTeX 公式渲染（35 项）
+│   ├── test_integration.js    # 集成/模块/配置检查（227 项）
+│   └── test_e2e.js            # 全量 E2E（20 大类 309 项）
+├── vite.config.js             # Vite + wasm + top-level-await 配置
+├── capacitor.config.json      # Capacitor 配置
 └── .github/workflows/
     ├── build-apk.yml         # Android APK 构建（workflow_dispatch）
     └── build-ios.yml         # iOS 模拟器构建
@@ -96,9 +104,9 @@ LaTeXSnipper_mobile/
 | Tab | ID | 功能 |
 |-----|-----|------|
 | 识别 | `#page-ocr` | 图片/PDF/拍照/手写识别，模式选择（公式/文本/混合） |
-| 编辑器 | `#page-editor` | MathLive 输入，MathJax 预览，复制，计算器工具栏 |
+| 编辑器 | `#page-editor` | MathLive 所见即所得编辑，KaTeX 预览，虚拟键盘，符号工具栏，导出 |
 | 历史 | `#page-history` | IndexedDB 列表，收藏筛选，滑动删除/分享/复制，点击填入编辑器 |
-| 设置 | `#page-settings` | 识别引擎选择、加速模式、外部 API 配置、预设、皮肤、语言、开发者模式、更新检查 |
+| 设置 | `#page-settings` | 识别引擎选择、加速模式、外部 API 配置、预设、皮肤、语言、AI 整理配置、开发者模式、更新检查 |
 
 ---
 
@@ -198,7 +206,31 @@ JS → window.NativeOcr.recognizeFormula(base64) → NativeOcrBridge (后台线�
 
 ---
 
-## 七、构建与部署
+## 七、导出系统
+
+导出下拉菜单位于 OCR 结果卡和编辑器底部，共 9 种格式：
+
+| 格式 | 转换引擎 | 说明 |
+|------|---------|------|
+| PNG | KaTeX → SVG → Canvas | 高清公式图片 |
+| SVG | KaTeX → SVG | 矢量公式图片 |
+| Markdown | Pandoc WASM | `markdown+tex_math_dollars` |
+| Plain Text | Pandoc WASM | 纯文本 |
+| HTML | Pandoc WASM | 网页 |
+| **Typst** | **纯 JS 转换器** | 符号表 + 结构转换，不依赖 Pandoc |
+| AsciiDoc | Pandoc WASM | 轻量标记语言 |
+| reStructuredText | Pandoc WASM | Python 文档生态 |
+| OPML | Pandoc WASM | 大纲/思维导图 |
+
+Typst 转换器（`pandoc-export.js`）：
+- 200+ LaTeX→Typst 符号映射（希腊字母、运算符、箭头、关系符、函数名）
+- 结构转换：`\frac`、`\sqrt`、`\binom`、`\begin{cases}`、矩阵环境、`\text`、`\underline`、`\hat`/`\vec` 等
+- 混合内容分段：`$...$`/`$$...$$` 解析，只转换公式段，文本段保留
+- 预处理：`\textcolor`、`\cfrac`、`\sideset`、`\varnothing`、`#?` 等修复
+
+---
+
+## 八、构建与部署
 
 ```bash
 npm run dev              # Vite 开发服务器（:5174）
@@ -210,10 +242,17 @@ cd android && ./gradlew assembleDebug  # 编译 debug APK
 # Actions → Build Android APK → 输入版本号 + 勾选 Release → Run workflow
 ```
 
-### 测试模型（conda 环境）
+### 测试
 ```bash
+# Node.js 测试（无需 conda）
+node test/test_pandoc_export.js   # Pandoc + Typst 导出
+node test/test_katex.js           # KaTeX 渲染
+node test/test_integration.js     # 项目结构检查
+node test/test_e2e.js             # 全量 E2E
+
+# 全部测试（含 OCR 模型）
 conda activate ppocr_finetune
-bash test/run_tests.sh   # 运行全部 7 项测试
+bash test/run_tests.sh
 ```
 
 ### 注意事项
@@ -221,9 +260,11 @@ bash test/run_tests.sh   # 运行全部 7 项测试
 2. **图片解码** — `is.available()` 在 APK 压缩资产中返回压缩后大小，必须用 `ByteArrayOutputStream` 分段读取
 3. **文件分享** — Capacitor Share 传 base64 文件在某些 Android 版本失败时，直接触发下载而非弹系统分享（避免"没有应用可执行此操作"）
 4. **MathLive 自定义元素** — `<mathlive-field>` 在部分 WebView 中不注册，改用 `new MathfieldElement()` 创建
-5. **虚拟键盘策略** — `mathVirtualKeyboardPolicy = 'sandboxed'`，聚焦时不弹出系统键盘
+5. **虚拟键盘策略** — `mathVirtualKeyboardPolicy = 'manual'`，点击键盘按钮弹出，不自动弹出
 6. **相机按钮** — 必须用 `pointerdown` + `stopPropagation`，`click` 在 WebView 中不可靠
 7. **COOP/COEP 头** — Capacitor 和 Vite 中已配置
 8. **iOS 构建** — 需要 Apple Developer（$99/年），CI 只能验证模拟器编译
 9. **模型加载** — 所有模型内置在资产文件中，不依赖网络
 10. **大图拍照** — >500KB 自动压缩到最长边 1920px
+11. **KaTeX 替换 MathJax** — 公式渲染不再依赖 MathJax SVG 模式，使用 KaTeX HTML 渲染，轻量快速，中文字体由页面 CSS 控制
+12. **Typst 不经过 Pandoc WASM** — pandoc-wasm WASM 二进制不支持完整 LaTeX math mode，Typst 导出使用纯 JS 符号映射 + 结构转换器

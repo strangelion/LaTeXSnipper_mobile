@@ -187,13 +187,38 @@ export function initSettings() {
       if (isNative() && typeof window.NativeOcr !== 'undefined' && window.NativeOcr.getLogs) {
         nativeLogs = window.NativeOcr.getLogs() || '';
       }
-    } catch (_) { nativeLogs = '[Failed to get native logs: ' + _.message + ']\n'; }
+    } catch (_) {
+      nativeLogs = '[获取原生日志失败: ' + _.message + ']\n';
+    }
 
-    const jsLines = Logger.getLastLines(200);
+    // Get JS logs — use more lines (500) when showing all, 200 for auto-refresh
+    const jsLines = Logger.getLastLines(500);
     const combined = [];
-    if (nativeLogs) combined.push('=== Java Native Logs ===', nativeLogs);
-    if (jsLines.length) combined.push('=== JS Logs ===', jsLines.join('\n'));
-    devLogOutput.textContent = combined.length ? combined.join('\n') : t('dev.noLogs');
+
+    // System info header
+    combined.push('=== LaTeXSnipper 诊断日志 ===');
+    combined.push('时间: ' + new Date().toLocaleString('zh-CN'));
+    combined.push('平台: ' + (isNative() ? 'Android' : '浏览器'));
+    combined.push('硬件并发: ' + (navigator.hardwareConcurrency || 'unknown'));
+    combined.push('内存: ' + (navigator.deviceMemory ? navigator.deviceMemory + 'GB' : 'unknown'));
+    combined.push('');
+
+    if (nativeLogs) {
+      combined.push('── Java Native Logs ──');
+      // Only show last 200 lines of native logs to avoid overflow
+      const nativeLines = nativeLogs.split('\n').filter(Boolean);
+      combined.push(nativeLines.slice(-200).join('\n'));
+      combined.push('');
+    }
+
+    if (jsLines.length) {
+      combined.push('── JS Logs (最新 ' + jsLines.length + ' 条) ──');
+      combined.push(jsLines.join('\n'));
+    } else {
+      combined.push(t('dev.noLogs'));
+    }
+
+    devLogOutput.textContent = combined.join('\n');
     devLogOutput.style.display = '';
   }
 

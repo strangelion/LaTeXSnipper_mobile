@@ -7,98 +7,65 @@ import Logger from '../shared/logger.js';
 let _pdfPages = [];
 let _currentPdfPage = 0;
 
-// ── Math rendering (internal) ──
+// ── Math rendering (KaTeX) ──
+
+/** Check if KaTeX is loaded */
+function hasKatex() {
+  return typeof katex !== 'undefined' && typeof katex.renderToString === 'function';
+}
 
 function renderMathPreview(latex) {
   if (!els.mathPreview) return;
-  if (!latex || typeof MathJax === 'undefined' || !MathJax.tex2svgPromise) {
+  if (!latex || !hasKatex()) {
     els.mathPreview.classList.remove('show');
     return;
   }
   const lines = latex.split('\n').filter(l => l.trim());
   if (lines.length === 0) { els.mathPreview.classList.remove('show'); return; }
   els.mathPreview.innerHTML = '';
-  Promise.all(lines.map(line =>
-    MathJax.tex2svgPromise(normalizeMixedLine(line), { display: true }).catch(() => null)
-  )).then(nodes => {
-    nodes.forEach(node => {
-      if (node) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'math-line';
-        wrapper.appendChild(node);
-        els.mathPreview.appendChild(wrapper);
-      }
-    });
-    els.mathPreview.classList.add('show');
-  }).catch(() => { els.mathPreview.classList.remove('show'); });
+
+  const allHtml = lines.map(line => {
+    try {
+      return renderMixedLine(line);
+    } catch (_) {
+      return escapeHtml(line);
+    }
+  }).join('');
+
+  els.mathPreview.innerHTML = allHtml;
+  els.mathPreview.classList.add('show');
 }
 
 /**
- * Normalize a mixed text+formula line for MathJax rendering.
+ * Render a mixed text+formula line with KaTeX.
  *
- * MathJax.tex2svgPromise("hello $x^2$ world") treats the whole string as math
- * mode (wrapped in \[...\] for display), so bare $ is a literal character.
- * We need to convert:
- *   text outside $...$ → \text{...}
- *   content inside $...$ → stays as math
- *   pure display math ($$...$$) → unchanged (already a display-only line)
- *
- * Examples:
- *   "hello $x^2$ world"  →  "\text{hello } x^2 \text{ world}"
- *   "just plain text"    →  "\text{just plain text}"
- *   "$$\nf(x)dx\n$$"     →  unchanged
+ * KaTeX.renderToString handles $...$ and $$...$$ natively, so we don't
+ * need to manually split text/formula — KaTeX handles $...$ natively.
  */
-function normalizeMixedLine(line) {
-  if (line.startsWith('$$') && line.endsWith('$$')) return line;
+function renderMixedLine(line) {
+  if (!hasKatex()) return escapeHtml(line);
 
-  const parts = [];
-  let remaining = line;
+  // KaTeX can handle $$...$$ and $...$ inline natively via renderToString
+  // We use displayMode=false so inline $...$ renders inline, and $$...$$
+  // is automatically treated as display math by KaTeX when we pass displayMode.
+  // But for mixed lines we need to split on $$ and $ ourselves.
+  // Simplest: try rendering the line directly in display mode.
+  // If it has $...$, KaTeX treats them as inline math.
+  // If the whole line is $$...$$, KaTeX handles it as display math.
 
-  while (remaining.length > 0) {
-    const openIdx = remaining.indexOf('$');
-    if (openIdx === -1) {
-      // Remaining text
-      parts.push('\\text{' + escapeTextForMath(remaining) + '}');
-      break;
-    }
-    if (openIdx + 1 < remaining.length && remaining[openIdx + 1] === '$') {
-      // $$ — shouldn't appear mid-line, pass through
-      parts.push(remaining);
-      break;
-    }
-    // Text before inline math
-    if (openIdx > 0) {
-      parts.push('\\text{' + escapeTextForMath(remaining.substring(0, openIdx)) + '}');
-    }
-    remaining = remaining.substring(openIdx + 1);
-    const closeIdx = remaining.indexOf('$');
-    if (closeIdx === -1) {
-      // Unclosed $ — treat rest as math
-      parts.push(remaining);
-      break;
-    }
-    // Math content
-    parts.push(remaining.substring(0, closeIdx));
-    remaining = remaining.substring(closeIdx + 1);
-  }
-
-  return parts.join(' ').trim();
+  // KaTeX.renderToString("hello $x^2$ world") works correctly:
+  // text outside $ stays as text, math inside $ is rendered.
+  return katex.renderToString(line, {
+    throwOnError: false,
+    displayMode: false,
+    output: 'html',
+  });
 }
 
-/**
- * Escape TeX special characters that would break inside \text{} in math mode.
- * Order matters: backslash first, then other chars, so \textbackslash doesn't
- * get its braces mangled.
- */
-function escapeTextForMath(text) {
-  return text
-    .replace(/\\/g, '\\textbackslash ')
-    .replace(/%/g, '\\%')
-    .replace(/#/g, '\\#')
-    .replace(/&/g, '\\&')
-    .replace(/\$/g, '\\$')
-    .replace(/{/g, '\\{')
-    .replace(/}/g, '\\}');
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // ── Result display ──
@@ -125,10 +92,9 @@ export function showResult(latex, confidence, extra) {
     const polishBtn = document.getElementById('aiPolishBtn');
     if (polishBtn) polishBtn.style.display = 'block';
   }
-  ['exportPngBtn', 'exportSvgBtn'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.style.display = 'inline-block';
-  });
+  // Show export dropdown
+  const exportContainer = document.getElementById('exportDropdownContainer');
+  if (exportContainer) exportContainer.style.display = 'block';
 }
 
 export function hideResult() {
@@ -138,6 +104,8 @@ export function hideResult() {
     const btn = document.getElementById(id);
     if (btn) btn.style.display = 'none';
   });
+  const exportContainer = document.getElementById('exportDropdownContainer');
+  if (exportContainer) exportContainer.style.display = 'none';
 }
 
 // ── Copy result ──
@@ -200,12 +168,13 @@ export function gotoPDFPage(n) {
   const info = document.getElementById('pdfPageInfo');
   if (info) info.textContent = (n + 1) + ' / ' + _pdfPages.length;
   const tex = page.latex?.replace(/\n/g, ' ').trim();
-  if (els.mathPreview && tex && typeof MathJax !== 'undefined' && MathJax.tex2svgPromise) {
-    MathJax.tex2svgPromise(tex).then(node => {
-      els.mathPreview.innerHTML = '';
-      els.mathPreview.appendChild(node);
+  if (els.mathPreview && tex && hasKatex()) {
+    try {
+      els.mathPreview.innerHTML = katex.renderToString(tex, { throwOnError: false, displayMode: true, output: 'html' });
       els.mathPreview.classList.add('show');
-    }).catch(() => {});
+    } catch (_) {
+      els.mathPreview.classList.remove('show');
+    }
   }
   document.querySelectorAll('.pdf-thumb').forEach((t, i) => t.classList.toggle('active', i === n));
 }
@@ -231,28 +200,66 @@ export function initPDFNav() {
 // ── Export formula as PNG / SVG ──
 
 /**
- * Render LaTeX lines with MathJax into individual SVG elements,
- * using an offscreen container (no DOM flicker).
+ * Render LaTeX lines with KaTeX into individual HTML strings, then
+ * convert to SVG for export. We render each line to HTML via KaTeX,
+ * then use a temp DOM node + foreignObject to convert to SVG.
  */
 async function renderLatexToSvgs(latex) {
-  if (!latex || typeof MathJax === 'undefined' || !MathJax.tex2svgPromise) return null;
+  if (!latex || !hasKatex()) return null;
   const lines = latex.split('\n').filter(l => l.trim());
   if (!lines.length) return null;
 
   const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-9999px;top:0';
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;font-size:20px';
   document.body.appendChild(container);
 
   try {
-    const nodes = await Promise.all(
-      lines.map(line =>
-        MathJax.tex2svgPromise(normalizeMixedLine(line), { display: true }).catch(() => null)
-      )
-    );
-    const svgs = nodes.filter(Boolean).map(n => n.querySelector('svg')).filter(Boolean);
+    const svgs = lines.map(line => {
+      const html = katex.renderToString(line, { throwOnError: false, displayMode: true, output: 'html' });
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'white-space:nowrap;padding:8px';
+      wrapper.innerHTML = html;
+      container.appendChild(wrapper);
+
+      const bbox = wrapper.getBoundingClientRect();
+      const w = Math.max(bbox.width, 20);
+      const h = Math.max(bbox.height, 20);
+
+      // Create an SVG with foreignObject wrapping the rendered HTML
+      const svgNs = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('xmlns', svgNs);
+      svg.setAttribute('width', w);
+      svg.setAttribute('height', h);
+      svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+
+      const foreign = document.createElementNS(svgNs, 'foreignObject');
+      foreign.setAttribute('width', w);
+      foreign.setAttribute('height', h);
+      foreign.setAttribute('x', '0');
+      foreign.setAttribute('y', '0');
+
+      const div = document.createElementNS(svgNs, 'div');
+      div.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      div.style.cssText = 'width:' + w + 'px;height:' + h + 'px;overflow:visible;font-size:20px';
+      div.innerHTML = html;
+
+      // Copy computed styles from the temp wrapper
+      const styles = window.getComputedStyle(wrapper);
+      div.style.fontFamily = styles.fontFamily;
+      div.style.lineHeight = styles.lineHeight;
+      div.style.color = '#000000';
+
+      foreign.appendChild(div);
+      svg.appendChild(foreign);
+
+      container.removeChild(wrapper);
+      return svg;
+    });
+
     return svgs.length ? svgs : null;
   } finally {
-    document.body.removeChild(container);
+    if (container.parentNode) document.body.removeChild(container);
   }
 }
 
@@ -418,5 +425,5 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-// Export for use by polish.js
-export { renderMathPreview };
+// Export for use by polish.js and pandoc-export.js
+export { renderMathPreview, renderLatexToSvgs, combineSvgs, svgToPngBlob };

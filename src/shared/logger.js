@@ -31,8 +31,14 @@ function timestamp() {
 
 function push(level, tag, msg) {
   load();
-  logBuffer.push(`[${timestamp()}][${level}][${tag}] ${msg}`);
+  const entry = `[${timestamp()}][${level}][${tag}] ${msg}`;
+  logBuffer.push(entry);
   save();
+  // Forward to native log if available (tagged)
+  _forwardToNative(level, tag, msg);
+  // Also emit as DOM event for dev console (captured by settings.js)
+  _emitLogEvent(level, tag, msg);
+  // Console output
   if (level === 'ERROR' || level === 'WARN') {
     console.warn(`[${tag}] ${msg}`);
   } else {
@@ -40,42 +46,68 @@ function push(level, tag, msg) {
   }
 }
 
-// Override console.log/warn/error to capture into Logger buffer too.
-// Only captures APP messages (tag prefix), filters out 3rd-party noise.
+function _forwardToNative(level, tag, msg) {
+  try {
+    if (typeof window.NativeOcr !== 'undefined' && window.NativeOcr.addLog) {
+      window.NativeOcr.addLog(`[JS-${level}][${tag}] ${msg}`);
+    }
+  } catch(_) {}
+}
+
+function _emitLogEvent(level, tag, msg) {
+  try {
+    window.dispatchEvent(new CustomEvent('ls-log', {
+      detail: { level, tag, msg, time: Date.now() }
+    }));
+  } catch(_) {}
+}
+
+// ── Override console methods to capture ALL output ──
+// This intercepts every console.log/warn/error, including from
+// third-party libraries, and captures the stack trace for errors.
+
 const _origLog = console.log;
 const _origWarn = console.warn;
 const _origError = console.error;
+const _origDebug = console.debug;
 
 console.log = function(...args) {
-  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-  const tagMatch = msg.match(/^\[([^\]]+)\]/);
-  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
-  // Also push to logger buffer (avoid recursion by calling push directly)
-  load();
-  logBuffer.push(`[${timestamp()}][INFO][${tag}] ${msg}`);
-  save();
+  _captureConsole('INFO', args);
   _origLog.apply(console, args);
 };
 
+console.debug = function(...args) {
+  _captureConsole('DEBUG', args);
+  _origDebug.apply(console, args);
+};
+
 console.warn = function(...args) {
-  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-  const tagMatch = msg.match(/^\[([^\]]+)\]/);
-  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
-  load();
-  logBuffer.push(`[${timestamp()}][WARN][${tag}] ${msg}`);
-  save();
+  _captureConsole('WARN', args);
   _origWarn.apply(console, args);
 };
 
 console.error = function(...args) {
-  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-  const tagMatch = msg.match(/^\[([^\]]+)\]/);
-  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
-  load();
-  logBuffer.push(`[${timestamp()}][ERROR][${tag}] ${msg}`);
-  save();
+  _captureConsole('ERROR', args);
+  // For Error objects, include stack trace
+  const errorObj = args.find(a => a instanceof Error);
+  if (errorObj && errorObj.stack) {
+    _captureConsole('ERROR', [errorObj.stack.split('\n').slice(0, 8).join('\n')]);
+  }
   _origError.apply(console, args);
 };
+
+function _captureConsole(level, args) {
+  const msg = args.map(a => {
+    if (a instanceof Error) return a.message + '\n' + (a.stack || '').split('\n').slice(0, 5).join('\n');
+    if (typeof a === 'object') try { return JSON.stringify(a, null, 1); } catch(_) { return String(a); }
+    return String(a);
+  }).join(' ');
+  load();
+  const tagMatch = msg.match(/^\[([^\]]+)\]/);
+  const tag = tagMatch ? tagMatch[1] : 'CONSOLE';
+  logBuffer.push(`[${timestamp()}][${level}][${tag}] ${msg}`);
+  save();
+}
 
 const Logger = {
   info(tag, msg) { push('INFO', tag, msg); try { if (typeof window.NativeOcr !== 'undefined') window.NativeOcr.addLog('[JS-INFO][' + tag + '] ' + msg); } catch(_){} },

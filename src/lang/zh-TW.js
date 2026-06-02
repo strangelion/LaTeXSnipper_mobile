@@ -44,6 +44,7 @@ export default {
   "editor.exportMd": "匯出 Markdown",
   "editor.exportMathML": "匯出 MathML",
   "editor.clear": "清空",
+  "editor.showKeyboard": "鍵盤",
 
   "history.title": "歷史記錄",
   "history.empty": "暫無識別記錄。<br>上傳公式圖片開始使用！",
@@ -166,5 +167,18 @@ export default {
 
   // ── Toast ──
   "toast.savedToDownload": "已儲存到 下載/Download 資料夾",
-  "toast.downloadStarted": "下載已開始: {{filename}}"
+  "toast.downloadStarted": "下載已開始: {{filename}}",
+
+  // ── Export ──
+  "export.trigger": "匯出…",
+  "export.exporting": "匯出中…",
+  "export.format.png": "PNG",
+  "export.format.svg": "SVG",
+  "export.format.markdown": "Markdown",
+  "export.format.plain": "純文字",
+  "export.format.html": "HTML",
+  "export.format.typst": "Typst",
+  "export.format.asciidoc": "AsciiDoc",
+  "export.format.rst": "reStructuredText",
+  "export.format.opml": "OPML",
 }

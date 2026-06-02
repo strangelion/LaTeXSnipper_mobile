@@ -47,6 +47,8 @@ export default {
   // ── Editor ──
   "editor.copyLatex": "Copy LaTeX",
   "editor.copyText": "Copy Text",
+  "editor.clear": "Clear",
+  "editor.showKeyboard": "Keyboard",
   "editor.exportMd": "Export Markdown",
   "editor.exportMathML": "Export MathML",
   "editor.clear": "Clear",
@@ -191,5 +193,18 @@ export default {
 
   // ── Toast ──
   "toast.savedToDownload": "Saved to Downloads folder",
-  "toast.downloadStarted": "Download started: {{filename}}"
+  "toast.downloadStarted": "Download started: {{filename}}",
+
+  // ── Export ──
+  "export.trigger": "Export…",
+  "export.exporting": "Exporting…",
+  "export.format.png": "PNG",
+  "export.format.svg": "SVG",
+  "export.format.markdown": "Markdown",
+  "export.format.plain": "Plain Text",
+  "export.format.html": "HTML",
+  "export.format.typst": "Typst",
+  "export.format.asciidoc": "AsciiDoc",
+  "export.format.rst": "reStructuredText",
+  "export.format.opml": "OPML",
 }

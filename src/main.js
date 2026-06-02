@@ -9,7 +9,7 @@ import './styles/mobile.css';
 
 import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
-import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, exportPNG, exportSVG, onFileProcessed, hideSplash, polishResult } from './ui/ui.js';
+import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, onFileProcessed, hideSplash, polishResult } from './ui/ui.js';
 import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
 import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, initCamera } from './camera/camera.js';
 import { addResult, clearHistory } from './history/history-db.js';
@@ -233,8 +233,30 @@ window.__recogMode = () => recogMode;
 })();
 document.getElementById('shareBtn')?.addEventListener('click', shareResult);
 document.getElementById('aiPolishBtn')?.addEventListener('click', () => polishResult().catch(() => {}));
-document.getElementById('exportPngBtn')?.addEventListener('click', exportPNG);
-document.getElementById('exportSvgBtn')?.addEventListener('click', exportSVG);
+
+/* ── Export dropdown (OCR result + Editor) ── */
+import { createExportDropdown } from './export/pandoc-export.js';
+
+// OCR result export dropdown
+const ocrContainer = document.getElementById('exportDropdownContainer');
+if (ocrContainer) {
+  createExportDropdown(ocrContainer, {
+    getText: () => document.getElementById('resultCode')?.textContent || '',
+    t,
+  });
+}
+
+// Editor export dropdown
+const editorExportContainer = document.getElementById('editorExportContainer');
+if (editorExportContainer) {
+  createExportDropdown(editorExportContainer, {
+    getText: () => {
+      const mf = document.getElementById('mathField');
+      return mf?.value?.trim() || '';
+    },
+    t,
+  });
+}
 
 document.getElementById('sendToEditorBtn')?.addEventListener('click', () => {
   const latex = document.getElementById('resultCode')?.textContent;
@@ -281,6 +303,21 @@ document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListe
 
 /* ── Editor tab ── */
 initEditor();
+
+// Keyboard toggle button
+document.getElementById('editorKbdToggle')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  // Dynamic import — top-level await not available in this scope,
+  // use .then() pattern
+  import('./editor/mathlive-config.js').then(mod => mod.toggleKeyboard());
+});
+
+// Clear button
+document.getElementById('editorClearBtn')?.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  const mf = document.getElementById('mathField');
+  if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
+});
 
 
 /* ── Startup: load models ── */

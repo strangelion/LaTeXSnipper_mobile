@@ -232,3 +232,39 @@ pre.result-code {
 .pdf-thumb.active { border-color: var(--accent); opacity: 1; }
 .pdf-thumb:hover, .pdf-thumb:active { opacity: 0.85; }
 
+/* ── Export dropdown (reuses custom-select visual style) ── */
+.export-dropdown-wrap {
+  position: relative;
+  grid-column: 1 / -1; /* spans full row in the actions grid */
+}
+.export-dropdown-btn {
+  width: 100%; padding: 8px 8px;
+  border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--card-bg); color: var(--accent);
+  font-size: 0.78rem; font-family: inherit; cursor: pointer;
+  text-align: center; user-select: none;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: border-color 0.2s;
+}
+.export-dropdown-btn:active { border-color: var(--accent); }
+.export-dropdown-btn::after {
+  content: ''; width: 6px; height: 6px;
+  border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg); flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.export-dropdown-btn.open::after { transform: rotate(-135deg); }
+.export-dropdown-btn:disabled { opacity: 0.5; }
+.export-dropdown-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  background: var(--bg); border: 1px solid var(--border-color);
+  border-radius: 10px; overflow: hidden; display: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.export-dropdown-list.show { display: block; }
+.export-dropdown-item {
+  padding: 0.5rem 0.75rem; font-size: 0.82rem; color: var(--fg);
+  cursor: pointer; transition: background 0.1s;
+}
+.export-dropdown-item:active { background: var(--accent); color: #fff; }
+

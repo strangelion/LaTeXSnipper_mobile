@@ -1,4 +1,4 @@
-// MathLive editor — native component with Chinese locale (from LaTeXSnipper desktop)
+// MathLive editor — full WYSIWYG formula editor with virtual keyboard
 const MATHLIVE_ZH = {
   'keyboard.tooltip.symbols': '符号',
   'keyboard.tooltip.greek': '希腊字母',
@@ -69,7 +69,6 @@ let mathField = null;
 let hostEl = null;
 
 export function initEditor() {
-  // Must wait for MathLive script to load MathfieldElement class
   if (typeof MathfieldElement === 'undefined') {
     setTimeout(initEditor, 200);
     return;
@@ -80,11 +79,17 @@ export function initEditor() {
   try { MathfieldElement.locale = 'zh-CN'; } catch (_) {}
   MathfieldElement.fontsDirectory = '/vendor/mathlive/fonts';
 
-  // Create MathfieldElement programmatically (same as desktop app)
+  // Create MathfieldElement
   mathField = new MathfieldElement();
-  mathField.mathVirtualKeyboardPolicy = 'sandboxed';
+
+  // ── Key configuration for Math Live-like experience ──
+  // manual = show keyboard on user button click (not auto on focus)
+  mathField.mathVirtualKeyboardPolicy = 'manual';
+  // smartFence: auto-close fences like (), {}, []
   mathField.smartFence = true;
-  mathField.smartMode = false;
+  // smartMode: automatically switch between text/math mode
+  mathField.smartMode = true;
+
   mathField.style.minHeight = '220px';
   mathField.style.fontSize = '1.4rem';
   mathField.style.width = '100%';
@@ -92,7 +97,8 @@ export function initEditor() {
   mathField.style.borderRadius = '10px';
   mathField.style.background = 'var(--card-bg)';
   mathField.style.padding = '0.75rem';
-  // Long-press context menu: prevent browser default, use MathLive menu
+
+  // Long-press context menu
   mathField.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     if (mathField.menu && typeof mathField.menu.show === 'function') {
@@ -101,15 +107,16 @@ export function initEditor() {
   });
   mathField.id = 'mathField';
 
-  // Fix toolbar flash on tap — use document.body as keyboard container
+  // Virtual keyboard container
   if (window.mathVirtualKeyboard) {
     window.mathVirtualKeyboard.container = document.body;
+    // Show keyboard toggle button built into MathLive
+    window.mathVirtualKeyboard.showKeyboardButton = true;
   }
 
   // Append to editor page
   hostEl = document.getElementById('page-editor')?.querySelector('.editor-wrap');
   if (hostEl) {
-    // Insert before the preview div (second child)
     const preview = document.getElementById('editorPreview');
     if (preview) {
       hostEl.insertBefore(mathField, preview);
@@ -118,7 +125,7 @@ export function initEditor() {
     }
   }
 
-  // Sync MathJax preview
+  // Sync preview on input
   mathField.addEventListener('input', syncPreview);
 
   // Calculator toolbar
@@ -132,21 +139,17 @@ export function initEditor() {
         return;
       }
       if (action === 'evaluate') {
-        // Use MathLive compute engine to evaluate expression
         try {
           const latex = mathField.value?.trim();
           if (!latex) return;
-          // Attempt numeric evaluation via MathLive expression
-          const mf = mathField;
-          if (mf.expression && typeof mf.expression.evaluate === 'function') {
-            const result = mf.expression.evaluate();
+          if (mathField.expression && typeof mathField.expression.evaluate === 'function') {
+            const result = mathField.expression.evaluate();
             if (result && result.latex) {
-              mf.value = result.latex;
-              mf.dispatchEvent(new Event('input', { bubbles: true }));
+              mathField.value = result.latex;
+              mathField.dispatchEvent(new Event('input', { bubbles: true }));
             }
           } else {
-            // Fallback: insert placeholder
-            mf.insert('=');
+            mathField.insert('=');
           }
         } catch (_) { mathField.insert('='); }
         return;
@@ -156,7 +159,7 @@ export function initEditor() {
     });
   });
 
-  // Copy button in preview actions bar
+  // Copy button
   document.getElementById('editorCopy')?.addEventListener('click', () => {
     const latex = mathField.value?.trim();
     if (!latex) return;
@@ -181,8 +184,18 @@ function syncPreview() {
   }
   if (previewActions) previewActions.style.display = 'flex';
 
-  // Show raw LaTeX source instead of MathJax rendered preview
-  if (preview) {
+  // Render with KaTeX for WYSIWYG preview
+  if (preview && typeof katex !== 'undefined') {
+    try {
+      const html = katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      preview.innerHTML = html;
+      preview.classList.add('show');
+    } catch (_) {
+      // Fallback: show raw LaTeX
+      preview.textContent = latex;
+      preview.classList.add('show');
+    }
+  } else if (preview) {
     preview.textContent = latex;
     preview.classList.add('show');
   }
@@ -195,4 +208,11 @@ export function setEditorContent(latex) {
   mathField.dispatchEvent(new Event('input', { bubbles: true }));
   const t = document.querySelector('.bottom-nav button[data-page="editor"]');
   if (t) t.click();
+}
+
+// Toggle virtual keyboard programmatically
+export function toggleKeyboard() {
+  if (mathField && typeof mathField.executeCommand === 'function') {
+    mathField.executeCommand('toggleVirtualKeyboard');
+  }
 }

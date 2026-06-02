@@ -44,6 +44,7 @@ export default {
   "editor.exportMd": "Markdown 出力",
   "editor.exportMathML": "MathML 出力",
   "editor.clear": "クリア",
+  "editor.showKeyboard": "キーボード",
 
   "history.title": "履歴",
   "history.empty": "認識履歴がありません。<br>数式画像をアップロードしてください。",
@@ -166,5 +167,18 @@ export default {
 
   // ── Toast ──
   "toast.savedToDownload": "ダウンロードフォルダに保存しました",
-  "toast.downloadStarted": "ダウンロード開始: {{filename}}"
+  "toast.downloadStarted": "ダウンロード開始: {{filename}}",
+
+  // ── Export ──
+  "export.trigger": "エクスポート…",
+  "export.exporting": "エクスポート中…",
+  "export.format.png": "PNG",
+  "export.format.svg": "SVG",
+  "export.format.markdown": "Markdown",
+  "export.format.plain": "プレーンテキスト",
+  "export.format.html": "HTML",
+  "export.format.typst": "Typst",
+  "export.format.asciidoc": "AsciiDoc",
+  "export.format.rst": "reStructuredText",
+  "export.format.opml": "OPML",
 }

@@ -5,10 +5,12 @@
 ## 功能
 
 - **公式/文字/混合 OCR 识别** — 图片/PDF/拍照/手写 → LaTeX/文本，Android 端 ONNX Runtime 本地推理
-- **MathLive 公式编辑器** — 所见即所得数学公式编辑，支持虚拟键盘和计算引擎
-- **手写画板** — 墨迹平滑、压感、撤销/重做
-- **历史记录** — IndexedDB 存储，收藏夹管理
-- **多格式导出** — LaTeX / Markdown / MathML / 文本
+- **MathLive 公式编辑器** — 所见即所得数学公式编辑，支持虚拟键盘、智能模式、符号模板面板
+- **手写画板** — 墨迹平滑、压感、撤销/重做/调整画布
+- **历史记录** — IndexedDB 存储，收藏夹管理，滑动手势（右滑删除、左滑分享/复制）
+- **多格式导出** — PNG / SVG / Markdown / Plain Text / HTML / Typst / AsciiDoc / reStructuredText / OPML
+- **AI 整理** — 连接 DeepSeek 兼容 API 对识别结果进行纠错和格式化
+- **公式渲染** — KaTeX 渲染（轻量快速，原生支持中文混合显示）
 - **完全离线** — 所有模型和依赖内置，安装后无需网络
 - **GPU 加速** — Android NNAPI (OpenGL/Vulkan/NPU) 加速推理
 - **日/夜主题** — 自动跟随系统或手动切换
@@ -18,144 +20,115 @@
 
 | 组件 | 技术 |
 |------|------|
-| 构建 | Vite 5 |
+| 构建 | Vite 5 + vite-plugin-wasm + top-level-await |
 | OCR 引擎 | ONNX Runtime Android (Java) |
 | 公式检测 | YOLOv8 (mathcraft-mfd) |
 | 公式识别 | TrOCR (DeiT 编码器 + 束搜索解码) |
 | 文字检测 | DBNet (PP-OCRv5) + Moore-Neighbor 轮廓追踪 |
 | 文字识别 | CRNN (PP-OCRv5) + CTC 解码 |
 | 方向检测 | PP-LCNet 文档方向 + EXIF 自动旋转 |
-| 公式渲染 | MathJax 3 (tex-svg) |
+| 公式渲染 | KaTeX 0.17 |
 | 公式编辑 | MathLive 0.98 |
+| 文档转换 | pandoc-wasm 1.0（Markdown/HTML/AsciiDoc/RST/OPML 导出） |
+| 文本导出 | 纯 JS LaTeX → Typst 转换器（符号表 + 结构转换） |
 | PDF 渲染 | pdfjs-dist 3.11 |
-| 存储 | IndexedDB (idb) |
-| 移动打包 | Capacitor 8 (Android + iOS) |
+| 移动框架 | Capacitor 8 (Android/iOS) |
+| 存储 | IndexedDB (idb 封装) |
 
-## 开发
-
-```bash
-npm install
-npm run dev      # 开发服务器 (localhost:5174)
-npm run build    # 构建到 dist/
-npm run preview  # 预览构建产物
-```
-
-## 构建手机 App
+## 快速开始
 
 ```bash
-npm run build                       # 构建 Web 资源
-npx cap sync android                # 同步到 Android
-cd android && ./gradlew assembleDebug  # 构建调试 APK
-
-# Release 构建（GitHub Actions 手动触发）
-# Actions → Build Android APK → 输入版本号 → Run workflow
+npm install        # 安装依赖
+npm run dev        # Vite 开发服务器 (:5174)
+npm run build      # 构建到 dist/
+npx cap sync android  # 同步到 Android
+cd android && ./gradlew assembleDebug  # 编译 debug APK
 ```
 
-APK 约 270MB（含全部模型和离线资源）。
+## 测试
 
-## 桌面端 vs 移动端引擎对比
+```bash
+conda activate ppocr_finetune
+bash test/run_tests.sh   # 全部 10 项测试
+```
 
-Android 端使用纯 Java ONNX Runtime 管线，与桌面端 Python `mathcraft-ocr` 实现对标：
+测试包括：
 
-| 管线 | 桌面端 (Python) | 移动端 (Java) | 状态 |
-|------|----------------|---------------|------|
-| **公式检测** | YOLOv8, thresh=0.25, IoU=0.45 | 同左，动态 anchor 数 | ✅ 一致 |
-| **公式识别** | TrOCR 贪心解码, max_tokens=512 | TrOCR 束搜索(beam=3), same max_tokens | ✅ 一致 |
-| **公式预处理** | 短边 384 + 中心裁剪 | 同左 | ✅ 一致 |
-| **文字检测** | RapidOCR DBPostProcess (OpenCV 轮廓追踪) | Moore-Neighbor 轮廓追踪 (纯 Java) | ✅ 一致 |
-| **文字预处理** | BGR 48×320, mean=0.5, std=0.5 | 同左 | ✅ 一致 |
-| **文字识别** | CRNN CTC 解码 | 同左 | ✅ 一致 |
-| **混合模式** | 原图检测 → 公式分割 → 行分割 → 版面输出 | 同左 | ✅ 一致 |
-| **公式行分割** | 投影分析 → 逐行识别 → `\begin{aligned}` | 同左 | ✅ 一致 |
-| **版面输出** | 行分组 + $/$$ 包裹 + inline/display 区分 | 同左 | ✅ 一致 |
-| **方向检测** | PP-LCNet 0°/90°/180°/270° + EXIF | 同左 | ✅ 一致 |
-| **GPU 加速** | CUDA / CoreML | NNAPI (OpenGL/Vulkan/NPU) | ✅ |
-| **推理延迟** | GPU ~2s/图 | NNAPI ~3-5s/图 | ⚠️ 略慢 |
+| # | 测试 | 类型 | 项数 |
+|--|------|------|------|
+| 1-7 | OCR 模型（公式检测/识别/文字检测/识别/端到端管线/混合排版/方向检测） | Python | 7 |
+| 8 | Pandoc WASM 导出 + Typst 转换器 | Node.js | 45 |
+| 9 | KaTeX 公式渲染 | Node.js | 35 |
+| 10 | 集成测试（结构/模块/配置/国际化） | Node.js | 227 |
+| — | E2E 全量测试（20 大类模块） | Node.js | 309 |
 
-## 目录结构
+## 项目结构
 
 ```
 LaTeXSnipper_mobile/
-├── index.html                  # 单页面入口
+├── index.html                 # 单页面 SPA，4 个 Tab 页面
 ├── public/
-│   ├── models/                 # ONNX 模型文件 (249MB)
-│   │   ├── mathcraft-formula-det/   # YOLOv8 公式检测
-│   │   ├── mathcraft-formula-rec/   # TrOCR 公式识别
-│   │   ├── mathcraft-text-det/      # DBNet 文字检测
-│   │   └── mathcraft-text-rec/      # CRNN + 方向检测 + 区域分类
-│   ├── vendor/                 # 内置库 (mathjax/mathlive/pdfjs)
-│   ├── fonts/                  # 中文字体
-│   ├── sw.js                   # Service Worker
-│   └── manifest.json           # PWA 清单
+│   ├── vendor/                # 内置库 (katex/mathlive/pdfjs)
+│   │   ├── katex.min.js       # KaTeX 公式渲染 (265KB)
+│   │   ├── katex.min.css      # KaTeX CSS + 字体
+│   │   └── fonts/             # KaTeX 符号字体
+│   ├── models/                # ONNX 模型文件
+│   ├── fonts/                 # 中文字体
+│   ├── sw.js                  # Service Worker
+│   └── manifest.json          # PWA 清单
 ├── src/
-│   ├── main.js                 # 入口
-│   ├── constants.js            # 常量
-│   ├── update-checker.js       # GitHub Releases 自动更新检查
-│   ├── lang/                   # 多语言（zh-CN/zh-TW/en/ja/ko）
-│   ├── native/                 # Android 桥接封装
-│   ├── shared/                 # 分享/日志工具
-│   ├── camera/                 # 相机模块
-│   ├── handwriting/            # 手写模块
-│   ├── editor/                 # MathLive 配置
-│   ├── history/                # IndexedDB 存储
-│   ├── settings/               # 设置页面
-│   ├── ui/                     # UI 组件 + 识别入口
-│   └── styles/                 # CSS 样式模块
-├── android/                    # Capacitor Android 项目
-│   └── app/src/main/java/com/latexsnipper/app/ocr/
-│       ├── NativeOcrBridge.java        # @JavascriptInterface 桥接
-│       ├── OnnxRunner.java             # ONNX Runtime 会话管理
-│       ├── OcrEngine.java              # 主编排器 (formula/text/mixed)
-│       ├── DetPreProcess.java          # 公式检测预处理
-│       ├── FormulaDetPostProcess.java  # YOLOv8 后处理
-│       ├── FormulaRecPreProcess.java   # TrOCR 预处理
-│       ├── FormulaRecPostProcess.java  # 束搜索解码
-│       ├── FormulaLineSplitter.java    # 多行公式分割
-│       ├── TextDetProcessor.java       # DBNet + 轮廓追踪
-│       ├── TextRecPreProcess.java      # CRNN 预处理
-│       ├── TextRecPostProcess.java     # CTC 解码
-│       ├── DocOriPreProcess.java       # 方向检测
-│       └── RegionDetPreProcess.java    # 区域分类
-├── test/                      # Python 模型测试套件
-│   ├── test_formula_det.py    # YOLOv8 检测测试
-│   ├── test_formula_rec.py    # TrOCR 识别测试
-│   ├── test_text_det.py       # DBNet 检测测试
-│   ├── test_text_rec.py       # CRNN 识别测试
-│   └── test_mixed_rec_layout.py  # 混合排版逻辑测试
-├── .github/workflows/
-│   ├── build-apk.yml          # Android APK 构建
-│   └── build-ios.yml          # iOS 模拟器构建
-├── vite.config.js
-├── capacitor.config.json
-└── package.json
+│   ├── main.js                # 入口：模块组装、事件绑定、启动
+│   ├── constants.js           # 全局常量
+│   ├── update-checker.js      # GitHub Releases 自动更新检查
+│   ├── lang/                  # 多语言 (zh-CN/zh-TW/en/ja/ko)
+│   ├── native/                # Android Native Bridge 封装
+│   │   └── ocr-native.js      # window.NativeOcr 异步调用封装
+│   ├── shared/                # 通用工具
+│   │   ├── share.js           # 分享/文件保存
+│   │   └── logger.js          # 日志（localStorage + Java 桥接 + DOM 事件）
+│   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手/旋转
+│   ├── handwriting/           # Canvas 手写板 + 导出
+│   ├── editor/                # MathLive 编辑器 + 虚拟键盘 + KaTeX 预览
+│   ├── export/                # 导出模块
+│   │   └── pandoc-export.js   # 统一导出（Pandoc WASM + KaTeX 图片 + Typst 转换器）
+│   ├── history/               # IndexedDB 历史 (idb 封装)
+│   ├── settings/              # 设置页面逻辑
+│   ├── ui/                    # UI 组件
+│   │   ├── ui.js              # 状态栏/拖放/模式切换
+│   │   ├── result.js          # 结果显示/KaTeX预览/复制/分享/导出
+│   │   ├── recognition.js     # 识别入口（Native/External/PDF）
+│   │   ├── splash.js          # 启动加载进度
+│   │   ├── custom-select.js   # 自定义下拉选择器
+│   │   ├── status.js          # 状态条/进度条/错误显示
+│   │   ├── theme.js           # 日/夜主题切换
+│   │   ├── polish.js          # AI 整理（DeepSeek API）
+│   │   └── dom-refs.js        # DOM 元素引用共享
+│   └── styles/                # CSS 样式模块
+│       ├── base.css           # CSS 变量、布局、导航、自定义下拉、导出下拉
+│       ├── ocr.css            # 识别页面 + 导出下拉样式
+│       ├── editor.css         # MathLive + KaTeX 预览 + 符号工具栏 + 键盘按钮
+│       ├── handwriting.css    # 手写板
+│       ├── history.css        # 历史记录滑动
+│       └── mobile.css         # 移动端适配
+├── android/                   # Capacitor Android 项目
+│   └── app/src/main/java/com/latexsnipper/app/
+│       ├── MainActivity.java  # 入口 + NativeOcrBridge 注入
+│       └── ocr/               # Java ONNX OCR 引擎
+├── test/                      # 测试套件（6 Python + 4 Node.js）
+├── vite.config.js             # Vite + wasm 配置
+└── capacitor.config.json      # Capacitor 配置
 ```
 
-## 模型
+## 导出格式
 
-| 模型 | 来源 | 用途 |
+| 格式 | 路径 | 说明 |
 |------|------|------|
-| `mathcraft-mfd.onnx` | MathCraft | YOLOv8 公式检测 |
-| `encoder_model.onnx` + `decoder_model.onnx` | MathCraft (pix2text-mfr) | TrOCR 公式识别 (DeiT + 6层解码器) |
-| `ppocrv5_mobile_det.onnx` | PaddleOCR | DBNet 文字检测 |
-| `ppocrv5_mobile_rec.onnx` | PaddleOCR | CRNN 文字识别 |
-| `pplcnet_doc_ori.onnx` | PaddleOCR | PP-LCNet 文档方向检测 |
-| `chinese_detector.onnx` | 自定义训练 | 中文/公式二分类 |
-
-所有模型内置在 `public/models/` 中，安装后完全离线使用。
-
-## 致谢
-
-- **[SakuraMathcraft](https://github.com/SakuraMathcraft)** — LaTeXSnipper 桌面版提供了 OCR 引擎设计参考、MathLive 中文翻译、公式识别工作流
-- **[MathCraft Models](https://github.com/SakuraMathcraft/MathCraft-Models)** — ONNX 公式识别/检测模型
-- **[ONNX Runtime](https://github.com/microsoft/onnxruntime)** — 跨平台 ONNX 推理引擎
-- **[MathLive](https://cortexjs.io/mathlive/)** — 所见即所得数学公式编辑器
-- **[MathJax](https://www.mathjax.org/)** — LaTeX 公式 SVG 渲染
-- **[PDF.js](https://mozilla.github.io/pdf.js/)** — PDF 文档解析与渲染
-- **[Capacitor](https://capacitorjs.com/)** — 跨平台 WebView 原生打包
-- **[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)** — PP-OCRv5 文字检测与识别模型
-- **[Vite](https://vitejs.dev/)** — 前端构建工具
-- **[idb](https://github.com/jakearchibald/idb)** — IndexedDB 异步封装
-
-## 许可证
-
-Apache License 2.0
+| PNG | KaTeX → SVG → Canvas | 高清公式图片 |
+| SVG | KaTeX → SVG | 矢量公式图片 |
+| Markdown | Pandoc WASM | `markdown+tex_math_dollars` |
+| Plain Text | Pandoc WASM | 纯文本 |
+| HTML | Pandoc WASM | 网页 |
+| **Typst** | **纯 JS 转换器** | 200+ 符号映射 + 结构转换（不依赖 Pandoc WASM） |
+| AsciiDoc | Pandoc WASM | 轻量标记语言 |
+| reStructuredText | Pandoc WASM | Python 文档生态 |
+| OPML | Pandoc WASM | 大纲/思维导图 |
