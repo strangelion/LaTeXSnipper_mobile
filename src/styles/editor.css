@@ -71,6 +71,11 @@ body:has(math-virtual-keyboard[visible]) .bottom-nav {
   pointer-events: none;
 }
 
+/* ── When system keyboard is open, hide calc toolbar (blocks editing area) ── */
+body[data-kbd-state="2"] .calc-toolbar {
+  display: none;
+}
+
 /* ── Quick formula toolbar ── */
 .calc-toolbar {
   display: grid; grid-template-columns: repeat(5, 1fr);

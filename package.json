@@ -1,7 +1,7 @@
 {
   "name": "latexsnipper-mobile",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "LaTeXSnipper Mobile — fully offline PWA formula OCR app",
   "type": "module",
   "scripts": {

@@ -285,6 +285,9 @@ export function toggleKeyboard() {
     const inp = _ensureSysInput();
     inp._prevVal = '';
     inp.value = '';
+    // Allow mathField to show system keyboard when user taps it in this mode
+    mathField.mathVirtualKeyboardPolicy = 'auto';
+    mathField.removeAttribute('inputmode');
     setTimeout(() => inp.focus(), 50);
   }
 

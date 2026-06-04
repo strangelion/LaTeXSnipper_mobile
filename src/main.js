@@ -261,8 +261,13 @@ onFileProcessed(async (result, file) => {
 
 // History toolbar
 document.getElementById('clearHistory')?.addEventListener('click', async () => {
-  await clearHistory();
-  renderHistoryList();
+  const filter = document.querySelector('.history-toolbar button.active')?.dataset?.filter || 'all';
+  if (filter === 'favorites') {
+    await clearHistory(false); // clear only favorites
+  } else {
+    await clearHistory(); // keep favorites
+  }
+  renderHistoryList(filter);
 });
 document.querySelectorAll('.history-toolbar button[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
