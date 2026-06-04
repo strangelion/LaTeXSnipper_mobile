@@ -52,7 +52,7 @@ ok(pkg.dependencies['katex'] || $exists('public/vendor/katex.min.js'), 'KaTeX de
 
 const vite = $read('vite.config.js');
 ok(vite.includes('vite-plugin-wasm'), 'WASM plugin');
-ok(vite.includes('wasi_snapshot_preview1'), 'wasi externalized');
+ok(vite.includes('copy-pandoc-wasm'), 'pandoc.wasm copy plugin');
 
 const cap = JSON.parse($read('capacitor.config.json'));
 ok(cap.appId === 'com.latexsnipper.app', 'App ID');
@@ -72,7 +72,7 @@ const html = $read('index.html');
 ].forEach(id => ok(html.includes(`id="${id}"`), `Element #${id}`));
 
 // Editor controls
-['editorPreview','editorCopy','editorClearBtn','editorKbdToggle',
+['editorCopy','editorClearBtn','editorKbdToggle',
  'editorExportContainer','calcToolbar'
 ].forEach(id => ok(html.includes(`id="${id}"`), `Element #${id}`));
 
@@ -134,7 +134,7 @@ const editor = $read('src/editor/mathlive-config.js');
 ['export function initEditor(','export function setEditorContent(',
  'export function toggleKeyboard(','MathfieldElement',
  'mathVirtualKeyboardPolicy',"smartMode = true","smartFence = true",
- 'toggleVirtualKeyboard','katex.renderToString','MATHLIVE_ZH',
+  'toggleVirtualKeyboard','resetKbdState','MATHLIVE_ZH',
  'deleteBackward','expression.evaluate'
 ].forEach(t => ok(editor.includes(t), `Editor: ${t}`));
 
@@ -153,7 +153,7 @@ ok(exp.includes("action: 'render'"), 'Image action');
 ok(exp.includes("action: 'pandoc'"), 'Pandoc action');
 ok(exp.includes("action: 'typst'"), 'Typst action');
 
-ok(exp.includes("import('pandoc-wasm')"), 'Pandoc lazy load');
+ok(exp.includes("import('./pandoc-init.js')"), 'Pandoc lazy load');
 
 // ─── 8. settings ───
 group('8. Settings');

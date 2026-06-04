@@ -1,7 +1,8 @@
-## v1.2.0 — 7 套皮肤、Pandoc WASM 修复、版本号自动注入、导出中文修复 (2026-06-04)
+## v1.2.0 — 键盘三态切换、Pandoc WASM 彻底修复、7 套皮肤 (2026-06-04)
 
 ### 新功能
 
+- **MathLive 键盘三态切换** — 编辑器键盘按钮现在支持三种模式循环切换：关闭 → MathLive虚拟键盘 → 系统原生键盘 → 关闭，满足不同输入场景
 - **7 套全新视觉皮肤**
   - Material 蓝（默认）— 圆角按钮 + 蓝色调
   - MIUI 渐变 — 暖色渐变 + 毛玻璃
@@ -20,9 +21,13 @@
 
 ### 修复
 
-- **Pandoc WASM 导出** — `wasi-shim.js` 增加完整 FD（stdin/stdout/stderr + PreopenDirectory），`WebAssembly.instantiate()` 不再报 `Import requires a callable`
+- **Pandoc WASM 导出（Markdown/HTML/AsciiDoc 等）** — 彻底移除 vite.config.js 中指向不存在文件的 `wasi_snapshot_preview1` 别名，改用 `pandoc-init.js` 直接从 `pandoc-wasm` 的 `core.js`（纯 JS 模块）+ 静态 WASM 资产加载，绕过 vite-plugin-wasm 对 56MB WASM 二进制的不兼容转换
 - **导出中文方框** — SVG foreignObject 显式指定 `"Noto Sans CJK SC","Microsoft YaHei"` 中文字体回退
 - **SVG/PNG 导出** — `renderLatexToSvgs` 改用 `renderBlock` 智能渲染，混合文本+公式行正确渲染
+
+### 测试
+
+- 更新了 `test_e2e.js`、`test_integration.js`、`test_wasm_compat.js`、`test_user_workflows.js` 中关于 pandoc 加载方式和 vite 配置的检测
 
 ## v1.1.2 — Pandoc WASM 导出修复、SVG/PNG 导出修复 (2026-06-04)
 

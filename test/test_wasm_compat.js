@@ -102,7 +102,8 @@ const viteConfig = rf(join(__dirname, '..', 'vite.config.js'), 'utf-8');
 
 ok(viteConfig.includes('vite-plugin-wasm'), 'vite-plugin-wasm configured');
 ok(viteConfig.includes('vite-plugin-top-level-await'), 'top-level-await plugin');
-ok(viteConfig.includes("external: ['wasi_snapshot_preview1']"), 'wasi externalized');
+ok(viteConfig.includes('copy-pandoc-wasm'), 'pandoc.wasm copy plugin configured');
+ok(!viteConfig.includes("wasi_snapshot_preview1"), 'old wasi alias removed');
 ok(viteConfig.includes('assetsInlineLimit: 0'), 'WASM inlining disabled');
 
 // Check that COOP/COEP headers are set for SharedArrayBuffer

@@ -57,11 +57,16 @@ async function initPandoc() {
   }
   _pandocLoading = true;
   try {
-    const mod = await import('pandoc-wasm');
-    _pandocApi = { convert: mod.convert, query: mod.query };
+    // Use self-contained pandoc loader that fetches WASM as a static asset
+    // from /vendor/pandoc/, bypassing vite-plugin-wasm entirely.
+    const { initPandocWasm } = await import('./pandoc-init.js');
+    _pandocApi = await initPandocWasm();
     _pandocWaiters.forEach(r => r(_pandocApi));
     _pandocWaiters = [];
     return _pandocApi;
+  } catch (e) {
+    Logger.error('EXPORT', 'Pandoc WASM init failed', e);
+    throw e;
   } finally {
     _pandocLoading = false;
   }

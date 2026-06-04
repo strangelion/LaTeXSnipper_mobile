@@ -149,7 +149,7 @@ ok(exp.includes('export-dropdown-wrap'), 'dropdown wrapper');
 ok(exp.includes('closeExportDropdowns'), 'close dropdown');
 
 // Pandoc lazy loaded
-ok(exp.includes("import('pandoc-wasm')"), 'pandoc lazy load');
+ok(exp.includes("import('./pandoc-init.js')"), 'pandoc lazy load via pandoc-init');
 
 // Export in HTML
 ok(html.includes('exportDropdownContainer'), 'export dropdown in HTML');

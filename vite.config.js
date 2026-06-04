@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import { resolve } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, copyFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -23,10 +23,27 @@ export default defineConfig({
         );
       },
     },
+    // Copy pandoc.wasm (56MB) to dist/assets as a static asset
+    // without vite-plugin-wasm interference
+    {
+      name: 'copy-pandoc-wasm',
+      writeBundle({ dir }) {
+        const src = resolve(dirname, 'node_modules/pandoc-wasm/src/pandoc.wasm');
+        const outDir = resolve(dir || 'dist', 'assets');
+        if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+        copyFileSync(src, resolve(outDir, 'pandoc.wasm'));
+      },
+      closeBundle() {
+        // also copy for dev mode public resolution
+        const src = resolve(dirname, 'node_modules/pandoc-wasm/src/pandoc.wasm');
+        const outDir = resolve(dirname, 'public/vendor/pandoc');
+        if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+        copyFileSync(src, resolve(outDir, 'pandoc.wasm'));
+      },
+    },
   ],
   resolve: {
     alias: {
-      'wasi_snapshot_preview1': resolve(dirname, 'src/shared/wasi-shim.js'),
     },
   },
   define: {
