@@ -338,13 +338,21 @@ function initSwipe(card) {
         returnToOrigin(true);
       }
     } else if (currentDx < 0) {
-      // ── LEFT swipe → FAVORITE ──
+      // ── LEFT swipe → reveal actions zone, or toggle fav on overswipe ──
       const abs = Math.abs(currentDx);
       if (abs > FAV_TRIGGER) {
         doToggleFav();
         returnToOrigin(false);
       } else if (abs > SNAP_ACTIONS || (abs > 10 && vel > 0.3)) {
-        snapTo(-1);
+        // Snap to actions zone only if NOT already in fav-mode.
+        // If fav-mode was shown during touch (past FAV_START), treat
+        // releasing past SNAP_ACTIONS + near FAV_TRIGGER as a fav toggle too.
+        if (abs > FAV_START && actionZone?.classList.contains('fav-mode')) {
+          doToggleFav();
+          returnToOrigin(false);
+        } else {
+          snapTo(-1);
+        }
       } else {
         returnToOrigin(true);
       }
