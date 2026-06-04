@@ -69,7 +69,7 @@ const html = readFileSync(join(ROOT, 'index.html'), 'utf-8');
 
 ok(html.includes('KaTeX CSS'), 'KaTeX CSS ref present');
 ok(html.includes('katex.min.js'), 'KaTeX JS ref present');
-ok(!html.includes('mathjax'), 'No MathJax reference remains');
+ok(!html.includes('MathJax.tex2svgPromise') && !html.includes('MathJax ='), 'No MathJax 3 config remains');
 
 // Pages
 ['page-ocr', 'page-editor', 'page-history', 'page-settings'].forEach(id => {
@@ -78,7 +78,7 @@ ok(!html.includes('mathjax'), 'No MathJax reference remains');
 
 // Elements
 ['copyBtn', 'aiPolishBtn', 'shareBtn', 'sendToEditorBtn', 'exportDropdownContainer',
- 'editorPreview', 'editorPreviewActions', 'editorCopy', 'editorClearBtn',
+ 'editorPreviewActions', 'editorCopy', 'editorClearBtn',
  'editorKbdToggle', 'editorExportContainer', 'calcToolbar',
  'mathPreview', 'resultCode', 'resultCard', 'confidence',
  'dropZone', 'fileInput', 'preview', 'themeToggle',
@@ -203,7 +203,7 @@ ok(editorJs.includes('smartFence = true'), 'Smart fence enabled');
 ok(editorJs.includes('smartMode = true'), 'Smart mode enabled');
 ok(editorJs.includes('toggleVirtualKeyboard'), 'Keyboard toggle command');
 ok(editorJs.includes('toggleKeyboard'), 'toggleKeyboard exported');
-ok(editorJs.includes('katex.renderToString'), 'KaTeX used for preview');
+ok(editorJs.includes('syncPreview'), 'Preview sync configured');
 ok(editorJs.includes('setEditorContent'), 'setEditorContent exported');
 ok(editorJs.includes('MATHLIVE_ZH'), 'Chinese locale defined');
 

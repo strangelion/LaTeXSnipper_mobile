@@ -105,6 +105,12 @@ export default {
   "update.later": "稍后",
   "update.checking": "检查更新中…",
 
+  // ── Render engine ──
+  "settings.renderEngine": "公式渲染引擎",
+  "settings.renderEngine.katex": "KaTeX（轻量快速）",
+  "settings.renderEngine.mathjax": "MathJax（兼容性更好）",
+  "settings.renderEngineHint": "KaTeX体积小(265KB)，渲染快；MathJax兼容性更好，显示复杂公式更准确。设置后刷新OCR结果页生效。",
+
   // ── Common ──
   "common.ok": "确定",
   "common.cancel": "取消",

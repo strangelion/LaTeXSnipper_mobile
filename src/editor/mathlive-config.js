@@ -128,12 +128,13 @@ export function initEditor() {
     }
   } catch (_) {}
 
-  // Append to editor page
+  // Append to editor page — just source display left
   hostEl = document.getElementById('page-editor')?.querySelector('.editor-wrap');
   if (hostEl) {
-    const preview = document.getElementById('editorPreview');
-    if (preview) {
-      hostEl.insertBefore(mathField, hostEl.firstChild);
+    const sourceEl = document.getElementById('editorLatexSource');
+    // Insert mathField before the source display (or just append)
+    if (sourceEl) {
+      hostEl.insertBefore(mathField, sourceEl);
     } else {
       hostEl.appendChild(mathField);
     }
@@ -189,30 +190,17 @@ export function initEditor() {
 
 function syncPreview() {
   const latex = mathField?.value || '';
-  const preview = document.getElementById('editorPreview');
   const source = document.getElementById('editorLatexSource');
   const previewActions = document.getElementById('editorPreviewActions');
 
   if (!latex.trim()) {
-    if (preview) { preview.classList.remove('show'); preview.innerHTML = ''; }
     if (source) { source.classList.remove('show'); source.textContent = ''; }
     if (previewActions) previewActions.style.display = 'none';
     return;
   }
   if (previewActions) previewActions.style.display = 'flex';
 
-  // Top: KaTeX rendered preview
-  if (preview && typeof katex !== 'undefined') {
-    try {
-      const html = katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      preview.innerHTML = html;
-      preview.classList.add('show');
-    } catch (_) {
-      preview.innerHTML = '<em style="color:var(--muted)">Rendering error</em>';
-      preview.classList.add('show');
-    }
-  }
-  // Bottom: raw LaTeX source
+  // Show raw LaTeX source only
   if (source) {
     source.textContent = latex;
     source.classList.add('show');

@@ -180,8 +180,6 @@
     <!-- ── Tab 2: Editor (MathLive created by JS) ── -->
     <div class="page" id="page-editor">
       <div class="editor-wrap">
-        <!-- KaTeX rendered preview on top -->
-        <div class="editor-preview-box" id="editorPreview"></div>
         <!-- Raw LaTeX source below -->
         <div class="editor-latex-source" id="editorLatexSource"></div>
         <div class="editor-preview-actions" id="editorPreviewActions" style="display:none;">
@@ -332,6 +330,18 @@
             <span class="set-toggle-track"></span>
             自动检查更新
           </label>
+        </div>
+
+        <!-- ═══ Formula Render Engine ═══ -->
+        <div class="set-section" style="margin-top:1rem;">
+          <div class="set-section-title" data-i18n="settings.renderEngine">公式渲染引擎</div>
+          <div class="set-select-wrap">
+            <select class="set-select" id="setRenderEngineSelect">
+              <option value="katex" data-i18n="settings.renderEngine.katex">KaTeX（轻量快速）</option>
+              <option value="mathjax" data-i18n="settings.renderEngine.mathjax">MathJax（兼容性更好）</option>
+            </select>
+          </div>
+          <p class="set-hint" data-i18n="settings.renderEngineHint">KaTeX体积小(265KB)，渲染快；MathJax兼容性更好。设置后刷新OCR结果页生效。</p>
         </div>
 
         <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;" data-i18n="btn.saveSettings">保存设置</button>

@@ -174,6 +174,12 @@ export default {
   "history.sourcePDF": "PDF",
   "history.clear": "クリア",
 
+  // ── Render engine ──
+  "settings.renderEngine": "数式レンダリングエンジン",
+  "settings.renderEngine.katex": "KaTeX（軽量・高速）",
+  "settings.renderEngine.mathjax": "MathJax（互換性重視）",
+  "settings.renderEngineHint": "KaTeXは軽量(265KB)で高速。MathJaxは複雑な数式の表示に優れています。設定後にOCR結果を更新すると反映されます。",
+
   // ── Toast ──
   "toast.savedToDownload": "ダウンロードフォルダに保存しました",
   "toast.downloadStarted": "ダウンロード開始: {{filename}}",

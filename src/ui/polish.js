@@ -50,7 +50,7 @@ export async function polishResult() {
 
     if (polished && polished !== latex) {
       els.resultCode.textContent = polished;
-      renderMathPreview(polished);
+      renderMathPreview(polished).catch(() => {});
       if (els.statusText) els.statusText.textContent = 'AI 整理完成';
     } else if (polished) {
       if (els.statusText) els.statusText.textContent = '无需修改';

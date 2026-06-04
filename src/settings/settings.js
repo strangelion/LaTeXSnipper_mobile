@@ -66,6 +66,21 @@ export function initSettings() {
     }
   });
 
+  // ═══ Render engine (KaTeX / MathJax) ═══
+  const renderEngineSelect = document.getElementById('setRenderEngineSelect');
+  if (renderEngineSelect) {
+    renderEngineSelect.addEventListener('change', () => {
+      const v = renderEngineSelect.value;
+      try {
+        const s = JSON.parse(localStorage.getItem('ls_settings') || '{}');
+        s.renderEngine = v;
+        localStorage.setItem('ls_settings', JSON.stringify(s));
+      } catch (_) {}
+      // Expose to result.js
+      window.__renderEngine = v;
+    });
+  }
+
   // ═══ Native settings persistence (Android SharedPreferences) ═══
   function isNative() {
     return isNativeOcrAvailable();
@@ -97,6 +112,7 @@ export function initSettings() {
       polishBaseUrl: document.getElementById('setPolishBaseUrl')?.value || '',
       polishModel: document.getElementById('setPolishModel')?.value || '',
       polishApiKey: document.getElementById('setPolishApiKey')?.value || '',
+      renderEngine: document.getElementById('setRenderEngineSelect')?.value || 'katex',
     };
     // Always write to localStorage (sync, fast)
     try { localStorage.setItem('ls_settings', JSON.stringify(s)); } catch (_) {}
@@ -152,6 +168,11 @@ export function initSettings() {
     if (saved.polishBaseUrl) document.getElementById('setPolishBaseUrl').value = saved.polishBaseUrl;
     if (saved.polishModel) document.getElementById('setPolishModel').value = saved.polishModel;
     if (saved.polishApiKey) document.getElementById('setPolishApiKey').value = saved.polishApiKey;
+    if (saved.renderEngine) {
+      const reSelect = document.getElementById('setRenderEngineSelect');
+      if (reSelect) reSelect.value = saved.renderEngine;
+    }
+    window.__renderEngine = saved.renderEngine || 'katex';
   }
   restoreSettings();
 

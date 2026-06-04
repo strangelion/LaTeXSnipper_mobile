@@ -333,10 +333,29 @@ async function boot() {
     if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
   });
 
-  // 8. Hide splash screen
+  // 8. Preload MathJax if selected as render engine
+  try {
+    const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
+    if (saved.renderEngine === 'mathjax') {
+      window.__renderEngine = 'mathjax';
+      const mod = await import('./editor/mathjax-renderer.js');
+      mod.ensureMathjax();
+      if (mod.isMathjaxReady()) {
+        Logger.info('init', 'MathJax loaded');
+      } else {
+        Logger.info('init', 'MathJax loading...');
+      }
+    } else {
+      window.__renderEngine = 'katex';
+    }
+  } catch (_) {
+    window.__renderEngine = 'katex';
+  }
+
+  // 9. Hide splash screen
   hideSplash();
 
-  // 9. Load models — initModels handles its own status bar updates
+  // 10. Load models — initModels handles its own status bar updates
   initModels();
 }
 

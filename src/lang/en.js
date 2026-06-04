@@ -105,6 +105,12 @@ export default {
   "update.later": "Later",
   "update.checking": "Checking for updates…",
 
+  // ── Render engine ──
+  "settings.renderEngine": "Formula Render Engine",
+  "settings.renderEngine.katex": "KaTeX (Lightweight)",
+  "settings.renderEngine.mathjax": "MathJax (Better Compatibility)",
+  "settings.renderEngineHint": "KaTeX is lightweight (265KB) and fast; MathJax has better compatibility for complex formulas. Refresh OCR results after changing.",
+
   // ── Common ──
   "common.ok": "OK",
   "common.cancel": "Cancel",

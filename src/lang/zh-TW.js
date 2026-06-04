@@ -174,6 +174,12 @@ export default {
   "history.sourcePDF": "PDF",
   "history.clear": "清空",
 
+  // ── Render engine ──
+  "settings.renderEngine": "公式渲染引擎",
+  "settings.renderEngine.katex": "KaTeX（輕量快速）",
+  "settings.renderEngine.mathjax": "MathJax（相容性更佳）",
+  "settings.renderEngineHint": "KaTeX體積小(265KB)，渲染快；MathJax相容性更佳，顯示複雜公式更準確。設定後重新整理OCR結果頁生效。",
+
   // ── Toast ──
   "toast.savedToDownload": "已儲存到 下載/Download 資料夾",
   "toast.downloadStarted": "下載已開始: {{filename}}",

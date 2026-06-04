@@ -174,6 +174,12 @@ export default {
   "history.sourcePDF": "PDF",
   "history.clear": "비우기",
 
+  // ── Render engine ──
+  "settings.renderEngine": "수식 렌더링 엔진",
+  "settings.renderEngine.katex": "KaTeX（가볍고 빠름）",
+  "settings.renderEngine.mathjax": "MathJax（호환성 우수）",
+  "settings.renderEngineHint": "KaTeX는 가볍고(265KB) 빠릅니다. MathJax는 복잡한 수식 표시에 더 적합합니다. 설정 변경 후 OCR 결과를 새로고침하면 적용됩니다.",
+
   // ── Toast ──
   "toast.savedToDownload": "다운로드 폴더에 저장되었습니다",
   "toast.downloadStarted": "다운로드 시작됨: {{filename}}",

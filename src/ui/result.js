@@ -3,6 +3,33 @@ import { els } from './dom-refs.js';
 import { t } from '../lang/i18n.js';
 import Logger from '../shared/logger.js';
 
+// ── Render engine (MathJax support) ──
+let _mathjaxRenderer = null;
+function getRenderEngine() {
+  return window.__renderEngine || 'katex';
+}
+/** Lazy-load and get the MathJax renderer module */
+async function ensureMathjax() {
+  if (_mathjaxRenderer) return;
+  const mod = await import('../editor/mathjax-renderer.js');
+  mod.ensureMathjax();
+  _mathjaxRenderer = mod;
+}
+/** Render a single LaTeX block using the selected engine */
+async function renderBlockWithEngine(block, displayMode = true) {
+  const engine = getRenderEngine();
+  if (engine === 'mathjax') {
+    await ensureMathjax();
+    if (_mathjaxRenderer && _mathjaxRenderer.isMathjaxReady()) {
+      return await _mathjaxRenderer.renderMathjax(block, displayMode);
+    }
+  }
+  // Fallback to KaTeX (default)
+  return katex.renderToString(block, {
+    throwOnError: false, displayMode, output: 'html', strict: false,
+  });
+}
+
 // ── PDF page browser state ──
 let _pdfPages = [];
 let _currentPdfPage = 0;
@@ -14,71 +41,156 @@ function hasKatex() {
   return typeof katex !== 'undefined' && typeof katex.renderToString === 'function';
 }
 
-function renderMathPreview(latex) {
+/**
+ * Render multi-line LaTeX to HTML via KaTeX or MathJax.
+ *
+ * Strategy:
+ *   1. Group logical blocks (environment \begin...\end groups stay together).
+ *   2. For each block that contains LaTeX commands or $ delimiters, try
+ *      display-mode rendering first; fall back to inline $...$ splitting
+ *      for mixed text/formula blocks.
+ *   3. Pure text (no $, no \) is escaped for safety.
+ *
+ * This ensures multi-line environments like aligned/cases/matrix render as
+ * a single block instead of being broken line-by-line.
+ *
+ * Returns a Promise that resolves once HTML is set on the preview element.
+ */
+async function renderMathPreview(latex) {
   if (!els.mathPreview) return;
   if (!latex || !hasKatex()) {
     els.mathPreview.classList.remove('show');
     return;
   }
-  const lines = latex.split('\n').filter(l => l.trim());
-  if (lines.length === 0) { els.mathPreview.classList.remove('show'); return; }
+  const blocks = groupIntoBlocks(latex);
+  if (blocks.length === 0) { els.mathPreview.classList.remove('show'); return; }
   els.mathPreview.innerHTML = '';
 
-  const allHtml = lines.map(line => {
+  const allHtml = [];
+  for (const block of blocks) {
     try {
-      return renderMixedLine(line);
+      allHtml.push(await renderBlock(block));
     } catch (_) {
-      return escapeHtml(line);
+      allHtml.push(escapeHtml(block));
     }
-  }).join('');
+  }
 
-  els.mathPreview.innerHTML = allHtml;
+  els.mathPreview.innerHTML = allHtml.join('');
   els.mathPreview.classList.add('show');
 }
 
 /**
- * Render a mixed text+formula line with KaTeX.
- *
- * KaTeX.renderToString handles $...$ and $$...$$ natively, so we don't
- * need to manually split text/formula — KaTeX handles $...$ natively.
+ * Split LaTeX text into renderable blocks, keeping environment
+ * (\begin{…} … \end{…}) groups intact across newlines.
  */
-function renderMixedLine(line) {
-  if (!hasKatex()) return escapeHtml(line);
+function groupIntoBlocks(latex) {
+  const lines = latex.split('\n');
+  const blocks = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
-  // Pure text (no $, no \) → escape, skip KaTeX
-  if (!line.includes('$') && !line.includes('\\')) {
-    return escapeHtml(line);
+    // Detect display-math $$...$$ spanning multiple lines
+    if (trimmed.startsWith('$$')) {
+      let blockLines = [line];
+      i++;
+      while (i < lines.length && !lines[i].trim().endsWith('$$')) {
+        blockLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) blockLines.push(lines[i]);
+      i++;
+      blocks.push(blockLines.join('\n'));
+      continue;
+    }
+
+    // Detect environment \begin{…}
+    if (/^\\begin\{/.test(trimmed)) {
+      let blockLines = [line];
+      let depth = 1;
+      i++;
+      while (i < lines.length && depth > 0) {
+        const l = lines[i];
+        blockLines.push(l);
+        if (/\\begin\{/.test(l)) depth++;
+        if (/\\end\{/.test(l)) depth--;
+        i++;
+      }
+      blocks.push(blockLines.join('\n'));
+      continue;
+    }
+
+    // Regular single line
+    if (trimmed) blocks.push(line);
+    i++;
   }
+  return blocks;
+}
 
-  // Strip outer $$…$$ / wrap in $$…$$ if LaTeX math without delimiters
-  const trimmed = line.trim();
+/**
+ * Render one block (single line or multi-line environment) via the selected engine.
+ *
+ * Priority:
+ *   1. $$…$$ display math — unwrap and render.
+ *   2. $…$ inline math — split text around $ delimiters, render math
+ *      segments with inline mode, escape text segments.
+ *   3. LaTeX commands with no $ delimiters — render as display math.
+ *   4. Plain text (no $, no \) — escape for HTML safety.
+ */
+async function renderBlock(block) {
+  if (!block.trim()) return '';
+  if (!hasKatex()) return escapeHtml(block);
 
-  // Already wrapped in display math $$...$$
+  const trimmed = block.trim();
+  const engine = getRenderEngine();
+  const isMathjax = engine === 'mathjax';
+
+  // ── Case A: Display math wrapped in $$…$$ (possibly multi-line) ──
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     try {
-      return katex.renderToString(trimmed.slice(2, -2).trim(), {
-        throwOnError: false, displayMode: true, output: 'html', strict: false,
-      });
+      return await renderBlockWithEngine(trimmed.slice(2, -2).trim(), true);
     } catch (_) {
-      return escapeHtml(line);
+      return escapeHtml(block);
     }
   }
 
-  // If the line contains LaTeX commands (\) but no $ delimiters,
-  // wrap in $$...$$ for KaTeX to recognize as math
-  if (!line.includes('$') && line.includes('\\')) {
+  // ── Case B: Mixed content with $…$ inline delimiters ──
+  if (trimmed.includes('$')) {
+    return await renderMixedContent(trimmed);
+  }
+
+  // ── Case C: Has math-specific operators → try rendering ──
+  //   Catches formulas without \ like "a^2 + b^2 = c^2", "x_{n+1}",
+  //   or simple math like "1 + 2 = 3".
+  //   Math operators that almost never appear alone in plain text:
+  //     ^ _ { } & ~ # \ = (common LaTeX delimiters)
+  //   Note: = is included because OCR formula output frequently has
+  //   equals signs in simple math like "y = kx + b" that lack \.
+  const hasMathOps = /[\\^{}_&#~=]/.test(trimmed);
+  if (hasMathOps) {
     try {
-      return katex.renderToString(line, {
-        throwOnError: false, displayMode: true, output: 'html', strict: false,
-      });
-    } catch (_) {
-      return escapeHtml(line);
+      return await renderBlockWithEngine(trimmed, true);
+    } catch (e) {
+      try {
+        return await renderBlockWithEngine(trimmed, false);
+      } catch (_) {
+        return escapeHtml(block);
+      }
     }
   }
 
-  // Mixed text+formula: split on $...$ segments
-  //   text outside $ → escapeHtml (safe for Chinese)
-  //   content inside $ → katex.renderToString
+  // ── Case D: Pure text (no math patterns) — escape for HTML safety
+  return escapeHtml(block);
+}
+
+/**
+ * Render content that may mix plain text and $…$ inline formula segments.
+ *
+ * Splits on $…$ boundaries: text outside $ is escaped, content inside
+ * $ is rendered via selected engine. Unclosed $ is treated as literal text.
+ */
+async function renderMixedContent(line) {
   const parts = [];
   let remaining = line;
 
@@ -96,17 +208,16 @@ function renderMixedLine(line) {
     remaining = remaining.slice(openIdx + 1);
     const closeIdx = remaining.indexOf('$');
     if (closeIdx === -1) {
-      // Unclosed $ → treat rest as text
+      // Unclosed $ → treat rest as literal text
       parts.push(escapeHtml('$' + remaining));
       break;
     }
-    // Math segment between $...$
+    // Math segment between $…$
     const mathContent = remaining.slice(0, closeIdx);
     try {
-      parts.push(katex.renderToString(mathContent, {
-        throwOnError: false, displayMode: false, output: 'html', strict: false,
-      }));
+      parts.push(await renderBlockWithEngine(mathContent, false));
     } catch (_) {
+      // Render failure: show raw source
       parts.push(escapeHtml('$' + mathContent + '$'));
     }
     remaining = remaining.slice(closeIdx + 1);
@@ -126,7 +237,7 @@ function escapeHtml(text) {
 export function showResult(latex, confidence, extra) {
   if (!els.resultCode || !els.resultCard) return;
   els.resultCode.textContent = latex;
-  renderMathPreview(latex);
+  renderMathPreview(latex).catch(() => {});
   const confPct = (confidence * 100).toFixed(1);
   if (els.confidence) els.confidence.textContent = extra
     ? '置信度 ' + confPct + '% | ' + extra
@@ -223,11 +334,16 @@ export function gotoPDFPage(n) {
   if (info) info.textContent = (n + 1) + ' / ' + _pdfPages.length;
   const tex = page.latex?.replace(/\n/g, ' ').trim();
   if (els.mathPreview && tex && hasKatex()) {
-    try {
-      els.mathPreview.innerHTML = katex.renderToString(tex, { throwOnError: false, displayMode: true, output: 'html' });
-      els.mathPreview.classList.add('show');
-    } catch (_) {
-      els.mathPreview.classList.remove('show');
+    const engine = getRenderEngine();
+    if (engine === 'mathjax') {
+      renderMathPreview(page.latex).catch(() => {});
+    } else {
+      try {
+        els.mathPreview.innerHTML = katex.renderToString(tex, { throwOnError: false, displayMode: true, output: 'html' });
+        els.mathPreview.classList.add('show');
+      } catch (_) {
+        els.mathPreview.classList.remove('show');
+      }
     }
   }
   document.querySelectorAll('.pdf-thumb').forEach((t, i) => t.classList.toggle('active', i === n));

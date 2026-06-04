@@ -111,6 +111,8 @@ function setZoneWidths(bg, dx) {
     if (dz) dz.style.width = Math.round(dx) + 'px';
     if (az) { az.style.width = '0'; az.classList.remove('fav-mode'); }
     if (az) az.querySelectorAll('.hi-swipe-btn').forEach(b => b.classList.remove('visible'));
+    // Enable pointer events on delete zone when wide enough
+    if (dz) dz.style.pointerEvents = dx > SNAP_DELETE ? 'auto' : 'none';
   } else if (dx < 0) {
     const abs = Math.abs(dx);
     if (az) az.style.width = Math.round(abs) + 'px';
@@ -243,7 +245,7 @@ function initSwipe(card) {
   // ══════════════════════════════════════════════
   card.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) { tracking = false; return; }
-    const target = e.target.closest('.hi-fav');
+    const target = e.target.closest('.hi-fav') || e.target.closest('.hi-swipe-delete');
     if (target) { tracking = false; return; }
 
     const t = e.touches[0];
@@ -252,7 +254,18 @@ function initSwipe(card) {
     startTime = performance.now();
 
     const s = getState(card);
+    if (s.revealed && s.offsetX > 0) {
+      // Right-swipe revealed: allow further drag, don't reset
+      closeAllBut(card);
+      if (deleteZone) deleteZone.classList.add('no-transition');
+      if (actionZone) actionZone.classList.add('no-transition');
+      currentDx = s.offsetX;
+      tracking = true;
+      card.classList.add('swiping');
+      return;
+    }
     if (s.revealed) {
+      // Left-swipe revealed: reset
       s.revealed = false;
       s.offsetX = 0;
       card.style.transition = 'none';
@@ -349,6 +362,17 @@ function initSwipe(card) {
       if (!btn) return;
       e.stopPropagation();
       execAction(btn.dataset.action);
+    });
+  }
+
+  // ── Click on delete zone (right-swipe revealed) → execute delete ──
+  if (deleteZone) {
+    deleteZone.addEventListener('click', e => {
+      e.stopPropagation();
+      const s = getState(card);
+      if (s.revealed && s.offsetX > 0) {
+        doDelete();
+      }
     });
   }
 }

@@ -1,4 +1,4 @@
-/* editor.css — MathLive field + LaTeX preview */
+/* editor.css — MathLive field + LaTeX source */
 
 .editor-wrap {
   display: flex; flex-direction: column; gap: 0.6rem;
@@ -16,21 +16,7 @@
   max-height: 40vh;
 }
 
-/* ── KaTeX rendered preview (top) ── */
-#editorPreview {
-  width: 100%; padding: 0.7rem;
-  border: 1px solid var(--border-color);
-  border-radius: 10px; background: var(--card-bg);
-  color: var(--fg);
-  font-size: 1rem; line-height: 1.8;
-  white-space: normal; word-break: break-word;
-  overflow-x: auto;
-  display: none; min-height: 40px; box-sizing: border-box;
-}
-#editorPreview.show { display: block; }
-#editorPreview .katex { font-size: 1.15em; }
-
-/* ── Raw LaTeX source (bottom) ── */
+/* ── Raw LaTeX source ── */
 #editorLatexSource {
   width: 100%; padding: 0.6rem 0.7rem;
   border: 1px solid var(--border-color);
