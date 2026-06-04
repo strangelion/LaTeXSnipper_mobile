@@ -1,18 +1,25 @@
 import { defineConfig } from 'vite';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
+import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [
     wasm(),
     topLevelAwait(),
   ],
+  resolve: {
+    alias: {
+      // pandoc-wasm's WASM binary imports wasi_snapshot_preview1;
+      // alias it to our shim that wraps @bjorn3/browser_wasi_shim
+      'wasi_snapshot_preview1': resolve(__dirname, 'src/shared/wasi-shim.js'),
+    },
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     assetsInlineLimit: 0, // never inline wasm/big files
     rollupOptions: {
-      external: ['wasi_snapshot_preview1'], // provided by browser_wasi_shim at runtime
       output: {
         manualChunks(id) {
           if (id.includes('onnxruntime-web')) return 'onnx';

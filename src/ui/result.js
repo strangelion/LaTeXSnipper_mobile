@@ -371,21 +371,31 @@ export function initPDFNav() {
 
 /**
  * Render LaTeX lines with KaTeX into individual HTML strings, then
- * convert to SVG for export. We render each line to HTML via KaTeX,
- * then use a temp DOM node + foreignObject to convert to SVG.
+ * convert to SVG for export. Uses the same renderBlock logic as
+ * renderMathPreview (handles mixed text+$...$, empty $$ lines, etc.).
  */
 async function renderLatexToSvgs(latex) {
   if (!latex || !hasKatex()) return null;
-  const lines = latex.split('\n').filter(l => l.trim());
-  if (!lines.length) return null;
+  const blocks = groupIntoBlocks(latex);
+  if (!blocks.length) return null;
 
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;font-size:20px';
   document.body.appendChild(container);
 
   try {
-    const svgs = lines.map(line => {
-      const html = katex.renderToString(line, { throwOnError: false, displayMode: true, output: 'html' });
+    const svgs = [];
+    for (const block of blocks) {
+      let html;
+      try {
+        const rendered = await renderBlock(block);
+        // renderBlock may return escaped plain text for pure text blocks;
+        // that's fine for the SVG foreignObject
+        html = rendered;
+      } catch (_) {
+        html = escapeHtml(block);
+      }
+
       const wrapper = document.createElement('div');
       wrapper.style.cssText = 'white-space:nowrap;padding:8px';
       wrapper.innerHTML = html;
@@ -424,8 +434,8 @@ async function renderLatexToSvgs(latex) {
       svg.appendChild(foreign);
 
       container.removeChild(wrapper);
-      return svg;
-    });
+      svgs.push(svg);
+    }
 
     return svgs.length ? svgs : null;
   } finally {
