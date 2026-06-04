@@ -108,10 +108,14 @@ async function _exportPandoc(latex, fmt) {
   const to = PANDOC_FORMAT_MAP[fmt.id];
   if (!to) { Logger.error('EXPORT', 'Unknown pandoc format: ' + fmt.id); return; }
   const pandoc = await initPandoc();
-  const result = await pandoc.convert({ from: 'latex', to, standalone: false }, latex, {});
+  // Binary formats (docx etc) must use output-file to get raw bytes
+  const isBinary = fmt.id === 'docx';
+  const opts = isBinary
+    ? { from: 'latex', to, standalone: false, 'output-file': 'stdout' }
+    : { from: 'latex', to, standalone: false };
+  const result = await pandoc.convert(opts, latex, {});
   let blob;
-  if (fmt.id === 'docx') {
-    // Binary output — use files dict from result
+  if (isBinary) {
     const outFile = result.files?.['stdout'];
     if (outFile) { blob = new Blob([outFile], { type: fmt.mime }); }
     else { Logger.warn('EXPORT', 'Pandoc returned no docx binary'); return; }
