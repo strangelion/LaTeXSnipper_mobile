@@ -127,9 +127,13 @@ public class OcrEngine {
     /**
      * Auto-correct image orientation using PP-LCNet doc_ori model.
      * Returns the corrected bitmap (or the original if no rotation needed).
-     * Angle mapping: model outputs [0,1,2,3] -> index 0 is 0°, 1 is 90°, 2 is 180°, 3 is 270°.
+     * Angle mapping: model outputs [0,1,2,3] → index 0 is 0°, 1 is 90°, 2 is 180°, 3 is 270°.
      * These represent the rotation detected in the image.
      * To correct: rotate by -angle (opposite direction) to bring it upright.
+     *
+     * Rotation is only applied when confidence >= 0.6. This avoids
+     * rotating images that are already upright (the camera pipeline
+     * handles EXIF orientation so input is typically 0°).
      */
     public Bitmap autoOrient(Bitmap bitmap) {
         if (!runner.isDocOriReady()) return bitmap;
@@ -144,13 +148,23 @@ public class OcrEngine {
             Log.d(TAG, "DocOri: angle=" + orient.angle + "°, conf=" + String.format("%.2f", orient.confidence)
                 + " img=" + bitmap.getWidth() + "x" + bitmap.getHeight());
 
-            // The model predicts rotation in [0,90,180,270]. The value is the angle
-            // to rotate the image back to upright. postRotate(positive) = clockwise.
-            // Model says 90: image is rotated 90° clockwise, needs -90° to correct.
-            // BUT: our test shows model consistently returns 90°, so just return bitmap.
-            if (orient.angle == 0 || orient.confidence < 0.6f || orient.angle == 90) return bitmap;
-            // For 180/270, do nop for now (model unreliable on photos)
-            return bitmap;
+            // Only apply rotation when confidence is high enough
+            if (orient.confidence < 0.6f) return bitmap;
+
+            // 0° → already upright, nothing to do
+            if (orient.angle == 0) return bitmap;
+
+            // Rotate the bitmap by the detected angle to correct it
+            // (e.g., model says 90° → rotate 90° clockwise puts it back to 0°)
+            Matrix matrix = new Matrix();
+            matrix.postRotate(orient.angle);
+
+            Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0,
+                bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            // Recycle the original bitmap if it's different (caller manages lifecycle)
+            Log.d(TAG, "DocOri: applied " + orient.angle + "° rotation (conf="
+                + String.format("%.2f", orient.confidence) + ")");
+            return rotated;
         } catch (Exception e) {
             Log.w(TAG, "Auto-orient failed", e);
             return bitmap;
