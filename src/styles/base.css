@@ -180,6 +180,316 @@
   border-color: rgba(84,84,88,0.2);
 }
 
+/* ═══════════════════════════════════════════
+   Skin: Sakura — 樱花和风
+   日式侘寂 · 淡粉 · 毛笔字感 · 纸和墨
+   ═══════════════════════════════════════════ */
+[data-skin="sakura"] {
+  --accent: #d45b7a;
+  --accent-hover: #b84763;
+  --bg: #faf3f0;
+  --fg: #3c2c33;
+  --muted: #8f6b78;
+  --border-color: #e6d0cc;
+  --card-bg: rgba(255,252,248,0.78);
+  --hdr-bg: rgba(250,243,240,0.85);
+  --btn-radius: 4px;
+  --btn-radius-lg: 6px;
+  --card-radius: 6px;
+  --nav-radius: 0px;
+  --tab-radius: 4px;
+  --card-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  --btn-shadow: none;
+  --nav-blur: none;
+  --nav-border: 1px solid var(--border-color);
+  --font-stack: "Zen Kurenaido","Yu Gothic","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  --spacing-unit: 1rem;
+}
+[data-skin="sakura"] .ocr-btn {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent); font-weight: 400;
+  letter-spacing: 0.04em;
+}
+[data-skin="sakura"] .ocr-btn:active {
+  background: var(--accent); color: #fff;
+}
+[data-skin="sakura"] .ocr-btn.secondary {
+  border-color: var(--border-color); color: var(--muted);
+}
+[data-skin="sakura"] .result-card {
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+}
+[data-skin="sakura"] .mode-tab.active,
+[data-skin="sakura"] .recog-tabs .mode-tab.active {
+  background: var(--accent); color: #fff;
+}
+[data-skin="sakura"] .bottom-nav button.active {
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+}
+[data-skin="sakura"] .bottom-nav {
+  border-top: 1px solid var(--border-color);
+}
+[data-skin="sakura"] .top-nav {
+  border-bottom: 1px solid var(--border-color);
+}
+[data-skin="sakura"] .cam-capture {
+  background: var(--accent); border: none;
+}
+[data-skin="sakura"] .set-select-btn:focus { border-color: var(--accent); }
+
+[data-skin="sakura"][data-theme="dark"] {
+  --accent: #e88ba3;
+  --accent-hover: #f0a5b9;
+  --bg: #281f22;
+  --fg: #f0e4e0;
+  --muted: #a07a85;
+  --border-color: #3d2d31;
+  --card-bg: rgba(36,26,29,0.82);
+  --hdr-bg: rgba(40,31,34,0.88);
+}
+[data-skin="sakura"][data-theme="dark"] .ocr-btn {
+  border-color: var(--accent); color: var(--accent);
+}
+[data-skin="sakura"][data-theme="dark"] .ocr-btn:active {
+  background: var(--accent); color: var(--bg);
+}
+[data-skin="sakura"][data-theme="dark"] .result-card {
+  background: var(--card-bg);
+}
+
+/* ═══════════════════════════════════════════
+   Skin: Matrix — 黑客矩阵
+   黑底绿字 · 像素感 · 终端风 · 发光字
+   ═══════════════════════════════════════════ */
+[data-skin="matrix"] {
+  --accent: #00ff41;
+  --accent-hover: #33ff75;
+  --bg: #0a0a0a;
+  --fg: #c0ffc0;
+  --muted: #407a40;
+  --border-color: #1a3a1a;
+  --card-bg: rgba(8,16,8,0.85);
+  --hdr-bg: rgba(10,10,10,0.95);
+  --btn-radius: 0px;
+  --btn-radius-lg: 0px;
+  --card-radius: 0px;
+  --nav-radius: 0px;
+  --tab-radius: 0px;
+  --card-shadow: none;
+  --btn-shadow: none;
+  --nav-blur: none;
+  --nav-border: 1px solid var(--border-color);
+  --font-stack: "Source Code Pro","Fira Code","Cascadia Code","Consolas","Noto Sans CJK SC","Microsoft YaHei",monospace;
+  --spacing-unit: 1rem;
+}
+[data-skin="matrix"] .ocr-btn {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent); font-weight: 400;
+  text-transform: lowercase;
+}
+[data-skin="matrix"] .ocr-btn:active {
+  background: rgba(0,255,65,0.10);
+}
+[data-skin="matrix"] .ocr-btn.secondary {
+  border-color: var(--muted); color: var(--muted);
+}
+[data-skin="matrix"] .ocr-btn:active {
+  background: rgba(0,255,65,0.08);
+}
+[data-skin="matrix"] .result-card {
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+}
+[data-skin="matrix"] .mode-tab.active,
+[data-skin="matrix"] .recog-tabs .mode-tab.active {
+  background: var(--accent); color: var(--bg); border-color: var(--accent);
+}
+[data-skin="matrix"] .bottom-nav {
+  border-top: 1px solid var(--border-color);
+}
+[data-skin="matrix"] .bottom-nav button.active {
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(0,255,65,0.50);
+}
+[data-skin="matrix"] .top-nav {
+  border-bottom: 1px solid var(--border-color);
+}
+[data-skin="matrix"] .theme-toggle {
+  border-color: var(--border-color);
+}
+[data-skin="matrix"] .set-select-btn:focus { border-color: var(--accent); }
+
+[data-skin="matrix"][data-theme="dark"] {
+  /* already dark by default — same palette */
+}
+
+/* ═══════════════════════════════════════════
+   Skin: Warm — 暖咖纸墨
+   咖啡暖棕 · 厚实质感 · 弧形圆角 · 哑光
+   ═══════════════════════════════════════════ */
+[data-skin="warm"] {
+  --accent: #8b5e3c;
+  --accent-hover: #a87b58;
+  --bg: #f5ede4;
+  --fg: #2d1f14;
+  --muted: #8e7668;
+  --border-color: #dcccbc;
+  --card-bg: rgba(255,248,240,0.85);
+  --hdr-bg: rgba(245,237,228,0.90);
+  --btn-radius: 50px;
+  --btn-radius-lg: 50px;
+  --card-radius: 18px;
+  --nav-radius: 18px;
+  --tab-radius: 50px;
+  --card-shadow: 0 4px 12px rgba(139,94,60,0.10);
+  --btn-shadow: none;
+  --nav-blur: none;
+  --nav-border: none;
+  --font-stack: "Noto Serif","Georgia","Noto Serif CJK SC","Source Han Serif CN","STSong","SimSun",serif;
+  --spacing-unit: 1.15rem;
+}
+[data-skin="warm"] .ocr-btn {
+  background: var(--accent);
+  color: #fff; border: none;
+  font-weight: 500;
+}
+[data-skin="warm"] .ocr-btn.secondary {
+  background: rgba(139,94,60,0.08);
+  color: var(--accent); border: none;
+}
+[data-skin="warm"] .ocr-btn:active {
+  opacity: 0.80;
+}
+[data-skin="warm"] .result-card {
+  border: none;
+  background: var(--card-bg);
+  box-shadow: 0 4px 12px rgba(139,94,60,0.08);
+}
+[data-skin="warm"] .mode-tab.active,
+[data-skin="warm"] .recog-tabs .mode-tab.active {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+[data-skin="warm"] .bottom-nav {
+  background: rgba(245,237,228,0.88);
+}
+[data-skin="warm"] .bottom-nav button.active {
+  color: var(--accent); font-weight: 600;
+}
+[data-skin="warm"] .cam-capture {
+  background: var(--accent); border: none;
+}
+[data-skin="warm"] .set-select-btn:focus { border-color: var(--accent); }
+
+[data-skin="warm"][data-theme="dark"] {
+  --accent: #c9a87d;
+  --accent-hover: #dbb894;
+  --bg: #1a1410;
+  --fg: #ede0d4;
+  --muted: #8e7668;
+  --border-color: #2e231c;
+  --card-bg: rgba(26,20,16,0.82);
+  --hdr-bg: rgba(26,20,16,0.88);
+  --card-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+[data-skin="warm"][data-theme="dark"] .ocr-btn {
+  background: var(--accent); color: var(--bg);
+}
+[data-skin="warm"][data-theme="dark"] .ocr-btn.secondary {
+  background: rgba(201,168,125,0.10); color: var(--accent);
+}
+[data-skin="warm"][data-theme="dark"] .result-card {
+  background: var(--card-bg);
+}
+
+/* ═══════════════════════════════════════════
+   Skin: Minimal — 极简纤白
+   白 · 超轻阴影 · 窄圆角 · 干净 · 空气感
+   ═══════════════════════════════════════════ */
+[data-skin="minimal"] {
+  --accent: #111111;
+  --accent-hover: #444444;
+  --bg: #fdfdfd;
+  --fg: #111111;
+  --muted: #888888;
+  --border-color: #e5e5e5;
+  --card-bg: #ffffff;
+  --hdr-bg: rgba(253,253,253,0.92);
+  --btn-radius: 4px;
+  --btn-radius-lg: 6px;
+  --card-radius: 4px;
+  --nav-radius: 0px;
+  --tab-radius: 4px;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  --btn-shadow: none;
+  --nav-blur: none;
+  --nav-border: 1px solid var(--border-color);
+  --font-stack: "Inter","Helvetica Neue","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  --spacing-unit: 1rem;
+}
+[data-skin="minimal"] .ocr-btn {
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg); font-weight: 400;
+  font-size: 0.82rem;
+}
+[data-skin="minimal"] .ocr-btn:active {
+  background: var(--fg); color: #fff;
+}
+[data-skin="minimal"] .ocr-btn.secondary {
+  border-color: #ccc; color: var(--muted);
+}
+[data-skin="minimal"] .result-card {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  background: transparent;
+  box-shadow: none;
+}
+[data-skin="minimal"] .mode-tab.active,
+[data-skin="minimal"] .recog-tabs .mode-tab.active {
+  background: var(--fg); color: #fff; border-color: var(--fg);
+}
+[data-skin="minimal"] .bottom-nav {
+  border-top: 1px solid var(--border-color);
+}
+[data-skin="minimal"] .bottom-nav button.active {
+  color: var(--fg); font-weight: 600;
+}
+[data-skin="minimal"] .bottom-nav button {
+  font-size: 0.65rem;
+}
+[data-skin="minimal"] .top-nav {
+  border-bottom: 1px solid var(--border-color);
+}
+[data-skin="minimal"] .theme-toggle {
+  border-color: var(--border-color);
+}
+[data-skin="minimal"] .set-select-btn:focus {
+  border-color: var(--fg);
+}
+
+[data-skin="minimal"][data-theme="dark"] {
+  --bg: #0a0a0a;
+  --fg: #f0f0f0;
+  --muted: #666666;
+  --border-color: #222222;
+  --card-bg: #0a0a0a;
+  --hdr-bg: rgba(10,10,10,0.95);
+  --card-shadow: none;
+}
+[data-skin="minimal"][data-theme="dark"] .ocr-btn {
+  border-color: var(--fg); color: var(--fg);
+}
+[data-skin="minimal"][data-theme="dark"] .ocr-btn:active {
+  background: var(--fg); color: var(--bg);
+}
+[data-skin="minimal"][data-theme="dark"] .result-card {
+  border-top-color: var(--border-color);
+}
+
 /* ── End skin blocks ── */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

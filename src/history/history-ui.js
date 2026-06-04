@@ -361,6 +361,9 @@ function initSwipe(card) {
       const btn = e.target.closest('.hi-swipe-btn');
       if (!btn) return;
       e.stopPropagation();
+      // Burst particle with button's own color
+      const color = btn.dataset.action === 'share' ? '#22c55e' : '#2563eb';
+      burstParticles(btn, color, 10);
       execAction(btn.dataset.action);
     });
   }
@@ -371,6 +374,7 @@ function initSwipe(card) {
       e.stopPropagation();
       const s = getState(card);
       if (s.revealed && s.offsetX > 0) {
+        burstParticles(deleteZone, '#ef4444', 10);
         doDelete();
       }
     });
