@@ -1,3 +1,37 @@
+## v1.1.2 — Pandoc WASM 导出修复、SVG/PNG 导出修复 (2026-06-04)
+
+### 修复
+
+- **SVG/PNG 导出** — `renderLatexToSvgs` 改用 `renderBlock` 智能渲染，混合文本+公式行不再失败显示代码
+- **Pandoc WASM 导出（Markdown/HTML/AsciiDoc 等）** — Android WebView 缺少 `wasi_snapshot_preview1` 模块，通过 `@bjorn3/browser_wasi_shim` + Vite resolve alias 修复
+
+## v1.1.1 — 编辑器精简、渲染引擎切换、历史滑动修复 (2026-06-04)
+
+### 新功能
+
+- **KaTeX/MathJax 渲染引擎切换** — 设置页「公式渲染引擎」下拉选择，支持离线切换（MathJax 1.1MB + 23 字体文件本地加载）
+- **MathJax 完全离线集成** — `public/vendor/mathjax/` 本地加载，启动阶段 splash 预加载，无需 CDN
+- **图片方向智能校正** — 相机/导入图片在 EXIF 未校正且 ONNX 模型置信度 ≥ 0.6 时自动旋转方向
+
+### 改进
+
+- **编辑器精简** — 移除中间 KaTeX 实时预览区，只保留上方 MathLive 输入 + 下方源代码显示，编辑更聚焦
+- **渲染健壮性提升** — `renderBlock` 智能判断显示/内联模式，多行环境（`\begin{aligned}`、`$$...$$`）按逻辑块分组渲染，不逐行切分
+
+### 修复
+
+- **历史记录右滑交互**
+  - 吸附后点击删除区域 → 触发删除操作
+  - 吸附后继续右滑 → 删除区域继续伸长
+- **公式渲染兜底** — 不含 `\` 的公式（如 `x^2 + y^2 = z^2`、`y = kx + b`）正确渲染，不再只显示源码
+
+### 测试
+
+- 集成测试：**226/226 通过**
+- KaTeX 渲染测试：**35/35 通过**
+
+---
+
 ## v1.1.0 — 导出增强、KaTeX 替换、编辑器升级、测试全覆盖 (2026-06-02)
 
 ### 新功能
