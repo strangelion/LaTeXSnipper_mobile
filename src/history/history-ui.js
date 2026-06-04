@@ -20,7 +20,7 @@ const SNAP_DELETE   = 40;    // right-swipe snap threshold
 const SNAP_ACTIONS  = 60;    // left-swipe snap threshold
 const DIRECT_DELETE = 260;   // overswipe right → immediate delete
 const FAV_START     = 120;   // past direct-delete on left → fav-mode visual
-const FAV_TRIGGER   = 300;   // max left → toggle fav + auto-return
+const FAV_TRIGGER   = 480;   // max left → toggle fav + auto-return
 
 function escapeHtml(text) {
   const d = document.createElement('div');
