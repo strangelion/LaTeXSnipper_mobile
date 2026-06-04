@@ -1,36 +1,33 @@
-## v1.2.0 — 键盘三态切换、Pandoc WASM 彻底修复、7 套皮肤 (2026-06-04)
+## v1.2.0 — 键盘三态切换、导出格式精简、Pandoc WASM 兼容修复、APK 体积优化 (2026-06-04)
 
 ### 新功能
 
-- **MathLive 键盘三态切换** — 编辑器键盘按钮现在支持三种模式循环切换：关闭 → MathLive虚拟键盘 → 系统原生键盘 → 关闭，满足不同输入场景
-- **7 套全新视觉皮肤**
-  - Material 蓝（默认）— 圆角按钮 + 蓝色调
-  - MIUI 渐变 — 暖色渐变 + 毛玻璃
-  - iOS 蓝 — 毛玻璃 + 发丝边框
-  - **樱花和风** — 日式侘寂，淡粉底色，Zen Kurenaido 字体
-  - **黑客矩阵** — 黑底绿字，终端等宽字体，发光文字
-  - **暖咖纸墨** — 咖啡暖棕，衬线字体，大胶囊按钮
-  - **极简纤白** — 纯白底 + 极细灰线，去装饰
+- **MathLive 键盘三态切换** — 编辑器键盘按钮支持三种模式循环切换：关闭 → MathLive 虚拟键盘 → 系统原生键盘 → 关闭
+  - 切换按钮移至编辑器顶部 sticky 栏，任何键盘弹出都不会遮挡
+  - 系统键盘模式通过隐藏 `<input>` 转发输入到 MathField
+- **新增导出格式** — 新增 LaTeX (.tex)、MathML、Word (.docx) 三种常用导出格式
 
 ### 改进
 
+- **导出格式精简** — 砍掉 AsciiDoc、reStructuredText、OPML 三个不常用格式，保留常用 9 种：PNG、SVG、LaTeX、MathML、Markdown、HTML、Typst、Word、Plain Text
 - **版本号自动注入** — `vite.config.js` 从 `package.json` 自动读取版本号，无需手动更新 `index.html`
 - **收藏触发距离** — 从 300px 增大到 480px，大幅降低误触率
 - **历史按钮等分** — 分享/复制按钮 `flex:1` 等宽，视觉一致
-- **粒子效果** — 删除/分享/复制按钮点击对应颜色粒子动画
+- **7 套全新视觉皮肤**
+  - Material 蓝（默认）、MIUI 渐变、iOS 蓝、樱花和风、黑客矩阵、暖咖纸墨、极简纤白
 
 ### 修复
 
-- **Pandoc WASM 导出（Markdown/HTML/AsciiDoc 等）** — 创建正确的 `src/shared/wasi-shim.js`（通过 `@bjorn3/browser_wasi_shim` 提供 30 个 WASI 函数），恢复 `vite.config.js` 中的 `wasi_snapshot_preview1` 别名，`import('pandoc-wasm')` 现在能正确初始化 56MB WASM 二进制
-- **系统键盘模式** — 使用隐藏 `<input>` 元素在 Android WebView 中触发系统原生键盘，输入内容自动转发到 MathField
-- **键盘切换按钮位置** — 从编辑器底部移至**顶部 sticky 栏**，任何键盘都不会遮挡
+- **Pandoc WASM 导出** — Android WebView 运行时 fetch 56MB WASM 二进制返回 HTML 404 的问题；改用 `pandoc-init.js` 加载 `core.js`（纯 JS 模块）+ `fetch('/pandoc.wasm')` 绕过 vite-plugin-wasm 生成的 Capacitor 不兼容路径
+- **WASM 打包重复** — 清除 `writeBundle` 多余复制步骤和 `public/vendor/pandoc/` 旧目录，APK 中只有 1 份 pandoc.wasm
 - **导出中文方框** — SVG foreignObject 显式指定 `"Noto Sans CJK SC","Microsoft YaHei"` 中文字体回退
 - **SVG/PNG 导出** — `renderLatexToSvgs` 改用 `renderBlock` 智能渲染，混合文本+公式行正确渲染
+- **docx 二进制导出** — pandoc 二进制输出使用 `result.files` 而非 `stdout` 文本，避免 UTF-8 解码报错
 
 ### 测试
 
-- 更新了 `test_e2e.js`、`test_integration.js`、`test_wasm_compat.js`、`test_user_workflows.js` 中关于 pandoc 加载方式和 vite 配置的检测
-- 全部通过: wasm (21/21), integration (227/227), e2e (308/308)
+- **全部 4 套测试通过**
+  - wasm (20/20), pandoc (43/43), integration (227/227), e2e (308/308)
 
 ## v1.1.2 — Pandoc WASM 导出修复、SVG/PNG 导出修复 (2026-06-04)
 
