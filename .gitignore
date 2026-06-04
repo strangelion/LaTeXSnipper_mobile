@@ -53,5 +53,4 @@ test_upload.png
 test_output/
 
 # 56MB pandoc WASM binary (copied from node_modules at build time)
-public/vendor/pandoc/pandoc.wasm
-public/vendor/pandoc/pandoc-core.js
+public/pandoc.wasm

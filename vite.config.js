@@ -23,6 +23,18 @@ export default defineConfig({
         );
       },
     },
+    // Copy pandoc.wasm to public/ so Capacitor serves it as a static asset
+    // at /pandoc.wasm. Running in buildStart ensures it's in place BEFORE
+    // Vite copies public/ into dist/.
+    {
+      name: 'copy-pandoc-wasm',
+      buildStart() {
+        const src = resolve(dirname, 'node_modules/pandoc-wasm/src/pandoc.wasm');
+        const dst = resolve(dirname, 'public/pandoc.wasm');
+        if (!existsSync(dst)) copyFileSync(src, dst);
+        this.addWatchFile(src);
+      },
+    },
   ],
   resolve: {
     alias: {

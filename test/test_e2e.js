@@ -153,7 +153,7 @@ ok(exp.includes("action: 'render'"), 'Image action');
 ok(exp.includes("action: 'pandoc'"), 'Pandoc action');
 ok(exp.includes("action: 'typst'"), 'Typst action');
 
-ok(exp.includes("import('pandoc-wasm')"), 'Pandoc lazy load');
+ok(exp.includes("import('./pandoc-init.js')"), 'Pandoc lazy load');
 
 // ─── 8. settings ───
 group('8. Settings');

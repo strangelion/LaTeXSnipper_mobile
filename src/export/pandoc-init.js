@@ -1,13 +1,12 @@
 /**
  * Self-contained pandoc WASM loader.
  *
- * Loads pandoc-wasm's core logic (from Vite-bundled node_modules) and
- * fetches pandoc.wasm as a static asset via fetch(), completely bypassing
- * vite-plugin-wasm's transform on the 56MB WASM binary.
+ * Bypasses vite-plugin-wasm entirely by:
+ * 1. Importing core.js directly (pure JS module, no .wasm import → vite-plugin-wasm ignores it)
+ * 2. Fetching pandoc.wasm as a static asset from /public/ known path
  *
- * Note: This file does NOT use @vite-ignore on the core.js import — Vite
- * must resolve core.js and its @bjorn3/browser_wasi_shim dependency.
- * The WASM binary is loaded at runtime via fetch(), not via import.
+ * The WASM binary is copied to public/ by a Vite buildStart plugin,
+ * ensuring Capacitor can serve it at runtime via the web root.
  *
  * @returns {{ convert, query }} pandoc API
  */
@@ -24,18 +23,19 @@ export async function initPandocWasm() {
   _loading = true;
 
   try {
-    // Import core.js from node_modules — Vite resolves this and its
-    // @bjorn3/browser_wasi_shim dependency normally. No @vite-ignore
-    // here (that would break the dependency chain at runtime).
+    // Import core.js from node_modules — pure JS, vite-plugin-wasm won't touch it.
+    // Vite resolves its @bjorn3/browser_wasi_shim dependency normally.
+    // (No @vite-ignore — let Vite resolve through its module graph)
     const { createPandocInstance } = await import(
       '../../node_modules/pandoc-wasm/src/core.js'
     );
 
-    // Fetch pandoc.wasm as a static asset from /vendor/pandoc/ directory.
-    // The copy-pandoc-wasm build plugin places it there.
-    const wasmResp = await fetch('/vendor/pandoc/pandoc.wasm');
+    // Fetch pandoc.wasm from /public/ — it's placed there by the buildStart
+    // Vite plugin in vite.config.js, and is relibaly accessible at this path
+    // in both Vite dev server and Capacitor production builds.
+    const wasmResp = await fetch('/pandoc.wasm');
     if (!wasmResp.ok) {
-      throw new Error(`Failed to fetch pandoc.wasm: ${wasmResp.status}`);
+      throw new Error(`Failed to fetch pandoc.wasm: ${wasmResp.status} ${wasmResp.statusText}`);
     }
     const wasmBinary = await wasmResp.arrayBuffer();
 
