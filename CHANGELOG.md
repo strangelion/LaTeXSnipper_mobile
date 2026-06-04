@@ -10,8 +10,6 @@
 
 - **系统键盘模式点击编辑区撤回键盘** — 系统键盘模式下 `mathVirtualKeyboardPolicy` 设为 `auto`，点击 mathField 可正常弹出系统键盘
 - **系统键盘挤占编辑区** — 系统键盘弹出时自动隐藏底部公式符号工具栏，腾出编辑空间
-- **docx 导出失效** — pandoc 二进制输出补传 `output-file` 选项，通过 `result.files['stdout']` 获取原始写入
-- **WASM 冗余文件清理** — 移除 `public/vendor/pandoc/` 残留目录，APK 中只有 1 份 pandoc.wasm（58MB）
 
 ### 测试
 
@@ -42,7 +40,8 @@
 - **WASM 打包重复** — 清除 `writeBundle` 多余复制步骤和 `public/vendor/pandoc/` 旧目录，APK 中只有 1 份 pandoc.wasm
 - **导出中文方框** — SVG foreignObject 显式指定 `"Noto Sans CJK SC","Microsoft YaHei"` 中文字体回退
 - **SVG/PNG 导出** — `renderLatexToSvgs` 改用 `renderBlock` 智能渲染，混合文本+公式行正确渲染
-- **docx 二进制导出** — pandoc 二进制输出使用 `result.files` 而非 `stdout` 文本，避免 UTF-8 解码报错
+- **docx 导出失效** — pandoc 二进制输出补传 `output-file` 选项，通过 `result.files['stdout']` 获取原始写入
+- **WASM 冗余文件清理** — 移除 `public/vendor/pandoc/` 残留目录，APK 中只有 1 份 pandoc.wasm（58MB）
 
 ### 测试
 
