@@ -5,16 +5,18 @@
 ## 功能
 
 - **公式/文字/混合 OCR 识别** — 图片/PDF/拍照/手写 → LaTeX/文本，Android 端 ONNX Runtime 本地推理
-- **MathLive 公式编辑器** — 所见即所得数学公式编辑，支持虚拟键盘、智能模式、符号模板面板
+- **MathLive 公式编辑器** — 所见即所得数学公式编辑，支持三态键盘切换（关闭 / MathLive 虚拟键盘 / 系统原生键盘）、智能模式、符号工具栏
 - **手写画板** — 墨迹平滑、压感、撤销/重做/调整画布
-- **历史记录** — IndexedDB 存储，收藏夹管理，滑动手势（右滑删除、左滑分享/复制）
-- **多格式导出** — PNG / SVG / Markdown / Plain Text / HTML / Typst / AsciiDoc / reStructuredText / OPML
+- **历史记录** — IndexedDB 存储，收藏夹管理，滑动手势（右滑删除、左滑分享/复制/收藏）
+- **多格式导出** — PNG / SVG / LaTeX / MathML / Markdown / HTML / Typst / Word (.docx) / Plain Text
 - **AI 整理** — 连接 DeepSeek 兼容 API 对识别结果进行纠错和格式化
-- **公式渲染** — KaTeX 渲染（轻量快速，原生支持中文混合显示）
+- **公式渲染引擎切换** — KaTeX（轻量快速）/ MathJax（兼容性更好）
 - **完全离线** — 所有模型和依赖内置，安装后无需网络
+- **7 套视觉皮肤** — Material 蓝、MIUI 渐变、iOS 蓝、樱花和风、黑客矩阵、暖咖纸墨、极简纤白
 - **GPU 加速** — Android NNAPI (OpenGL/Vulkan/NPU) 加速推理
 - **日/夜主题** — 自动跟随系统或手动切换
 - **多语言** — 简体中文、繁体中文、英文、日文、韩文
+- **自动更新检查** — 启动时检测 GitHub Release，有新版本弹窗提示
 
 ## 技术栈
 
@@ -29,8 +31,8 @@
 | 方向检测 | PP-LCNet 文档方向 + EXIF 自动旋转 |
 | 公式渲染 | KaTeX 0.17 |
 | 公式编辑 | MathLive 0.98 |
-| 文档转换 | pandoc-wasm 1.0（Markdown/HTML/AsciiDoc/RST/OPML 导出） |
-| 文本导出 | 纯 JS LaTeX → Typst 转换器（符号表 + 结构转换） |
+| 文档转换 | pandoc-wasm 1.0（Markdown/HTML/LaTeX/MathML/docx 导出） |
+| 文本导出 | 纯 JS LaTeX → Typst 转换器（200+ 符号映射 + 结构转换） |
 | PDF 渲染 | pdfjs-dist 3.11 |
 | 移动框架 | Capacitor 8 (Android/iOS) |
 | 存储 | IndexedDB (idb 封装) |
@@ -57,10 +59,10 @@ bash test/run_tests.sh   # 全部 10 项测试
 | # | 测试 | 类型 | 项数 |
 |--|------|------|------|
 | 1-7 | OCR 模型（公式检测/识别/文字检测/识别/端到端管线/混合排版/方向检测） | Python | 7 |
-| 8 | Pandoc WASM 导出 + Typst 转换器 | Node.js | 45 |
+| 8 | Pandoc WASM 导出 + Typst 转换器 | Node.js | 43 |
 | 9 | KaTeX 公式渲染 | Node.js | 35 |
 | 10 | 集成测试（结构/模块/配置/国际化） | Node.js | 227 |
-| — | E2E 全量测试（20 大类模块） | Node.js | 309 |
+| — | E2E 全量测试（20 大类模块） | Node.js | 308 |
 
 ## 项目结构
 
@@ -125,13 +127,13 @@ LaTeXSnipper_mobile/
 |------|------|------|
 | PNG | KaTeX → SVG → Canvas | 高清公式图片 |
 | SVG | KaTeX → SVG | 矢量公式图片 |
+| LaTeX | Pandoc WASM | .tex 格式 |
+| MathML | Pandoc WASM | 数学标记语言 |
 | Markdown | Pandoc WASM | `markdown+tex_math_dollars` |
-| Plain Text | Pandoc WASM | 纯文本 |
 | HTML | Pandoc WASM | 网页 |
-| **Typst** | **纯 JS 转换器** | 200+ 符号映射 + 结构转换（不依赖 Pandoc WASM） |
-| AsciiDoc | Pandoc WASM | 轻量标记语言 |
-| reStructuredText | Pandoc WASM | Python 文档生态 |
-| OPML | Pandoc WASM | 大纲/思维导图 |
+| **Typst** | **纯 JS 转换器** | 200+ 符号映射 + 结构转换 |
+| Word | Pandoc WASM | .docx 格式 |
+| Plain Text | Pandoc WASM | 纯文本 |
 
 ## 许可证
 Apache License 2.0

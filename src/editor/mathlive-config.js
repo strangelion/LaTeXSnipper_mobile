@@ -68,42 +68,6 @@ const MATHLIVE_ZH = {
 let mathField = null;
 let hostEl = null;
 let _kbdState = 0; // 0=off, 1=mathlive, 2=system
-// Hidden <input> used to trigger system keyboard on Android WebView
-let _sysInput = null;
-
-function _ensureSysInput() {
-  if (_sysInput) return _sysInput;
-  _sysInput = document.createElement('input');
-  _sysInput.type = 'text';
-  _sysInput.id = '_editorSysInput';
-  _sysInput.autocomplete = 'off';
-  _sysInput.autocorrect = 'off';
-  _sysInput.autocapitalize = 'off';
-  _sysInput.spellcheck = false;
-  _sysInput.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;';
-  document.body.appendChild(_sysInput);
-  // Forward typed text to mathfield
-  _sysInput.addEventListener('input', () => {
-    if (!mathField) return;
-    const val = _sysInput.value;
-    const prev = _sysInput._prevVal || '';
-    if (val.length > prev.length) {
-      const added = val.slice(prev.length);
-      const escaped = added.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\$/g, '\\$');
-      mathField.insert(escaped);
-    }
-    _sysInput._prevVal = val;
-  });
-  return _sysInput;
-}
-
-function _hideSysInput() {
-  if (_sysInput) {
-    _sysInput.blur();
-    _sysInput._prevVal = '';
-    _sysInput.value = '';
-  }
-}
 
 function _updateToggleBtn() {
   const btn = document.getElementById('editorKbdToggle');
@@ -261,34 +225,31 @@ export function toggleKeyboard() {
   if (!mathField) return;
   const nextState = (_kbdState + 1) % 3;
 
-  // Clean up previous state
+  // Hide any active keyboard first
   if (window.mathVirtualKeyboard) {
     window.mathVirtualKeyboard.visible = false;
   }
-  _hideSysInput();
-  mathField.mathVirtualKeyboardPolicy = 'manual';
 
   if (nextState === 0) {
-    // OFF
+    // OFF: no keyboard
+    mathField.mathVirtualKeyboardPolicy = 'manual';
     mathField.removeAttribute('inputmode');
     mathField.blur();
   } else if (nextState === 1) {
     // MathLive virtual keyboard
+    mathField.mathVirtualKeyboardPolicy = 'manual';
     mathField.setAttribute('inputmode', 'none');
     mathField.focus();
     setTimeout(() => {
       mathField.executeCommand('toggleVirtualKeyboard');
     }, 100);
   } else if (nextState === 2) {
-    // System native keyboard via hidden <input>
-    mathField.blur();
-    const inp = _ensureSysInput();
-    inp._prevVal = '';
-    inp.value = '';
-    // Allow mathField to show system keyboard when user taps it in this mode
-    mathField.mathVirtualKeyboardPolicy = 'auto';
+    // System native keyboard: 'sandboxed' tells MathLive to NOT intercept
+    // keyboard events — the browser's system keyboard works normally.
+    // User can tap anywhere on mathField and system keyboard stays.
+    mathField.mathVirtualKeyboardPolicy = 'sandboxed';
     mathField.removeAttribute('inputmode');
-    setTimeout(() => inp.focus(), 50);
+    mathField.focus();
   }
 
   _setKbdState(nextState);
@@ -303,6 +264,5 @@ export function resetKbdState() {
     mathField.removeAttribute('inputmode');
     mathField.blur();
   }
-  _hideSysInput();
   _setKbdState(0);
 }
