@@ -470,6 +470,15 @@
 [data-skin="minimal"] .set-select-btn:focus {
   border-color: var(--fg);
 }
+/* Minimal: hi-tag background uses card-bg instead of accent tint */
+[data-skin="minimal"] .history-item .hi-tag {
+  background: rgba(0,0,0,0.04); color: var(--muted);
+  border: 1px solid var(--border-color);
+}
+[data-skin="minimal"][data-theme="dark"] .history-item .hi-tag {
+  background: rgba(255,255,255,0.04); color: var(--muted);
+  border-color: var(--border-color);
+}
 
 [data-skin="minimal"][data-theme="dark"] {
   --bg: #0a0a0a;
