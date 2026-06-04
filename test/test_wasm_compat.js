@@ -102,7 +102,6 @@ const viteConfig = rf(join(__dirname, '..', 'vite.config.js'), 'utf-8');
 
 ok(viteConfig.includes('vite-plugin-wasm'), 'vite-plugin-wasm configured');
 ok(viteConfig.includes('vite-plugin-top-level-await'), 'top-level-await plugin');
-ok(viteConfig.includes('copy-pandoc-wasm'), 'pandoc.wasm copy plugin configured');
 ok(viteConfig.includes("'wasi_snapshot_preview1'"), 'wasi alias configured');
 ok(viteConfig.includes('assetsInlineLimit: 0'), 'WASM inlining disabled');
 

@@ -23,24 +23,6 @@ export default defineConfig({
         );
       },
     },
-    // Copy pandoc.wasm (56MB) to dist/assets as a static asset
-    // without vite-plugin-wasm interference
-    {
-      name: 'copy-pandoc-wasm',
-      writeBundle({ dir }) {
-        const src = resolve(dirname, 'node_modules/pandoc-wasm/src/pandoc.wasm');
-        const outDir = resolve(dir || 'dist', 'assets');
-        if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-        copyFileSync(src, resolve(outDir, 'pandoc.wasm'));
-      },
-      closeBundle() {
-        // also copy for dev mode public resolution
-        const src = resolve(dirname, 'node_modules/pandoc-wasm/src/pandoc.wasm');
-        const outDir = resolve(dirname, 'public/vendor/pandoc');
-        if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-        copyFileSync(src, resolve(outDir, 'pandoc.wasm'));
-      },
-    },
   ],
   resolve: {
     alias: {

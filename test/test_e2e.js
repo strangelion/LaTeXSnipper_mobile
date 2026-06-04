@@ -52,7 +52,7 @@ ok(pkg.dependencies['katex'] || $exists('public/vendor/katex.min.js'), 'KaTeX de
 
 const vite = $read('vite.config.js');
 ok(vite.includes('vite-plugin-wasm'), 'WASM plugin');
-ok(vite.includes('copy-pandoc-wasm'), 'pandoc.wasm copy plugin');
+ok(vite.includes("'wasi_snapshot_preview1'"), 'wasi alias configured');
 
 const cap = JSON.parse($read('capacitor.config.json'));
 ok(cap.appId === 'com.latexsnipper.app', 'App ID');

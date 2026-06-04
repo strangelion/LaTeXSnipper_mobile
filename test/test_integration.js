@@ -290,7 +290,7 @@ const vite = readFileSync(join(ROOT, 'vite.config.js'), 'utf-8');
 ok(vite.includes('vite-plugin-wasm'), 'WASM plugin configured');
 ok(vite.includes('vite-plugin-top-level-await'), 'Top-level await plugin');
 ok(vite.includes('assetsInlineLimit: 0'), 'WASM inlining disabled');
-ok(vite.includes('copy-pandoc-wasm'), 'pandoc.wasm copy plugin configured');
+ok(vite.includes("'wasi_snapshot_preview1'"), 'wasi alias configured');
 
 // ═══════════════════════════════════════════════════════════
 // Summary
