@@ -421,7 +421,10 @@ async function renderLatexToSvgs(latex) {
 
       const div = document.createElementNS(svgNs, 'div');
       div.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-      div.style.cssText = 'width:' + w + 'px;height:' + h + 'px;overflow:visible;font-size:20px';
+      // Set explicit font-family with Chinese fallback so CJK renders correctly
+      // (foreignObject in SVG viewer/editor doesn't inherit page CSS)
+      div.style.cssText = 'width:' + w + 'px;height:' + h + 'px;overflow:visible;font-size:20px;'
+        + 'font-family:"Noto Sans CJK SC","Microsoft YaHei","Noto Sans CJK","Segoe UI",sans-serif;';
       div.innerHTML = html;
 
       // Copy computed styles from the temp wrapper
