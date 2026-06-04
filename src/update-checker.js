@@ -24,7 +24,17 @@ function _showUpdateDialog(version, url, body) {
   overlay.className = 'update-overlay';
 
   const releaseNotes = body
-    ? body.replace(/### /g, '\n### ').replace(/## /g, '\n## ').replace(/!?\[.*?\]\(.*?\)/g, '').trim()
+    ? body
+        .replace(/^### /gm, '<h4>')
+        .replace(/^## /gm, '<h3>')
+        .replace(/^# /gm, '<h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        .replace(/^- /gm, '&nbsp;&nbsp;• ')
+        .replace(/\n/g, '<br>')
+        .replace(/<br>\s*<br>/g, '<br><br>')
+        .replace(/!?\[.*?\]\(.*?\)/g, '')
+        .trim()
     : '';
 
   overlay.innerHTML = `
