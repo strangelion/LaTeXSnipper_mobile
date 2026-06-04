@@ -146,7 +146,7 @@ ok(exp.includes('exportLatex'), 'exportLatex');
 ok(exp.includes('createExportDropdown'), 'createExportDropdown');
 ok(exp.includes('latexToTypst'), 'latexToTypst');
 
-['png','svg','markdown','plain','html','typst','asciidoc','rst','opml'].forEach(f =>
+['png','svg','latex','mathml','markdown','html','typst','docx','plain'].forEach(f =>
   ok(exp.includes(`id: '${f}'`), `Format: ${f}`));
 
 ok(exp.includes("action: 'render'"), 'Image action');

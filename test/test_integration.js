@@ -269,9 +269,10 @@ langFiles.forEach(file => {
 
   // Check export.format keys exist in all languages
   const fmtKeys = ['export.trigger', 'export.exporting',
-    'export.format.png', 'export.format.svg', 'export.format.markdown',
+    'export.format.png', 'export.format.svg', 'export.format.latex',
+    'export.format.mathml', 'export.format.markdown',
     'export.format.plain', 'export.format.html', 'export.format.typst',
-    'export.format.asciidoc', 'export.format.rst', 'export.format.opml'];
+    'export.format.docx'];
   fmtKeys.forEach(k => {
     ok(keys.has(k), `Key "${k}" in ${file}`);
   });

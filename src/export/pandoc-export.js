@@ -15,13 +15,13 @@ import Logger from '../shared/logger.js';
 export const EXPORT_FORMATS = [
   { id: 'png',      action: 'render', ext: 'png',  mime: 'image/png',       label: 'PNG' },
   { id: 'svg',      action: 'render', ext: 'svg',  mime: 'image/svg+xml',   label: 'SVG' },
+  { id: 'latex',    action: 'pandoc', ext: 'tex',  mime: 'text/plain',      label: 'LaTeX' },
+  { id: 'mathml',   action: 'pandoc', ext: 'html', mime: 'text/html',       label: 'MathML' },
   { id: 'markdown', action: 'pandoc', ext: 'md',   mime: 'text/markdown',   label: 'Markdown' },
-  { id: 'plain',    action: 'pandoc', ext: 'txt',  mime: 'text/plain',      label: 'Plain Text' },
   { id: 'html',     action: 'pandoc', ext: 'html', mime: 'text/html',       label: 'HTML' },
   { id: 'typst',    action: 'typst',  ext: 'typ',  mime: 'text/plain',      label: 'Typst' },
-  { id: 'asciidoc', action: 'pandoc', ext: 'adoc', mime: 'text/plain',      label: 'AsciiDoc' },
-  { id: 'rst',      action: 'pandoc', ext: 'rst',  mime: 'text/plain',      label: 'reStructuredText' },
-  { id: 'opml',     action: 'pandoc', ext: 'opml', mime: 'text/xml',        label: 'OPML' },
+  { id: 'docx',     action: 'pandoc', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'Word' },
+  { id: 'plain',    action: 'pandoc', ext: 'txt',  mime: 'text/plain',      label: 'Plain Text' },
 ];
 
 export function getFormatLabel(fmt, t) {
@@ -36,13 +36,12 @@ export function getFormatLabel(fmt, t) {
 }
 
 const PANDOC_FORMAT_MAP = {
+  latex: 'latex',
+  mathml: 'html+mathml',
   markdown: 'markdown+tex_math_dollars',
-  plain: 'plain',
   html: 'html',
-  typst: 'typst',
-  asciidoc: 'asciidoc',
-  rst: 'rst',
-  opml: 'opml',
+  docx: 'docx',
+  plain: 'plain',
 };
 
 // ── Pandoc WASM lazy loader (only for non-Typst text formats) ──
@@ -110,9 +109,17 @@ async function _exportPandoc(latex, fmt) {
   if (!to) { Logger.error('EXPORT', 'Unknown pandoc format: ' + fmt.id); return; }
   const pandoc = await initPandoc();
   const result = await pandoc.convert({ from: 'latex', to, standalone: false }, latex, {});
-  const text = result.stdout || '';
-  if (!text.trim()) { Logger.warn('EXPORT', 'Pandoc returned empty for ' + fmt.id); return; }
-  const blob = new Blob([text], { type: fmt.mime + ';charset=utf-8' });
+  let blob;
+  if (fmt.id === 'docx') {
+    // Binary output — use files dict from result
+    const outFile = result.files?.['stdout'];
+    if (outFile) { blob = new Blob([outFile], { type: fmt.mime }); }
+    else { Logger.warn('EXPORT', 'Pandoc returned no docx binary'); return; }
+  } else {
+    const text = result.stdout || '';
+    if (!text.trim()) { Logger.warn('EXPORT', 'Pandoc returned empty for ' + fmt.id); return; }
+    blob = new Blob([text], { type: fmt.mime + ';charset=utf-8' });
+  }
   const { saveFile } = await import('../shared/share.js');
   await saveFile(blob, 'formula.' + fmt.ext);
 }
