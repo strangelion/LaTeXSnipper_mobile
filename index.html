@@ -180,6 +180,13 @@
     <!-- ── Tab 2: Editor (MathLive created by JS) ── -->
     <div class="page" id="page-editor">
       <div class="editor-wrap">
+        <!-- Keyboard toggle at the TOP — never covered by keyboard -->
+        <div class="editor-kbd-bar">
+          <button class="kbd-toggle-btn" id="editorKbdToggle" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h12"/></svg>
+            键盘
+          </button>
+        </div>
         <!-- Raw LaTeX source below -->
         <div class="editor-latex-source" id="editorLatexSource"></div>
         <div class="editor-preview-actions" id="editorPreviewActions" style="display:none;">
@@ -214,10 +221,6 @@
           <button class="calc-btn" data-latex=")">)</button>
           <button class="calc-btn" data-latex="\cdot">·</button>
           <button class="calc-btn calc-eval" data-action="evaluate">=</button>
-        </div>
-        <!-- Keyboard toggle bar -->
-        <div class="editor-footer-actions">
-          <button class="ocr-btn secondary" id="editorKbdToggle" data-i18n="editor.showKeyboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h12"/></svg> 键盘</button>
         </div>
       </div>
     </div>

@@ -67,6 +67,59 @@ const MATHLIVE_ZH = {
 
 let mathField = null;
 let hostEl = null;
+let _kbdState = 0; // 0=off, 1=mathlive, 2=system
+// Hidden <input> used to trigger system keyboard on Android WebView
+let _sysInput = null;
+
+function _ensureSysInput() {
+  if (_sysInput) return _sysInput;
+  _sysInput = document.createElement('input');
+  _sysInput.type = 'text';
+  _sysInput.id = '_editorSysInput';
+  _sysInput.autocomplete = 'off';
+  _sysInput.autocorrect = 'off';
+  _sysInput.autocapitalize = 'off';
+  _sysInput.spellcheck = false;
+  _sysInput.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;';
+  document.body.appendChild(_sysInput);
+  // Forward typed text to mathfield
+  _sysInput.addEventListener('input', () => {
+    if (!mathField) return;
+    const val = _sysInput.value;
+    const prev = _sysInput._prevVal || '';
+    if (val.length > prev.length) {
+      const added = val.slice(prev.length);
+      const escaped = added.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\$/g, '\\$');
+      mathField.insert(escaped);
+    }
+    _sysInput._prevVal = val;
+  });
+  return _sysInput;
+}
+
+function _hideSysInput() {
+  if (_sysInput) {
+    _sysInput.blur();
+    _sysInput._prevVal = '';
+    _sysInput.value = '';
+  }
+}
+
+function _updateToggleBtn() {
+  const btn = document.getElementById('editorKbdToggle');
+  if (!btn) return;
+  const LABELS = ['键盘', 'Math 键盘', '系统键盘'];
+  btn.innerHTML = LABELS[_kbdState];
+  btn.classList.toggle('active', _kbdState !== 0);
+}
+
+function _setKbdState(newState) {
+  _kbdState = newState;
+  if (typeof document !== 'undefined') {
+    document.body.dataset.kbdState = String(newState);
+  }
+  _updateToggleBtn();
+}
 
 export function initEditor() {
   if (typeof MathfieldElement === 'undefined') {
@@ -82,12 +135,9 @@ export function initEditor() {
   // Create MathfieldElement
   mathField = new MathfieldElement();
 
-  // ── Key configuration for Math Live-like experience ──
-  // manual = show keyboard on user button click (not auto on focus)
+  // ── Key configuration ──
   mathField.mathVirtualKeyboardPolicy = 'manual';
-  // smartFence: auto-close fences like (), {}, []
   mathField.smartFence = true;
-  // smartMode: automatically switch between text/math mode
   mathField.smartMode = true;
 
   mathField.style.minHeight = '220px';
@@ -107,7 +157,7 @@ export function initEditor() {
   });
   mathField.id = 'mathField';
 
-  // Virtual keyboard container
+  // Virtual keyboard container config
   try {
     if (window.mathVirtualKeyboard) {
       window.mathVirtualKeyboard.container = document.body;
@@ -116,29 +166,16 @@ export function initEditor() {
         bottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)',
       };
       window.mathVirtualKeyboard.showKeyboardButton = true;
-
-      const closeOnOutsideTap = (e) => {
-        if (!window.mathVirtualKeyboard.visible) return;
-        const kbd = document.querySelector('math-virtual-keyboard');
-        if (kbd && (kbd.contains(e.target) || e.target.closest('math-field'))) return;
-        if (e.target.closest('#editorKbdToggle')) return;
-        if (e.target.closest('.editor-footer-actions')) return;
-        // When user taps outside while MathLive keyboard is open,
-        // hide keyboard but don't change state — tapping toggle again
-        // will re-open MathLive keyboard without going through OFF state
-        window.mathVirtualKeyboard.visible = false;
-      };
-      document.addEventListener('pointerdown', closeOnOutsideTap);
     }
   } catch (_) {}
 
-  // Append to editor page — just source display left
+  // Append to editor page
   hostEl = document.getElementById('page-editor')?.querySelector('.editor-wrap');
   if (hostEl) {
-    const sourceEl = document.getElementById('editorLatexSource');
-    // Insert mathField before the source display (or just append)
-    if (sourceEl) {
-      hostEl.insertBefore(mathField, sourceEl);
+    // Insert after the kbd bar (first child)
+    const ref = hostEl.querySelector('.editor-kbd-bar')?.nextSibling || null;
+    if (ref) {
+      hostEl.insertBefore(mathField, ref);
     } else {
       hostEl.appendChild(mathField);
     }
@@ -178,7 +215,7 @@ export function initEditor() {
     });
   });
 
-  // Copy button in preview actions bar
+  // Copy button
   document.getElementById('editorCopy')?.addEventListener('click', async () => {
     const latex = mathField.value?.trim();
     if (!latex) return;
@@ -204,7 +241,6 @@ function syncPreview() {
   }
   if (previewActions) previewActions.style.display = 'flex';
 
-  // Show raw LaTeX source only
   if (source) {
     source.textContent = latex;
     source.classList.add('show');
@@ -220,65 +256,36 @@ export function setEditorContent(latex) {
   if (t) t.click();
 }
 
-// Toggle virtual keyboard — 3-state cycle
-//   state 0: no keyboard (hidden)
-//   state 1: MathLive virtual keyboard
-//   state 2: system native keyboard
-//   → back to state 0
-let _kbdState = 0; // 0=off, 1=mathlive, 2=system
-
-function _setKbdState(newState) {
-  _kbdState = newState;
-  // Use body data attribute for CSS to target (html may not work in all WebViews)
-  if (typeof document !== 'undefined') {
-    document.body.dataset.kbdState = String(newState);
-  }
-  // Update toggle button text via i18n or fallback labels
-  const btn = document.getElementById('editorKbdToggle');
-  if (btn) {
-    const labels = ['', 'Math键盘', '系统键盘'];
-    const icons = [
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h12"/></svg>',
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h12"/></svg>',
-    ];
-    if (newState === 0) {
-      btn.innerHTML = icons[0] + ' 键盘';
-    } else {
-      btn.innerHTML = icons[newState] + ' ' + labels[newState] + ' ✕';
-    }
-  }
-}
-
+// ── 3-state keyboard toggle ──
 export function toggleKeyboard() {
   if (!mathField) return;
   const nextState = (_kbdState + 1) % 3;
 
+  // Clean up previous state
+  if (window.mathVirtualKeyboard) {
+    window.mathVirtualKeyboard.visible = false;
+  }
+  _hideSysInput();
+  mathField.mathVirtualKeyboardPolicy = 'manual';
+
   if (nextState === 0) {
-    // OFF: hide all keyboards
-    if (window.mathVirtualKeyboard) {
-      window.mathVirtualKeyboard.visible = false;
-    }
-    mathField.mathVirtualKeyboardPolicy = 'manual';
+    // OFF
     mathField.removeAttribute('inputmode');
     mathField.blur();
   } else if (nextState === 1) {
     // MathLive virtual keyboard
-    mathField.mathVirtualKeyboardPolicy = 'manual';
     mathField.setAttribute('inputmode', 'none');
     mathField.focus();
-    // Give focus time to settle, then show MathLive keyboard
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       mathField.executeCommand('toggleVirtualKeyboard');
-    });
+    }, 100);
   } else if (nextState === 2) {
-    // System native keyboard: hide MathLive, show native
-    if (window.mathVirtualKeyboard) {
-      window.mathVirtualKeyboard.visible = false;
-    }
-    mathField.mathVirtualKeyboardPolicy = 'auto';
-    mathField.removeAttribute('inputmode');
-    mathField.focus();
+    // System native keyboard via hidden <input>
+    mathField.blur();
+    const inp = _ensureSysInput();
+    inp._prevVal = '';
+    inp.value = '';
+    setTimeout(() => inp.focus(), 50);
   }
 
   _setKbdState(nextState);
@@ -293,5 +300,6 @@ export function resetKbdState() {
     mathField.removeAttribute('inputmode');
     mathField.blur();
   }
+  _hideSysInput();
   _setKbdState(0);
 }

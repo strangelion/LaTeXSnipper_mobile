@@ -1,12 +1,13 @@
 /**
  * Self-contained pandoc WASM loader.
  *
- * Core trick: import pandoc-wasm's core.js directly from node_modules
- * (it's a pure ES module with no .wasm imports — vite-plugin-wasm won't
- * touch it) and fetch pandoc.wasm as a static asset via fetch().
+ * Loads pandoc-wasm's core logic (from Vite-bundled node_modules) and
+ * fetches pandoc.wasm as a static asset via fetch(), completely bypassing
+ * vite-plugin-wasm's transform on the 56MB WASM binary.
  *
- * This completely sidesteps the WASI import resolution issue that
- * broke the original pandoc-wasm integration under vite-plugin-wasm.
+ * Note: This file does NOT use @vite-ignore on the core.js import — Vite
+ * must resolve core.js and its @bjorn3/browser_wasi_shim dependency.
+ * The WASM binary is loaded at runtime via fetch(), not via import.
  *
  * @returns {{ convert, query }} pandoc API
  */
@@ -23,17 +24,15 @@ export async function initPandocWasm() {
   _loading = true;
 
   try {
-    // Import core.js from node_modules — this module is pure JS (no .wasm
-    // import) so vite-plugin-wasm doesn't transform it. It exports
-    // createPandocInstance(wasmBinary) which handles WASI init internally.
+    // Import core.js from node_modules — Vite resolves this and its
+    // @bjorn3/browser_wasi_shim dependency normally. No @vite-ignore
+    // here (that would break the dependency chain at runtime).
     const { createPandocInstance } = await import(
-      /* @vite-ignore */
-      new URL('../../node_modules/pandoc-wasm/src/core.js', import.meta.url).href
+      '../../node_modules/pandoc-wasm/src/core.js'
     );
 
-    // Fetch pandoc.wasm as a static asset (served from /vendor/pandoc/ in
-    // dev mode, or from the asset build in production). This avoids
-    // vite-plugin-wasm's transform on the 56MB WASM binary.
+    // Fetch pandoc.wasm as a static asset from /vendor/pandoc/ directory.
+    // The copy-pandoc-wasm build plugin places it there.
     const wasmResp = await fetch('/vendor/pandoc/pandoc.wasm');
     if (!wasmResp.ok) {
       throw new Error(`Failed to fetch pandoc.wasm: ${wasmResp.status}`);

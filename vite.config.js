@@ -44,6 +44,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      'wasi_snapshot_preview1': resolve(dirname, 'src/shared/wasi-shim.js'),
     },
   },
   define: {

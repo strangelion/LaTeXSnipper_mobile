@@ -57,10 +57,13 @@ async function initPandoc() {
   }
   _pandocLoading = true;
   try {
-    // Use self-contained pandoc loader that fetches WASM as a static asset
-    // from /vendor/pandoc/, bypassing vite-plugin-wasm entirely.
-    const { initPandocWasm } = await import('./pandoc-init.js');
-    _pandocApi = await initPandocWasm();
+    // Use pandoc-wasm via Vite's standard module resolution.
+    // The resolve alias in vite.config.js maps "wasi_snapshot_preview1"
+    // (which vite-plugin-wasm generates) to src/shared/wasi-shim.js, which
+    // provides all WASI imports via @bjorn3/browser_wasi_shim.
+    // The WASM binary is loaded by pandoc-wasm's index.browser.js automatically.
+    const mod = await import('pandoc-wasm');
+    _pandocApi = { convert: mod.convert, query: mod.query };
     _pandocWaiters.forEach(r => r(_pandocApi));
     _pandocWaiters = [];
     return _pandocApi;

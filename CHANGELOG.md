@@ -21,13 +21,16 @@
 
 ### 修复
 
-- **Pandoc WASM 导出（Markdown/HTML/AsciiDoc 等）** — 彻底移除 vite.config.js 中指向不存在文件的 `wasi_snapshot_preview1` 别名，改用 `pandoc-init.js` 直接从 `pandoc-wasm` 的 `core.js`（纯 JS 模块）+ 静态 WASM 资产加载，绕过 vite-plugin-wasm 对 56MB WASM 二进制的不兼容转换
+- **Pandoc WASM 导出（Markdown/HTML/AsciiDoc 等）** — 创建正确的 `src/shared/wasi-shim.js`（通过 `@bjorn3/browser_wasi_shim` 提供 30 个 WASI 函数），恢复 `vite.config.js` 中的 `wasi_snapshot_preview1` 别名，`import('pandoc-wasm')` 现在能正确初始化 56MB WASM 二进制
+- **系统键盘模式** — 使用隐藏 `<input>` 元素在 Android WebView 中触发系统原生键盘，输入内容自动转发到 MathField
+- **键盘切换按钮位置** — 从编辑器底部移至**顶部 sticky 栏**，任何键盘都不会遮挡
 - **导出中文方框** — SVG foreignObject 显式指定 `"Noto Sans CJK SC","Microsoft YaHei"` 中文字体回退
 - **SVG/PNG 导出** — `renderLatexToSvgs` 改用 `renderBlock` 智能渲染，混合文本+公式行正确渲染
 
 ### 测试
 
 - 更新了 `test_e2e.js`、`test_integration.js`、`test_wasm_compat.js`、`test_user_workflows.js` 中关于 pandoc 加载方式和 vite 配置的检测
+- 全部通过: wasm (21/21), integration (227/227), e2e (308/308)
 
 ## v1.1.2 — Pandoc WASM 导出修复、SVG/PNG 导出修复 (2026-06-04)
 

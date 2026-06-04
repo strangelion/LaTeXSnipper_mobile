@@ -130,8 +130,8 @@ ok(ocrCss.includes('export-dropdown-list'), 'Export dropdown list CSS');
 
 const editorCss = readFileSync(join(ROOT, 'src/styles/editor.css'), 'utf-8');
 ok(editorCss.includes('editor-wrap'), 'Editor wrap CSS');
-ok(editorCss.includes('editor-footer-actions'), 'Editor footer actions CSS');
-ok(editorCss.includes('#editorKbdToggle'), 'Keyboard toggle CSS');
+ok(editorCss.includes('editor-kbd-bar'), 'Editor kbd bar CSS');
+ok(editorCss.includes('kbd-toggle-btn'), 'Keyboard toggle CSS');
 ok(editorCss.includes('calc-toolbar'), 'Calculator toolbar CSS');
 
 const mobileCss = readFileSync(join(ROOT, 'src/styles/mobile.css'), 'utf-8');

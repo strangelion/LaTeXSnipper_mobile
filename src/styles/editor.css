@@ -16,6 +16,27 @@
   max-height: 40vh;
 }
 
+/* ── Keyboard toggle at top ── */
+.editor-kbd-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0;
+  position: sticky; top: 0; z-index: 30;
+  background: var(--bg);
+}
+.kbd-toggle-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.75rem; padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--card-bg);
+  color: var(--fg);
+  cursor: pointer; touch-action: manipulation;
+  opacity: 0.7; transition: opacity 0.15s, background 0.15s;
+  font-family: inherit;
+}
+.kbd-toggle-btn:active { opacity: 1; background: var(--accent); color: #fff; }
+.kbd-toggle-btn.active { opacity: 1; border-color: var(--accent); }
+
 /* ── Raw LaTeX source ── */
 #editorLatexSource {
   width: 100%; padding: 0.6rem 0.7rem;
@@ -40,49 +61,6 @@
   padding: 6px 10px; font-size: 0.78rem; font-weight: 500;
 }
 
-/* ── Keyboard toggle bar ── */
-.editor-footer-actions {
-  display: flex; justify-content: center; margin-top: 0.2rem;
-  position: relative; z-index: 10;
-  transition: bottom 0.2s ease;
-}
-#editorKbdToggle {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 0.8rem; padding: 6px 16px;
-  opacity: 0.7;
-  touch-action: manipulation;
-}
-#editorKbdToggle:active { opacity: 1; }
-
-/* When MathLive keyboard is open, float the toggle above it */
-body[data-kbd-state="1"] .editor-footer-actions {
-  position: fixed !important;
-  bottom: calc(45px + var(--safe-b, 0px) + env(safe-area-inset-bottom, 0px) + 4px);
-  left: 0; right: 0;
-  z-index: 30; /* above math-virtual-keyboard (z-index: 20) */
-  pointer-events: auto;
-  margin-top: 0;
-  background: transparent;
-}
-body[data-kbd-state="1"] #editorKbdToggle {
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 20px;
-  padding: 6px 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  opacity: 0.9;
-}
-body[data-kbd-state="1"] #editorKbdToggle:active {
-  opacity: 0.7;
-}
-
-/* When system keyboard is open, also float the toggle */
-body[data-kbd-state="2"] .editor-footer-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 30;
-}
-
 /* ── Prevent bottom nav tap when keyboard is open ── */
 math-virtual-keyboard {
   --math-virtual-keyboard-z-index: 20;
@@ -90,7 +68,7 @@ math-virtual-keyboard {
 /* When keyboard is visible, add padding so bottom nav doesn't overlap */
 body:has(math-virtual-keyboard[visible]) .bottom-nav {
   z-index: 1;
-  pointer-events: none;  /* taps fall through to keyboard dismiss */
+  pointer-events: none;
 }
 
 /* ── Quick formula toolbar ── */
