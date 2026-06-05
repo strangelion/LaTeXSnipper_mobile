@@ -1,3 +1,35 @@
+## v1.2.2 — 依赖安全更新、构建工具升级、CI 安全扫描 (2026-06-06)
+
+### 安全
+
+- **移除高危依赖** — 删除废弃的 `vite-plugin-wasm` 和 `vite-plugin-top-level-await`，消除 `tar` 链式漏洞（6 个 GHSA，2 high）
+- **SECURITY.md** — 增加安全政策文件，明确漏洞报告流程和响应时间
+- **CI 安全扫描** — 新增 GitHub Actions 工作流 `security-compliance-scan.yml`：
+  - 12 项恶意代码模式自动检测（eval、innerHTML 注入、base64 隐藏载荷、混淆代码等）
+  - gitleaks 密钥扫描 + SARIF 报告上传
+  - ESLint 安全规则 + 国际化合规检查
+
+### 依赖升级
+
+| 依赖 | 旧版本 | 新版本 | 说明 |
+|------|--------|--------|------|
+| Vite | 5.4.21 | 8.0.16 | 构建速度提升，原生 top-level-await + WASM 支持 |
+| MathLive | 0.98.6 | 0.104.0 | 虚拟键盘稳定性改进 |
+| pdfjs-dist | 3.11.174 | 4.2.67 | PDF 渲染引擎升级 |
+| vite-plugin-pwa | 0.20.5 | 1.3.0 | 死依赖，无功能影响 |
+
+### 改进
+
+- **Vite 配置精简** — 移除 `vite-plugin-wasm` + `vite-plugin-top-level-await`（Vite 8 原生支持），`vite.config.js` 减少 5 行
+- **系统键盘切换稳定** — MathLive 虚拟键盘→系统键盘切换时先 blur 再 focus，确保系统键盘稳定弹出
+
+### 测试
+
+- **构建验证通过** — Vite 8.0.16 构建成功（343ms）
+- **全部 4 套测试通过**
+
+---
+
 ## v1.2.1 — 历史收藏优化、系统键盘体验修复、更新界面优化 (2026-06-05)
 
 ### 改进

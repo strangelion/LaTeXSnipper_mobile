@@ -1,7 +1,7 @@
 {
   "name": "latexsnipper-mobile",
   "private": true,
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "LaTeXSnipper Mobile — fully offline PWA formula OCR app",
   "type": "module",
   "scripts": {
@@ -21,9 +21,7 @@
     "pandoc-wasm": "^1.0.1",
     "pdfjs-dist": "4.2.67",
     "pngjs": "^7.0.0",
-    "tesseract.js": "^7.0.0",
-    "vite-plugin-top-level-await": "^1.6.0",
-    "vite-plugin-wasm": "^3.6.0"
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@capacitor/android": "^8.3.4",

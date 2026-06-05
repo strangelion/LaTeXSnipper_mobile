@@ -244,12 +244,14 @@ export function toggleKeyboard() {
       mathField.executeCommand('toggleVirtualKeyboard');
     }, 100);
   } else if (nextState === 2) {
-    // System native keyboard: 'sandboxed' tells MathLive to NOT intercept
+    // System native keyboard: 'sandboxed' tells MathLive to not intercept
     // keyboard events — the browser's system keyboard works normally.
-    // User can tap anywhere on mathField and system keyboard stays.
     mathField.mathVirtualKeyboardPolicy = 'sandboxed';
     mathField.removeAttribute('inputmode');
-    mathField.focus();
+    // blur + focus cycle forces the native keyboard to appear even when
+    // the mathfield was already focused (e.g. switching from MathLive kbd)
+    mathField.blur();
+    setTimeout(() => mathField.focus(), 50);
   }
 
   _setKbdState(nextState);

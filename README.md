@@ -22,7 +22,7 @@
 
 | 组件 | 技术 |
 |------|------|
-| 构建 | Vite 5 + vite-plugin-wasm + top-level-await |
+| 构建 | Vite 8 + Rollup 4 |
 | OCR 引擎 | ONNX Runtime Android (Java) |
 | 公式检测 | YOLOv8 (mathcraft-mfd) |
 | 公式识别 | TrOCR (DeiT 编码器 + 束搜索解码) |
@@ -30,10 +30,10 @@
 | 文字识别 | CRNN (PP-OCRv5) + CTC 解码 |
 | 方向检测 | PP-LCNet 文档方向 + EXIF 自动旋转 |
 | 公式渲染 | KaTeX 0.17 |
-| 公式编辑 | MathLive 0.98 |
+| 公式编辑 | MathLive 0.104 |
 | 文档转换 | pandoc-wasm 1.0（Markdown/HTML/LaTeX/MathML/docx 导出） |
 | 文本导出 | 纯 JS LaTeX → Typst 转换器（200+ 符号映射 + 结构转换） |
-| PDF 渲染 | pdfjs-dist 3.11 |
+| PDF 渲染 | pdfjs-dist 4.2 |
 | 移动框架 | Capacitor 8 (Android/iOS) |
 | 存储 | IndexedDB (idb 封装) |
 
@@ -117,8 +117,13 @@ LaTeXSnipper_mobile/
 │       ├── MainActivity.java  # 入口 + NativeOcrBridge 注入
 │       └── ocr/               # Java ONNX OCR 引擎
 ├── test/                      # 测试套件（6 Python + 4 Node.js）
-├── vite.config.js             # Vite + wasm 配置
-└── capacitor.config.json      # Capacitor 配置
+├── vite.config.js             # Vite 8 配置（wasm + top-level-await 原生支持）
+├── SECURITY.md                # 安全政策
+├── capacitor.config.json      # Capacitor 配置
+└── .github/workflows/
+    ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
+    ├── build-ios.yml                  # iOS 模拟器构建
+    └── security-compliance-scan.yml   # 安全合规扫描（恶意代码/密钥/合规检查）
 ```
 
 ## 导出格式

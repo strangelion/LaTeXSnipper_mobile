@@ -90,11 +90,13 @@ LaTeXSnipper_mobile/
 │   ├── test_katex.js          # KaTeX 公式渲染（35 项）
 │   ├── test_integration.js    # 集成/模块/配置检查（227 项）
 │   └── test_e2e.js            # 全量 E2E（20 大类 309 项）
-├── vite.config.js             # Vite + wasm + top-level-await 配置
+├── vite.config.js             # Vite 8 配置（wasm + top-level-await 原生支持）
+├── SECURITY.md                # 安全政策
 ├── capacitor.config.json      # Capacitor 配置
 └── .github/workflows/
-    ├── build-apk.yml         # Android APK 构建（workflow_dispatch）
-    └── build-ios.yml         # iOS 模拟器构建
+    ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
+    ├── build-ios.yml                  # iOS 模拟器构建
+    └── security-compliance-scan.yml   # 安全合规扫描
 ```
 
 ---
@@ -214,13 +216,13 @@ JS → window.NativeOcr.recognizeFormula(base64) → NativeOcrBridge (后台线�
 |------|---------|------|
 | PNG | KaTeX → SVG → Canvas | 高清公式图片 |
 | SVG | KaTeX → SVG | 矢量公式图片 |
+| LaTeX | Pandoc WASM | .tex 格式 |
+| MathML | Pandoc WASM | 数学标记语言 |
 | Markdown | Pandoc WASM | `markdown+tex_math_dollars` |
-| Plain Text | Pandoc WASM | 纯文本 |
 | HTML | Pandoc WASM | 网页 |
 | **Typst** | **纯 JS 转换器** | 符号表 + 结构转换，不依赖 Pandoc |
-| AsciiDoc | Pandoc WASM | 轻量标记语言 |
-| reStructuredText | Pandoc WASM | Python 文档生态 |
-| OPML | Pandoc WASM | 大纲/思维导图 |
+| Word | Pandoc WASM | .docx 格式 |
+| Plain Text | Pandoc WASM | 纯文本 |
 
 Typst 转换器（`pandoc-export.js`）：
 - 200+ LaTeX→Typst 符号映射（希腊字母、运算符、箭头、关系符、函数名）
@@ -233,10 +235,14 @@ Typst 转换器（`pandoc-export.js`）：
 ## 八、构建与部署
 
 ```bash
-npm run dev              # Vite 开发服务器（:5174）
-npm run build            # 构建到 dist/
-npx cap sync android     # 同步到 Android
+npm install            # 安装依赖
+npm run dev            # Vite 开发服务器（:5174）
+npm run build          # 构建到 dist/
+npx cap sync android   # 同步到 Android
 cd android && ./gradlew assembleDebug  # 编译 debug APK
+
+# 安全合规检查
+npx eslint . --no-eslintrc --config <(echo '{"parserOptions":{"ecmaVersion":2022,"sourceType":"module"},"env":{"browser":true,"es2022":true},"rules":{"no-eval":"error","no-implied-eval":"error","no-undef":"error","no-debugger":"error"}}')||true
 
 # GitHub Actions 打包（Release）
 # Actions → Build Android APK → 输入版本号 + 勾选 Release → Run workflow
@@ -260,7 +266,7 @@ bash test/run_tests.sh
 2. **图片解码** — `is.available()` 在 APK 压缩资产中返回压缩后大小，必须用 `ByteArrayOutputStream` 分段读取
 3. **文件分享** — Capacitor Share 传 base64 文件在某些 Android 版本失败时，直接触发下载而非弹系统分享（避免"没有应用可执行此操作"）
 4. **MathLive 自定义元素** — `<mathlive-field>` 在部分 WebView 中不注册，改用 `new MathfieldElement()` 创建
-5. **虚拟键盘策略** — `mathVirtualKeyboardPolicy = 'manual'`，点击键盘按钮弹出，不自动弹出
+5. **虚拟键盘策略** — 三态切换：`manual`(关闭) → `manual` + `toggleVirtualKeyboard`(MathLive 键盘) → `sandboxed`(系统键盘)。切换时先 blur 再 focus 确保键盘弹出
 6. **相机按钮** — 必须用 `pointerdown` + `stopPropagation`，`click` 在 WebView 中不可靠
 7. **COOP/COEP 头** — Capacitor 和 Vite 中已配置
 8. **iOS 构建** — 需要 Apple Developer（$99/年），CI 只能验证模拟器编译

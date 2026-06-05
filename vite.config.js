@@ -1,8 +1,6 @@
 import { defineConfig } from 'vite';
-import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
 import { resolve } from 'path';
-import { readFileSync, copyFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, copyFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -12,8 +10,6 @@ const APP_VERSION = pkg.version;
 
 export default defineConfig({
   plugins: [
-    wasm(),
-    topLevelAwait(),
     {
       name: 'inject-version',
       transformIndexHtml(html) {
