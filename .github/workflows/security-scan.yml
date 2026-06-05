@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  security-events: write
 
 env:
   LANG: C.UTF-8
@@ -28,13 +29,16 @@ jobs:
         run: |
           echo "===== Malicious Code Scan ====="
           VIOLATIONS=0
-          SKIP='node_modules/* dist/* android/app/build/* android/build/* public/vendor/* *.onnx *.bin'
+          SKIP='node_modules/* dist/* ./dist/* android/app/build/* android/build/* public/vendor/* ./public/vendor/* *.onnx *.bin'
 
           skip_file() {
             local f="$1"
-            for p in $SKIP; do
-              case "$f" in $p) return 0;; esac
-            done
+            case "$f" in
+              node_modules/*|dist/*|android/app/build/*|android/build/*) return 0 ;;
+              *.onnx|*.bin) return 0 ;;
+            esac
+            # vendor/ can be nested multiple levels deep (e.g. public/vendor/mathjax/foo.js)
+            [[ "$f" =~ (^|/)public/vendor/ ]] && return 0
             return 1
           }
 
@@ -56,7 +60,7 @@ jobs:
               '"'|"'") ;;
               '`') echo "  [INFO] template innerHTML: $file:$line" ;;
               '') ;;
-              *) echo "  [WARN] variable innerHTML: $file:$line $(echo "$content" | head -c 80)"
+              *) echo "  [WARN] variable innerHTML: $file:$line"
                  VIOLATIONS=$((VIOLATIONS + 1)) ;;
             esac
           done < <(grep -rnE 'innerHTML\s*=' --include='*.js' --include='*.html' . 2>/dev/null || true)
@@ -85,7 +89,7 @@ jobs:
           while IFS=: read -r file line content; do
             skip_file "$file" && continue
             if echo "$content" | grep -qE 'require[[:space:]]*\([[:space:]]*[^"'\''[:space:]]'; then
-              echo "  [WARN] dynamic require: $file:$line $(echo "$content" | head -c 80)"
+              echo "  [WARN] dynamic require: $file:$line"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
           done < <(grep -rnE 'require[[:space:]]*\(' --include='*.js' . 2>/dev/null || true)
@@ -121,7 +125,7 @@ jobs:
           while IFS=: read -r file line content; do
             skip_file "$file" && continue
             if echo "$content" | grep -qE "(getItem|setItem)\(['\"](password|token|secret|key|credential|jwt|session)"; then
-              echo "  [WARN] sensitive key in storage: $file:$line $(echo "$content" | head -c 80)"
+              echo "  [WARN] sensitive key in storage: $file:$line"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
           done < <(grep -rnE '(localStorage|sessionStorage)\.(getItem|setItem)' --include='*.js' . 2>/dev/null || true)
