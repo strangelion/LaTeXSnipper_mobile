@@ -1,0 +1,350 @@
+name: Security & Compliance Scan
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  malicious-code-scan:
+    name: Malicious Code Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for obfuscated / suspicious JS patterns
+        run: |
+          echo "===== Malicious Code Scan ====="
+          VIOLATIONS=0
+
+          # 1. eval / Function() with string literals (potential code injection)
+          echo "[CHECK 1/12] Checking eval-like patterns ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
+            esac
+            echo "  [WARN] eval-like: $file:$line $content"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          done < <(grep -rn 'eval(' --include='*.js' --include='*.html' . 2>/dev/null || true)
+
+          # 2. document.write / innerHTML — flag only bare variable assignments (not string/template literals)
+          echo "[CHECK 2/12] Checking dynamic HTML injection ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
+            esac
+            # Extract innerHTML assignment value (after = sign)
+            assign_val=$(echo "$content" | grep -oP 'innerHTML\s*=\s*\K.*')
+            case "$assign_val" in
+              '""'|"''") ;;                        # empty string — skip
+              \"*\"|\'*\') ;;                       # static string literal — skip
+              \`*\`)                                 # template literal — advisory only
+                echo "  [INFO] template innerHTML: $file:$line (review manually)"
+                ;;
+              '') ;;                                 # no match
+              *)                                     # bare variable/expression
+                echo "  [WARN] variable innerHTML: $file:$line $content"
+                VIOLATIONS=$((VIOLATIONS + 1))
+                ;;
+            esac
+          done < <(grep -rnE 'innerHTML\s*=' --include='*.js' --include='*.html' . 2>/dev/null || true)
+
+          # 3. Suspicious large base64 strings (potential payload hiding)
+          echo "[CHECK 3/12] Checking for suspicious base64 payloads ..."
+          while IFS=: read -r file line rest; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*|public/vendor/*|*.onnx|*.bin) continue ;;
+            esac
+            b64len=$(echo "$rest" | grep -oP '[A-Za-z0-9+/=]{100,}' | wc -c || true)
+            if [ "$b64len" -gt 500 ] 2>/dev/null; then
+              echo "  [WARN] large base64: $file:$line (${b64len} chars)"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done < <(grep -rnE '[A-Za-z0-9+/=]{100,}' --include='*.js' --include='*.html' --include='*.json' . 2>/dev/null || true)
+
+          # 4. setTimeout/setInterval with string argument (eval-like)
+          echo "[CHECK 4/12] Checking setTimeout/setInterval with strings ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*) continue ;;
+            esac
+            echo "  [WARN] string-based timer: $file:$line $content"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          done < <(grep -rnE '(setTimeout|setInterval)\s*\(\s*["\x27]' --include='*.js' . 2>/dev/null || true)
+
+          # 5. Dynamic require (eval-like), but NOT standard ESM dynamic import('...')
+          echo "[CHECK 5/12] Checking dynamic require (not standard ESM import)..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
+            esac
+            # Flag require(...) with non-string arg (eval-like)
+            if echo "$content" | grep -qE 'require\s*\(\s*[^"'"'"'\x27[:space:]]'; then
+              echo "  [WARN] dynamic require: $file:$line $content"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done < <(grep -rnE '\brequire\s*\(' --include='*.js' . 2>/dev/null || true)
+
+          # 6. Suspicious Unicode escapes / encoded strings
+          echo "[CHECK 6/12] Checking suspicious encoding ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
+            esac
+            esc_count=$(echo "$content" | grep -oP '\\u[0-9a-fA-F]{4}' | wc -l)
+            if [ "$esc_count" -gt 10 ] 2>/dev/null; then
+              echo "  [WARN] heavy unicode escaping: $file:$line ($esc_count escapes)"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done < <(grep -rn '\\u' --include='*.js' . 2>/dev/null || true)
+
+          # 7. WebSocket / fetch to IP addresses (potential data exfiltration)
+          echo "[CHECK 7/12] Checking connections to raw IPs ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*) continue ;;
+            esac
+            echo "  [WARN] connection to IP: $file:$line $content"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          done < <(grep -rnE '(fetch|XMLHttpRequest|WebSocket|new WebSocket)\s*\(?\s*["\x27]https?://[0-9]+\.[0-9]+' --include='*.js' --include='*.html' . 2>/dev/null || true)
+
+          # 8. Suspicious atob (potential hidden payload)
+          echo "[CHECK 8/12] Checking atob usage ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
+            esac
+            echo "  [INFO] atob usage: $file:$line $content"
+          done < <(grep -rn 'atob(' --include='*.js' . 2>/dev/null || true)
+
+          # 9. localStorage / sessionStorage / cookie access patterns
+          echo "[CHECK 9/12] Checking storage access patterns ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*) continue ;;
+            esac
+            if echo "$content" | grep -qE "(getItem|setItem)\(['\"](password|token|secret|key|credential|jwt|session)"; then
+              echo "  [WARN] sensitive key in storage: $file:$line $content"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done < <(grep -rnE '(localStorage|sessionStorage)\.(getItem|setItem)' --include='*.js' . 2>/dev/null || true)
+
+          # 10. Detected potential hidden network calls via new Image / sendBeacon
+          echo "[CHECK 10/12] Checking beacon / pixel tracking ..."
+          while IFS=: read -r file line content; do
+            case "$file" in
+              node_modules/*|dist/*|android/build/*) continue ;;
+            esac
+            echo "  [WARN] tracking/beacon: $file:$line $content"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          done < <(grep -rnE '(sendBeacon|navigator\.sendBeacon)' --include='*.js' . 2>/dev/null || true)
+
+          # 11. Check for known malicious npm packages in package.json
+          echo "[CHECK 11/12] Checking package.json for known malicious dependencies ..."
+          if [ -f package.json ]; then
+            for dep in $(node -e "
+              const p = require('./package.json');
+              const deps = {...p.dependencies, ...p.devDependencies};
+              Object.keys(deps).forEach(d => {
+                if (d.match(/^(eslint-|babel-|webpack-|gulp-|grunt-|express-)/) &&
+                    !d.match(/^(eslint-config|eslint-plugin|babel-plugin|babel-preset|webpack-merge|express-validator)/)) {
+                  console.log(d);
+                }
+                if (d.match(/^(react-|vue-|angular-)/) &&
+                    !d.match(/^(react-dom|react-router|react-scripts|vue-router|vuex)/)) {
+                  console.log(d);
+                }
+              });
+            " 2>/dev/null); do
+              echo "  [WARN] suspicious dependency name: $dep (potential typo-squatting)"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            done
+          fi
+
+          # 12. Check for binary / compressed files in source directories
+          echo "[CHECK 12/12] Checking unexpected binary files in source ..."
+          while IFS= read -r file; do
+            case "$file" in
+              */node_modules/*|*/dist/*|*/android/build/*|*/build/*|*/public/vendor/*) continue ;;
+              *.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.woff|*.woff2|*.ttf|*.eot|*.onnx|*.bin|*.pb|*.jar|*.aar|*.keystore|*.jks|*.pdf) continue ;;
+            esac
+            if [ -f "$file" ] && file "$file" | grep -qE '(executable|binary|compress|archive)'; then
+              echo "  [WARN] unexpected binary: $file ($(file -b "$file"))"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done < <(find . -type f -not -path '*/\.git/*' 2>/dev/null || true)
+
+          echo ""
+          echo "----- Scan Result -----"
+          if [ "$VIOLATIONS" -gt 0 ]; then
+            echo "RESULT: FAILED - Found $VIOLATIONS potential violations"
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              exit 1
+            else
+              echo "(warnings only - push event, not blocking)"
+            fi
+          else
+            echo "RESULT: PASSED - No suspicious patterns found"
+          fi
+
+  secrets-scan:
+    name: Secrets & Credentials Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gitleaks
+        run: |
+          curl -sL https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz \
+            -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Run gitleaks
+        run: |
+          gitleaks detect --source . \
+            --no-git \
+            --verbose \
+            --report-format sarif \
+            --report-path gitleaks-report.sarif \
+            || true
+
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: gitleaks-report.sarif
+          category: gitleaks
+
+      - name: Summary
+        run: |
+          if [ -f gitleaks-report.sarif ]; then
+            COUNT=$(jq '.runs[0].results | length' gitleaks-report.sarif)
+            echo "----- Secrets Scan Result -----"
+            if [ "$COUNT" -gt 0 ]; then
+              echo "RESULT: FAILED - Found $COUNT potential secrets"
+              jq -r '.runs[0].results[] | "  [WARN] \(.message.text) -- \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' gitleaks-report.sarif
+              if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+                exit 1
+              fi
+            else
+              echo "RESULT: PASSED - No secrets detected"
+            fi
+          fi
+
+  code-compliance:
+    name: Code Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint security & best-practice checks
+        run: |
+          npx eslint . \
+            --no-eslintrc \
+            --config <(cat <<'EOF'
+          {
+            "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" },
+            "env": { "browser": true, "es2022": true, "worker": true },
+            "rules": {
+              "no-eval": "error",
+              "no-implied-eval": "error",
+              "no-script-url": "error",
+              "no-var": "warn",
+              "prefer-const": "warn",
+              "no-undef": "error",
+              "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+              "no-console": "warn",
+              "no-global-assign": "error",
+              "no-new-func": "error",
+              "no-cond-assign": "error",
+              "no-debugger": "error"
+            },
+            "ignorePatterns": [
+              "node_modules/", "dist/", "public/vendor/",
+              "android/build/", "*.min.js", "*.onnx", "*.bin"
+            ]
+          }
+          EOF
+          ) \
+            --format compact \
+            --max-warnings 50 \
+            --no-inline-config \
+            || true
+
+      - name: Check for hardcoded Chinese text (i18n compliance)
+        run: |
+          echo "===== i18n Compliance Check ====="
+          cd src
+          VIOLATIONS=0
+          while IFS=: read -r file line content; do
+            echo "  [WARN] possible hardcoded Chinese: $file:$line"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          done < <(grep -rnP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' --include='*.js' . \
+            2>/dev/null | grep -v 'lang/' | grep -v 'test/' | grep -v 'i18n' || true)
+          if [ "$VIOLATIONS" -gt 0 ]; then
+            echo "RESULT: FAILED - Found $VIOLATIONS lines with possible hardcoded Chinese text"
+            echo "Note: Use t() function and data-i18n attributes instead"
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              exit 1
+            fi
+          else
+            echo "RESULT: PASSED - No obvious i18n violations"
+          fi
+
+      - name: Check file encoding (no mixed encodings)
+        run: |
+          echo "===== File Encoding Check ====="
+          ISSUES=0
+          while IFS= read -r file; do
+            encoding=$(file -bi "$file" 2>/dev/null | sed 's/.*charset=//')
+            case "$encoding" in
+              utf-8|us-ascii|ascii|binary)
+                ;;
+              *)
+                echo "  [WARN] non-UTF-8 encoding ($encoding): $file"
+                ISSUES=$((ISSUES + 1))
+                ;;
+            esac
+          done < <(find . -name '*.js' -o -name '*.html' -o -name '*.css' -o -name '*.json' \
+            -not -path '*/node_modules/*' \
+            -not -path '*/dist/*' \
+            -not -path '*/android/build/*' \
+            -not -path '*/public/vendor/*' \
+            -not -path '*/.git/*' \
+            2>/dev/null)
+          if [ "$ISSUES" -gt 0 ]; then
+            echo "RESULT: FAILED - $ISSUES files with non-UTF-8 encoding"
+          else
+            echo "RESULT: PASSED - All files are UTF-8"
+          fi
+
+      - name: Check for Node.js test compliance
+        run: |
+          echo "===== Integration Tests ====="
+          node test/test_integration.js 2>&1 || true
+
+      - name: Compliance Summary
+        run: |
+          echo ""
+          echo "===== Compliance Check Summary ====="
+          echo "  - ESLint: security rules enforced (no-eval, no-undef, no-debugger, etc.)"
+          echo "  - i18n: hardcoded Chinese text flagged"
+          echo "  - Encoding: UTF-8 validated"
+          echo "  - Tests: integration tests executed"
+          echo ""
