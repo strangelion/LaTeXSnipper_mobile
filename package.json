@@ -19,7 +19,7 @@
     "mathlive": "^0.104.0",
     "onnxruntime-web": "1.21.0",
     "pandoc-wasm": "^1.0.1",
-    "pdfjs-dist": "3.11.174",
+    "pdfjs-dist": "4.2.67",
     "pngjs": "^7.0.0",
     "tesseract.js": "^7.0.0",
     "vite-plugin-top-level-await": "^1.6.0",
