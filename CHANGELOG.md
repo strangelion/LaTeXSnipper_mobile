@@ -4,7 +4,7 @@
 
 - **移除高危依赖** — 删除废弃的 `vite-plugin-wasm` 和 `vite-plugin-top-level-await`，消除 `tar` 链式漏洞（6 个 GHSA，2 high）
 - **SECURITY.md** — 增加安全政策文件，明确漏洞报告流程和响应时间
-- **CI 安全扫描** — 新增 GitHub Actions 工作流 `security-compliance-scan.yml`：
+- **CI 安全扫描** — 新增 GitHub Actions 工作流 `security-scan.yml`：
   - 12 项恶意代码模式自动检测（eval、innerHTML 注入、base64 隐藏载荷、混淆代码等）
   - gitleaks 密钥扫描 + SARIF 报告上传
   - ESLint 安全规则 + 国际化合规检查

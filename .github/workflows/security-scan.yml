@@ -1,4 +1,4 @@
-name: Security & Compliance Scan
+name: Security Compliance Scan
 
 on:
   push:
@@ -16,12 +16,9 @@ env:
   LC_ALL: C.UTF-8
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-JOBS_SKIP: &skip
-  node_modules/*|dist/*|android/app/build/*|android/build/*|public/vendor/*
-
 jobs:
   malicious-code-scan:
-    name: Malicious Code Detection
+    name: Malicious Code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -185,7 +182,7 @@ jobs:
           fi
 
   secrets-scan:
-    name: Secrets & Credentials Scan
+    name: Secrets Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -231,7 +228,7 @@ jobs:
           fi
 
   code-compliance:
-    name: Code Compliance Check
+    name: Code Compliance
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
