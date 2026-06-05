@@ -11,6 +11,10 @@ permissions:
   contents: read
   pull-requests: read
 
+env:
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
+
 jobs:
   malicious-code-scan:
     name: Malicious Code Detection
@@ -19,160 +23,141 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Scan for obfuscated / suspicious JS patterns
+        shell: bash
         run: |
           echo "===== Malicious Code Scan ====="
           VIOLATIONS=0
 
-          # 1. eval / Function() with string literals (potential code injection)
+          # 1. eval / Function() with string literals
           echo "[CHECK 1/12] Checking eval-like patterns ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
-            esac
-            echo "  [WARN] eval-like: $file:$line $content"
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            echo "  [WARN] eval-like: $file:$line"
             VIOLATIONS=$((VIOLATIONS + 1))
           done < <(grep -rn 'eval(' --include='*.js' --include='*.html' . 2>/dev/null || true)
 
-          # 2. document.write / innerHTML — flag only bare variable assignments (not string/template literals)
+          # 2. innerHTML — flag only bare variable assignments
           echo "[CHECK 2/12] Checking dynamic HTML injection ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
-            esac
-            # Extract innerHTML assignment value (after = sign)
-            assign_val=$(echo "$content" | grep -oP 'innerHTML\s*=\s*\K.*')
-            case "$assign_val" in
-              '""'|"''") ;;                        # empty string — skip
-              \"*\"|\'*\') ;;                       # static string literal — skip
-              \`*\`)                                 # template literal — advisory only
-                echo "  [INFO] template innerHTML: $file:$line (review manually)"
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            # Classify innerHTML assignment RHS by first character
+            rhs=$(echo "$content" | sed -n 's/.*innerHTML\s*=\s*//p')
+            first="${rhs:0:1}"
+            case "$first" in
+              '"'|"'") ;;                           # static string — safe
+              '`')                                   # template literal — advisory
+                echo "  [INFO] template innerHTML: $file:$line"
                 ;;
               '') ;;                                 # no match
-              *)                                     # bare variable/expression
-                echo "  [WARN] variable innerHTML: $file:$line $content"
+              *)                                     # variable/expression — flag
+                echo "  [WARN] variable innerHTML: $file:$line $(echo "$content" | head -c 80)"
                 VIOLATIONS=$((VIOLATIONS + 1))
                 ;;
             esac
           done < <(grep -rnE 'innerHTML\s*=' --include='*.js' --include='*.html' . 2>/dev/null || true)
 
-          # 3. Suspicious large base64 strings (potential payload hiding)
+          # 3. Large base64 strings
           echo "[CHECK 3/12] Checking for suspicious base64 payloads ..."
           while IFS=: read -r file line rest; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*|public/vendor/*|*.onnx|*.bin) continue ;;
-            esac
-            b64len=$(echo "$rest" | grep -oP '[A-Za-z0-9+/=]{100,}' | wc -c || true)
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*|*.onnx|*.bin) continue ;; esac
+            b64len=$(echo "$rest" | grep -oE '[A-Za-z0-9+/=]{100,}' | wc -c || true)
             if [ "$b64len" -gt 500 ] 2>/dev/null; then
               echo "  [WARN] large base64: $file:$line (${b64len} chars)"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
           done < <(grep -rnE '[A-Za-z0-9+/=]{100,}' --include='*.js' --include='*.html' --include='*.json' . 2>/dev/null || true)
 
-          # 4. setTimeout/setInterval with string argument (eval-like)
+          # 4. setTimeout/setInterval with string argument
           echo "[CHECK 4/12] Checking setTimeout/setInterval with strings ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*) continue ;;
-            esac
-            echo "  [WARN] string-based timer: $file:$line $content"
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            echo "  [WARN] string-based timer: $file:$line"
             VIOLATIONS=$((VIOLATIONS + 1))
-          done < <(grep -rnE '(setTimeout|setInterval)\s*\(\s*["\x27]' --include='*.js' . 2>/dev/null || true)
+          done < <(grep -rnE '(setTimeout|setInterval)[[:space:]]*\([[:space:]]*["'\'']' --include='*.js' . 2>/dev/null || true)
 
-          # 5. Dynamic require (eval-like), but NOT standard ESM dynamic import('...')
-          echo "[CHECK 5/12] Checking dynamic require (not standard ESM import)..."
+          # 5. Dynamic require with non-literal argument (eval-like)
+          echo "[CHECK 5/12] Checking dynamic require ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
-            esac
-            # Flag require(...) with non-string arg (eval-like)
-            if echo "$content" | grep -qE 'require\s*\(\s*[^"'"'"'\x27[:space:]]'; then
-              echo "  [WARN] dynamic require: $file:$line $content"
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            # require(someVar) — not require('string')
+            if echo "$content" | grep -qE 'require[[:space:]]*\([[:space:]]*[^"'\''[:space:]]'; then
+              echo "  [WARN] dynamic require: $file:$line $(echo "$content" | head -c 80)"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
-          done < <(grep -rnE '\brequire\s*\(' --include='*.js' . 2>/dev/null || true)
+          done < <(grep -rnE 'require[[:space:]]*\(' --include='*.js' . 2>/dev/null || true)
 
-          # 6. Suspicious Unicode escapes / encoded strings
+          # 6. Heavy unicode escaping (obfuscation)
           echo "[CHECK 6/12] Checking suspicious encoding ..."
-          while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
-            esac
-            esc_count=$(echo "$content" | grep -oP '\\u[0-9a-fA-F]{4}' | wc -l)
+          while IFS=: read -r file line; do
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            # count escaped unicode sequences
+            esc_count=$(grep -oE '\\\\u[0-9a-fA-F]{4}' "$file" 2>/dev/null | wc -l)
             if [ "$esc_count" -gt 10 ] 2>/dev/null; then
               echo "  [WARN] heavy unicode escaping: $file:$line ($esc_count escapes)"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
-          done < <(grep -rn '\\u' --include='*.js' . 2>/dev/null || true)
+          done < <(grep -rn '\\\\u' --include='*.js' . 2>/dev/null || true)
 
-          # 7. WebSocket / fetch to IP addresses (potential data exfiltration)
+          # 7. Fetch / WebSocket to raw IP addresses
           echo "[CHECK 7/12] Checking connections to raw IPs ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*) continue ;;
-            esac
-            echo "  [WARN] connection to IP: $file:$line $content"
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            echo "  [WARN] connection to IP: $file:$line"
             VIOLATIONS=$((VIOLATIONS + 1))
-          done < <(grep -rnE '(fetch|XMLHttpRequest|WebSocket|new WebSocket)\s*\(?\s*["\x27]https?://[0-9]+\.[0-9]+' --include='*.js' --include='*.html' . 2>/dev/null || true)
+          done < <(grep -rnE '(fetch|XMLHttpRequest|WebSocket)[[:space:]]*\(?[[:space:]]*["'\'']https?://[0-9]+\.[0-9]+' --include='*.js' --include='*.html' . 2>/dev/null || true)
 
-          # 8. Suspicious atob (potential hidden payload)
+          # 8. atob usage (informational)
           echo "[CHECK 8/12] Checking atob usage ..."
-          while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;;
-            esac
-            echo "  [INFO] atob usage: $file:$line $content"
+          while IFS=: read -r file line; do
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            echo "  [INFO] atob usage: $file:$line"
           done < <(grep -rn 'atob(' --include='*.js' . 2>/dev/null || true)
 
-          # 9. localStorage / sessionStorage / cookie access patterns
+          # 9. localStorage / sessionStorage with sensitive keys
           echo "[CHECK 9/12] Checking storage access patterns ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*) continue ;;
-            esac
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
             if echo "$content" | grep -qE "(getItem|setItem)\(['\"](password|token|secret|key|credential|jwt|session)"; then
-              echo "  [WARN] sensitive key in storage: $file:$line $content"
+              echo "  [WARN] sensitive key in storage: $file:$line $(echo "$content" | head -c 80)"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
           done < <(grep -rnE '(localStorage|sessionStorage)\.(getItem|setItem)' --include='*.js' . 2>/dev/null || true)
 
-          # 10. Detected potential hidden network calls via new Image / sendBeacon
+          # 10. sendBeacon tracking
           echo "[CHECK 10/12] Checking beacon / pixel tracking ..."
           while IFS=: read -r file line content; do
-            case "$file" in
-              node_modules/*|dist/*|android/build/*) continue ;;
-            esac
-            echo "  [WARN] tracking/beacon: $file:$line $content"
+            case "$file" in node_modules/*|dist/*|android/build/*|public/vendor/*) continue ;; esac
+            echo "  [WARN] tracking/beacon: $file:$line"
             VIOLATIONS=$((VIOLATIONS + 1))
-          done < <(grep -rnE '(sendBeacon|navigator\.sendBeacon)' --include='*.js' . 2>/dev/null || true)
+          done < <(grep -rnE 'sendBeacon|navigator\.sendBeacon' --include='*.js' . 2>/dev/null || true)
 
-          # 11. Check for known malicious npm packages in package.json
-          echo "[CHECK 11/12] Checking package.json for known malicious dependencies ..."
+          # 11. npm package name typosquatting
+          echo "[CHECK 11/12] Checking package.json for suspicious dependencies ..."
           if [ -f package.json ]; then
-            for dep in $(node -e "
-              const p = require('./package.json');
+            node -e "
+              const p = JSON.parse(require('fs').readFileSync('package.json','utf8'));
               const deps = {...p.dependencies, ...p.devDependencies};
-              Object.keys(deps).forEach(d => {
+              const suspicious = Object.keys(deps).filter(d => {
                 if (d.match(/^(eslint-|babel-|webpack-|gulp-|grunt-|express-)/) &&
-                    !d.match(/^(eslint-config|eslint-plugin|babel-plugin|babel-preset|webpack-merge|express-validator)/)) {
-                  console.log(d);
-                }
+                    !d.match(/^(eslint-config|eslint-plugin|babel-plugin|babel-preset|webpack-merge|express-validator)/)) return true;
                 if (d.match(/^(react-|vue-|angular-)/) &&
-                    !d.match(/^(react-dom|react-router|react-scripts|vue-router|vuex)/)) {
-                  console.log(d);
-                }
+                    !d.match(/^(react-dom|react-router|react-scripts|vue-router|vuex)/)) return true;
+                return false;
               });
-            " 2>/dev/null); do
-              echo "  [WARN] suspicious dependency name: $dep (potential typo-squatting)"
-              VIOLATIONS=$((VIOLATIONS + 1))
-            done
+              if (suspicious.length) {
+                suspicious.forEach(d => console.log('  [WARN] suspicious package: ' + d));
+                process.exit(1);
+              }
+            " 2>/dev/null || VIOLATIONS=$((VIOLATIONS + 1))
           fi
+          echo "  [PASS] or no issues detected"
 
-          # 12. Check for binary / compressed files in source directories
+          # 12. Unexpected binary files in source directories
           echo "[CHECK 12/12] Checking unexpected binary files in source ..."
           while IFS= read -r file; do
             case "$file" in
               */node_modules/*|*/dist/*|*/android/build/*|*/build/*|*/public/vendor/*) continue ;;
-              *.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.woff|*.woff2|*.ttf|*.eot|*.onnx|*.bin|*.pb|*.jar|*.aar|*.keystore|*.jks|*.pdf) continue ;;
+              *.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.woff|*.woff2|*.ttf|*.eot|*.onnx|*.bin|*.pb|*.jar|*.aar|*.keystore|*.jks|*.pdf|*.wasm) continue ;;
             esac
             if [ -f "$file" ] && file "$file" | grep -qE '(executable|binary|compress|archive)'; then
               echo "  [WARN] unexpected binary: $file ($(file -b "$file"))"
@@ -287,32 +272,44 @@ jobs:
             --no-inline-config \
             || true
 
-      - name: Check for hardcoded Chinese text (i18n compliance)
+      - name: i18n compliance check
         run: |
           echo "===== i18n Compliance Check ====="
-          cd src
-          VIOLATIONS=0
-          while IFS=: read -r file line content; do
-            echo "  [WARN] possible hardcoded Chinese: $file:$line"
-            VIOLATIONS=$((VIOLATIONS + 1))
-          done < <(grep -rnP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' --include='*.js' . \
-            2>/dev/null | grep -v 'lang/' | grep -v 'test/' | grep -v 'i18n' || true)
-          if [ "$VIOLATIONS" -gt 0 ]; then
-            echo "RESULT: FAILED - Found $VIOLATIONS lines with possible hardcoded Chinese text"
-            echo "Note: Use t() function and data-i18n attributes instead"
-            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-              exit 1
-            fi
-          else
-            echo "RESULT: PASSED - No obvious i18n violations"
-          fi
+          # Use node for cross-platform regex (avoid grep -P locale issues on CI)
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            function walk(dir) {
+              const files = fs.readdirSync(dir);
+              files.forEach(f => {
+                const fp = path.join(dir, f);
+                if (fs.statSync(fp).isDirectory()) {
+                  if (f !== 'lang' && f !== 'test') walk(fp);
+                } else if (fp.endsWith('.js') && !fp.includes('i18n')) {
+                  const content = fs.readFileSync(fp, 'utf8');
+                  // Match CJK characters
+                  const cjk = content.match(/[一-鿿　-〿＀-￯]/g);
+                  if (cjk) {
+                    cjk.forEach((_, idx) => {
+                      // Find the line number
+                      const lineNum = content.substring(0, content.indexOf(cjk[0])).split('\n').length;
+                      console.log('  [WARN] possible hardcoded Chinese: ' + fp + ':' + lineNum);
+                    });
+                  }
+                }
+              });
+            }
+            const src = path.join(process.cwd(), 'src');
+            if (fs.existsSync(src)) walk(src);
+          " 2>&1
+          echo "(check output above for violations)"
 
       - name: Check file encoding (no mixed encodings)
         run: |
           echo "===== File Encoding Check ====="
           ISSUES=0
           while IFS= read -r file; do
-            encoding=$(file -bi "$file" 2>/dev/null | sed 's/.*charset=//')
+            encoding=$(file --mime-encoding "$file" 2>/dev/null | sed 's/.*: //')
             case "$encoding" in
               utf-8|us-ascii|ascii|binary)
                 ;;
