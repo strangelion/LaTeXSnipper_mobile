@@ -96,7 +96,7 @@ LaTeXSnipper_mobile/
 └── .github/workflows/
     ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
     ├── build-ios.yml                  # iOS 模拟器构建
-    └── security-compliance-scan.yml   # 安全合规扫描
+    └── security-scan.yml   # 安全扫描
 ```
 
 ---

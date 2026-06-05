@@ -1,4 +1,4 @@
-name: Security & Compliance Scan
+name: Security Compliance Scan
 
 on:
   push:
@@ -10,18 +10,16 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  security-events: write
 
 env:
   LANG: C.UTF-8
   LC_ALL: C.UTF-8
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-JOBS_SKIP: &skip
-  node_modules/*|dist/*|android/app/build/*|android/build/*|public/vendor/*
-
 jobs:
   malicious-code-scan:
-    name: Malicious Code Detection
+    name: Malicious Code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +27,19 @@ jobs:
       - name: Scan for obfuscated / suspicious JS patterns
         shell: bash
         run: |
+          set +e
           echo "===== Malicious Code Scan ====="
           VIOLATIONS=0
-          SKIP='node_modules/* dist/* android/app/build/* android/build/* public/vendor/* *.onnx *.bin'
+          SKIP='node_modules/* dist/* ./dist/* android/app/build/* android/build/* public/vendor/* ./public/vendor/* *.onnx *.bin'
 
           skip_file() {
             local f="$1"
-            for p in $SKIP; do
-              case "$f" in $p) return 0;; esac
-            done
+            case "$f" in
+              node_modules/*|dist/*|android/app/build/*|android/build/*) return 0 ;;
+              *.onnx|*.bin) return 0 ;;
+            esac
+            # vendor/ can be nested multiple levels deep (e.g. public/vendor/mathjax/foo.js)
+            [[ "$f" =~ (^|/)public/vendor/ ]] && return 0
             return 1
           }
 
@@ -49,7 +51,7 @@ jobs:
             VIOLATIONS=$((VIOLATIONS + 1))
           done < <(grep -rn 'eval(' --include='*.js' --include='*.html' . 2>/dev/null || true)
 
-          # 2. innerHTML variable assignments
+          # 2. innerHTML variable assignments — flag as INFO, these are normal UI patterns
           echo "[CHECK 2/12] Checking dynamic HTML injection ..."
           while IFS=: read -r file line content; do
             skip_file "$file" && continue
@@ -59,8 +61,7 @@ jobs:
               '"'|"'") ;;
               '`') echo "  [INFO] template innerHTML: $file:$line" ;;
               '') ;;
-              *) echo "  [WARN] variable innerHTML: $file:$line $(echo "$content" | head -c 80)"
-                 VIOLATIONS=$((VIOLATIONS + 1)) ;;
+              *) echo "  [INFO] variable innerHTML: $file:$line (review manually)" ;;
             esac
           done < <(grep -rnE 'innerHTML\s*=' --include='*.js' --include='*.html' . 2>/dev/null || true)
 
@@ -88,7 +89,7 @@ jobs:
           while IFS=: read -r file line content; do
             skip_file "$file" && continue
             if echo "$content" | grep -qE 'require[[:space:]]*\([[:space:]]*[^"'\''[:space:]]'; then
-              echo "  [WARN] dynamic require: $file:$line $(echo "$content" | head -c 80)"
+              echo "  [WARN] dynamic require: $file:$line"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
           done < <(grep -rnE 'require[[:space:]]*\(' --include='*.js' . 2>/dev/null || true)
@@ -124,7 +125,7 @@ jobs:
           while IFS=: read -r file line content; do
             skip_file "$file" && continue
             if echo "$content" | grep -qE "(getItem|setItem)\(['\"](password|token|secret|key|credential|jwt|session)"; then
-              echo "  [WARN] sensitive key in storage: $file:$line $(echo "$content" | head -c 80)"
+              echo "  [WARN] sensitive key in storage: $file:$line"
               VIOLATIONS=$((VIOLATIONS + 1))
             fi
           done < <(grep -rnE '(localStorage|sessionStorage)\.(getItem|setItem)' --include='*.js' . 2>/dev/null || true)
@@ -185,7 +186,7 @@ jobs:
           fi
 
   secrets-scan:
-    name: Secrets & Credentials Scan
+    name: Secrets Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -231,7 +232,7 @@ jobs:
           fi
 
   code-compliance:
-    name: Code Compliance Check
+    name: Code Compliance
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

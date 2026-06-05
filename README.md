@@ -123,7 +123,7 @@ LaTeXSnipper_mobile/
 └── .github/workflows/
     ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
     ├── build-ios.yml                  # iOS 模拟器构建
-    └── security-compliance-scan.yml   # 安全合规扫描（恶意代码/密钥/合规检查）
+    └── security-scan.yml   # 安全扫描（恶意代码/密钥/合规检查）
 ```
 
 ## 导出格式
