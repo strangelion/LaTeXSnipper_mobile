@@ -244,14 +244,13 @@ export function toggleKeyboard() {
       mathField.executeCommand('toggleVirtualKeyboard');
     }, 100);
   } else if (nextState === 2) {
-    // System native keyboard: set policy to 'manual' so MathLive doesn't
-    // auto-show its own keyboard, and don't set inputmode='none' so the
-    // browser's system keyboard appears on focus.
-    mathField.mathVirtualKeyboardPolicy = 'manual';
+    // System native keyboard: 'sandboxed' tells MathLive to not intercept
+    // keyboard events — the browser's system keyboard works normally.
+    mathField.mathVirtualKeyboardPolicy = 'sandboxed';
     mathField.removeAttribute('inputmode');
+    // blur + focus cycle forces the native keyboard to appear even when
+    // the mathfield was already focused (e.g. switching from MathLive kbd)
     mathField.blur();
-    // Brief timeout ensures any MathLive keyboard is dismissed first,
-    // then focusing will trigger the native keyboard.
     setTimeout(() => mathField.focus(), 50);
   }
 

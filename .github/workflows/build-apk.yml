@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号'
-        required: true
-        default: '1.0.0'
+        description: '版本号（留空自动从 package.json 读取）'
+        required: false
+        default: ''
         type: string
       create_release:
         description: '创建 GitHub Release'
@@ -96,13 +96,21 @@ jobs:
 
       - name: Set version
         run: |
-          # Update package.json (vite build reads version from here)
-          node -e "const p=require('./package.json');p.version='${{ inputs.version }}';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
+          # Auto-read version from package.json if not provided
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(node -e "console.log(require('./package.json').version)")
+            echo "Using package.json version: $VERSION"
+          else
+            # Update package.json with the provided version
+            node -e "const p=require('./package.json');p.version='$VERSION';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
+          fi
           # Update Android version — strip dots and strip leading zeros to avoid octal
-          VER_CODE=$(echo "${{ inputs.version }}" | node -e "process.stdin.on('data',d=>console.log(Number(d.toString().replace(/\./g,''))))")
+          VER_CODE=$(echo "$VERSION" | node -e "process.stdin.on('data',d=>console.log(Number(d.toString().replace(/\./g,''))))")
           sed -i "s/versionCode .*/versionCode $VER_CODE/" android/app/build.gradle
-          sed -i "s/versionName .*/versionName \"${{ inputs.version }}\"/" android/app/build.gradle
-          echo "Version set to ${{ inputs.version }} (code: $VER_CODE)"
+          sed -i "s/versionName .*/versionName \"$VERSION\"/" android/app/build.gradle
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version set to $VERSION (code: $VER_CODE)"
 
       - name: Install dependencies
         run: npm ci
@@ -133,14 +141,14 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+        run: echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         if: ${{ inputs.create_release }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version }}
-          name: v${{ inputs.version }}
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
           files: android/app/build/outputs/apk/release/*.apk
           draft: false
           generate_release_notes: true
