@@ -225,10 +225,13 @@ export function toggleKeyboard() {
   if (!mathField) return;
   const nextState = (_kbdState + 1) % 3;
 
+  console.debug('[LaTeXSnipper] toggleKeyboard: state', _kbdState, '→', nextState);
+
   // Hide any active keyboard first
   if (window.mathVirtualKeyboard) {
     window.mathVirtualKeyboard.visible = false;
   }
+  _hideSysKbdProxy();
 
   if (nextState === 0) {
     // OFF: no keyboard
@@ -241,20 +244,223 @@ export function toggleKeyboard() {
     mathField.setAttribute('inputmode', 'none');
     mathField.focus();
     setTimeout(() => {
+      console.debug('[LaTeXSnipper] toggleKeyboard: showing MathLive kbd');
       mathField.executeCommand('toggleVirtualKeyboard');
     }, 100);
   } else if (nextState === 2) {
-    // System native keyboard: 'sandboxed' tells MathLive to not intercept
-    // keyboard events — the browser's system keyboard works normally.
-    mathField.mathVirtualKeyboardPolicy = 'sandboxed';
-    mathField.removeAttribute('inputmode');
-    // blur + focus cycle forces the native keyboard to appear even when
-    // the mathfield was already focused (e.g. switching from MathLive kbd)
-    mathField.blur();
-    setTimeout(() => mathField.focus(), 50);
+    // System native keyboard
+    // MathLive's 'sandboxed' strategy is mapped to 'manual' in this version.
+    // Android WebView does not connect system keyboard (IME) to Shadow DOM
+    // contenteditable elements inside custom elements like <math-field>.
+    //
+    // Solution: an opaque <textarea> proxy overlays the editor area.
+    // It receives DOM focus and triggers the IME; input is forwarded to
+    // MathLive via mathField.insert(). No mathField.focus() needed.
+    console.debug('[LaTeXSnipper] toggleKeyboard: switching to proxy');
+    mathField.mathVirtualKeyboardPolicy = 'manual';
+    mathField.setAttribute('inputmode', 'none');
+    setTimeout(() => {
+      console.debug('[LaTeXSnipper] toggleKeyboard: showing proxy');
+      _showSysKbdProxy();
+    }, 80);
   }
 
   _setKbdState(nextState);
+}
+
+// ── Offscreen proxy for system keyboard IME ──
+// Named with $ prefix to avoid conflict with other variables
+const ZWS = '​'; // zero-width space, prevents Android from hiding IME when content is empty
+let _$proxy = null;
+let _$proxyReady = false;
+
+function _resetProxyValue() {
+  if (_$proxy) {
+    _$proxy.value = ZWS;
+    // Place cursor after ZWS so new input appends after it
+    if (_$proxy.setSelectionRange) {
+      _$proxy.setSelectionRange(ZWS.length, ZWS.length);
+    }
+  }
+}
+
+function _initSysKbdProxy() {
+  if (_$proxyReady) return;
+  console.debug('[LaTeXSnipper] _initSysKbdProxy');
+  const p = document.createElement('textarea');
+  p.setAttribute('inputmode', 'text');
+  p.setAttribute('autocomplete', 'off');
+  p.setAttribute('autocorrect', 'off');
+  p.setAttribute('autocapitalize', 'off');
+  p.setAttribute('spellcheck', 'false');
+
+  // Position fixed directly over math-field so taps on editor hit
+  // the proxy (keep focus) rather than going to the background.
+  // NOT offscreen: Android hides IME when focused element is outside viewport.
+  // Height/width recalculated on each show to handle layout changes.
+  p.style.cssText = [
+    'position: fixed',
+    'top: 0',
+    'left: 0',
+    'width: 1px',
+    'height: 1px',
+    'opacity: 0',
+    'resize: none',
+    'border: none',
+    'outline: none',
+    'padding: 0',
+    'margin: 0',
+    'background: transparent',
+    'color: transparent',
+    'font-size: 16px',
+    'overflow: hidden',
+    'z-index: 9999',
+  ].join(';');
+
+  let composing = false;
+
+  p.addEventListener('compositionstart', () => { composing = true; });
+
+  p.addEventListener('compositionend', (e) => {
+    composing = false;
+    console.debug('[LaTeXSnipper] proxy compositionend:', e.data);
+    if (e.data && mathField) {
+      mathField.insert(e.data);
+      mathField.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    _resetProxyValue();
+  });
+
+  p.addEventListener('input', () => {
+    if (composing || !mathField) return;
+    const val = p.value;
+    if (!val) return;
+    // Filter out our ZWS placeholder
+    if (val !== ZWS) {
+      console.debug('[LaTeXSnipper] proxy input:', val);
+      mathField.insert(val.replace(ZWS, ''));
+      mathField.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    _resetProxyValue();
+  });
+
+  p.addEventListener('keydown', (e) => {
+    if (!mathField || composing) return;
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      console.debug('[LaTeXSnipper] proxy keydown: Backspace, mathField.value:', mathField.value?.length || 0);
+      if (mathField.value) {
+        mathField.executeCommand('deleteBackward');
+        mathField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      // Android auto-hides IME when textarea value is empty and the
+      // connected editor has no content. Keep a non-empty placeholder
+      // value so IME stays open after the last character is deleted.
+      p.value = mathField.value ? '' : ' ';
+    } else if (e.key === 'Delete') {
+      e.preventDefault();
+      console.debug('[LaTeXSnipper] proxy keydown: Delete');
+      mathField.executeCommand('deleteForward');
+      mathField.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      console.debug('[LaTeXSnipper] proxy keydown: Enter');
+      mathField.insert('\\newline ');
+      mathField.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      console.debug('[LaTeXSnipper] proxy keydown:', e.key);
+      const cmdMap = { ArrowLeft: 'moveBackward', ArrowRight: 'moveForward', ArrowUp: 'moveUp', ArrowDown: 'moveDown' };
+      mathField.executeCommand(cmdMap[e.key]);
+    }
+  });
+
+  // Track focus/blur on proxy itself
+  p.addEventListener('focus', () => {
+    console.debug('[LaTeXSnipper] proxy FOCUS (hasFocus:', document.activeElement === p, ')');
+  });
+
+  p.addEventListener('blur', (e) => {
+    console.debug('[LaTeXSnipper] proxy BLUR → new focus target:', e.relatedTarget?.tagName || 'null', 'kbdState:', _kbdState);
+  });
+
+  document.body.appendChild(p);
+  _$proxy = p;
+  _$proxyReady = true;
+}
+
+function _showSysKbdProxy() {
+  _initSysKbdProxy();
+  if (!_$proxy || !mathField) return;
+
+  // Position the proxy directly over the math-field
+  const rect = mathField.getBoundingClientRect();
+  _$proxy.style.top = rect.top + 'px';
+  _$proxy.style.left = rect.left + 'px';
+  _$proxy.style.width = rect.width + 'px';
+  _$proxy.style.height = rect.height + 'px';
+
+  _resetProxyValue();
+  _$proxy.focus();
+
+  console.debug('[LaTeXSnipper] _showSysKbdProxy rect:', JSON.stringify({top: rect.top, left: rect.left, w: rect.width, h: rect.height}));
+  console.debug('[LaTeXSnipper] _showSysKbdProxy, activeElement after:', document.activeElement?.tagName || 'null');
+
+  // Disable contentEditable on math-field's shadow DOM so MathLive
+  // cannot steal focus when insert()/deleteBackward() is called.
+  // MathLive operates on its atomic model and does NOT require
+  // contentEditable to be true for these to work.
+  try {
+    const sr = mathField.shadowRoot;
+    if (sr) {
+      if (!_$proxy._ceFocusGuard) {
+        _$proxy._ceFocusGuard = (e) => {
+          if (_kbdState !== 2 || !_$proxy) return;
+          e.stopImmediatePropagation();
+          // Disable contentEditable immediately
+          const target = e.target;
+          if (target?.contentEditable && target.contentEditable !== 'false') {
+            target.contentEditable = 'false';
+          }
+          _$proxy.focus();
+        };
+      }
+      // Guard 1: shadow root capture — catches focus on shadow-internal elements
+      sr.removeEventListener('focus', _$proxy._ceFocusGuard, true);
+      sr.addEventListener('focus', _$proxy._ceFocusGuard, true);
+      // Guard 2: host element capture — catches focus that is retargeted
+      // across the shadow boundary (e.g. MathLive calling focus() on host)
+      mathField.removeEventListener('focus', _$proxy._ceFocusGuard, true);
+      mathField.addEventListener('focus', _$proxy._ceFocusGuard, true);
+      // Immediately disable any existing contenteditable
+      const ceEl = sr.querySelector('[contenteditable]');
+      if (ceEl) ceEl.contentEditable = 'false';
+    }
+  } catch (e) {
+    console.debug('[LaTeXSnipper] failed to disable contentEditable:', e.message);
+  }
+}
+
+function _hideSysKbdProxy() {
+  if (_$proxy) {
+    _$proxy.blur();
+    _$proxy.value = '';
+    // Reset size
+    _$proxy.style.width = '1px';
+    _$proxy.style.height = '1px';
+    _$proxy.style.top = '0';
+    _$proxy.style.left = '0';
+  }
+  // Restore contentEditable on math-field's shadow DOM
+  try {
+    const sr = mathField?.shadowRoot;
+    if (sr) {
+      const editable = sr.querySelector('[contenteditable]');
+      if (editable) {
+        editable.contentEditable = 'true';
+      }
+    }
+  } catch (_) {}
 }
 
 export function resetKbdState() {
