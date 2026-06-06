@@ -21,7 +21,10 @@
 ### 改进
 
 - **Vite 配置精简** — 移除 `vite-plugin-wasm` + `vite-plugin-top-level-await`（Vite 8 原生支持），`vite.config.js` 减少 5 行
-- **系统键盘切换稳定** — MathLive 虚拟键盘→系统键盘切换时先 blur 再 focus，确保系统键盘稳定弹出
+
+### 修复
+
+- **系统键盘 IME 彻底修复** — MathLive v0.104 中 `sandboxed` 策略映射为 `manual`，Android WebView 无法连接 IME 到 Shadow DOM contentEditable。改用 `<textarea>` 代理覆盖编辑区接收焦点并转发输入，修复系统键盘无法弹出、输入后自动收回的问题
 
 ### 测试
 
