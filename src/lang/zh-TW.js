@@ -57,6 +57,12 @@ export default {
   "pdf.prev": "上一頁",
   "pdf.next": "下一頁",
   "pdf.selectPage": "選擇頁面",
+  "pdf.rangeTitle": "選擇識別頁",
+  "pdf.rangeDesc": "PDF 共 {{total}} 頁，請選擇要識別的頁面：",
+  "pdf.rangeHint": "例：1-5、1,3,5-7、3（全部頁面 = 1-{{total}}）",
+  "pdf.rangePlaceholder": "頁碼範圍",
+  "pdf.rangeAll": "識別全部",
+  "pdf.rangeConfirm": "識別所選頁",
 
   "settings.title": "設定",
   "settings.engine": "識別引擎",

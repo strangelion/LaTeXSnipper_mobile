@@ -57,6 +57,12 @@ export default {
   "pdf.prev": "이전",
   "pdf.next": "다음",
   "pdf.selectPage": "페이지 선택",
+  "pdf.rangeTitle": "인식할 페이지 선택",
+  "pdf.rangeDesc": "PDF는 총 {{total}}페이지입니다. 인식할 페이지를 선택하세요：",
+  "pdf.rangeHint": "예시：1-5、1,3,5-7、3（전체 페이지 = 1-{{total}}）",
+  "pdf.rangePlaceholder": "페이지 범위",
+  "pdf.rangeAll": "전체 인식",
+  "pdf.rangeConfirm": "선택 페이지 인식",
 
   "settings.title": "설정",
   "settings.engine": "인식 엔진",

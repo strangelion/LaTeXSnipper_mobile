@@ -57,6 +57,12 @@ export default {
   "pdf.prev": "前へ",
   "pdf.next": "次へ",
   "pdf.selectPage": "ページ選択",
+  "pdf.rangeTitle": "認識するページを選択",
+  "pdf.rangeDesc": "PDF は全 {{total}} ページです。認識するページを選択してください：",
+  "pdf.rangeHint": "例：1-5、1,3,5-7、3（全ページ = 1-{{total}}）",
+  "pdf.rangePlaceholder": "ページ範囲",
+  "pdf.rangeAll": "すべて認識",
+  "pdf.rangeConfirm": "選択ページを認識",
 
   "settings.title": "設定",
   "settings.engine": "認識エンジン",
