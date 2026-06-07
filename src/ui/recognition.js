@@ -7,6 +7,7 @@ import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from './result
 import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
 import Logger from '../shared/logger.js';
 import { t } from '../lang/i18n.js';
+import { MAX_PDF_PAGES } from '../constants.js';
 
 let lastRecognitionTime = 0;
 
@@ -26,17 +27,172 @@ function fileToBase64(file) {
 }
 
 /**
+ * Parse a user-supplied page range string into an array of 1-based page numbers.
+ * Supports formats: "5" (single), "1-5" (range), "1,3,5-7" (mixed).
+ * Invalid/non-numeric input is silently skipped. Returns null to signal "all pages".
+ */
+function parsePageRange(input, totalPages) {
+  if (!input || !input.trim()) return null;
+  const s = input.trim();
+  // "all" or empty = all pages
+  if (/^(all|全部|\*)$/i.test(s)) return null;
+
+  const pages = new Set();
+  const parts = s.split(/[,，、\s]+/);
+  for (const part of parts) {
+    const rangeMatch = part.match(/^(\d+)\s*[-–—]\s*(\d+)$/);
+    if (rangeMatch) {
+      const start = Math.max(1, parseInt(rangeMatch[1], 10));
+      const end = Math.min(totalPages, parseInt(rangeMatch[2], 10));
+      for (let i = start; i <= end; i++) pages.add(i);
+      continue;
+    }
+    const singleMatch = part.match(/^(\d+)$/);
+    if (singleMatch) {
+      const p = parseInt(singleMatch[1], 10);
+      if (p >= 1 && p <= totalPages) pages.add(p);
+    }
+  }
+
+  if (pages.size === 0) return null;
+  return [...pages].sort((a, b) => a - b);
+}
+
+/**
+ * Show the PDF page range selection dialog.
+ * Returns a Promise that resolves to:
+ *   - number[] of selected page numbers
+ *   - null if user chose "all pages"
+ *   - Rejects (throws) if user cancels
+ */
+function showPageRangeDialog(totalPages) {
+  return new Promise((resolve, reject) => {
+    const overlay = document.getElementById('pdfRangeOverlay');
+    const input = document.getElementById('pdfRangeInput');
+    const desc = document.getElementById('pdfRangeDesc');
+    const hint = document.querySelector('.pdf-range-hint');
+    const allBtn = document.getElementById('pdfRangeAll');
+    const confirmBtn = document.getElementById('pdfRangeConfirm');
+    const cancelBtn = document.getElementById('pdfRangeCancel');
+
+    if (!overlay || !input || !confirmBtn || !cancelBtn) {
+      reject(new Error('PDF range dialog elements not found'));
+      return;
+    }
+
+    // Update description and hint with page count
+    if (desc) desc.textContent = t('pdf.rangeDesc', { total: totalPages });
+    if (hint) hint.textContent = t('pdf.rangeHint', { total: totalPages });
+
+    // Default: suggest all pages
+    input.value = '1-' + totalPages;
+    input.placeholder = t('pdf.rangePlaceholder');
+    input.focus();
+    input.select();
+
+    function cleanup() {
+      overlay.style.display = 'none';
+      allBtn.removeEventListener('click', onAll);
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onBackdrop);
+      input.removeEventListener('keydown', onKeydown);
+    }
+
+    function onAll() {
+      cleanup();
+      resolve(null); // null = all pages
+    }
+
+    function onConfirm() {
+      const parsed = parsePageRange(input.value, totalPages);
+      if (parsed === null) {
+        // Parsed as "all" or empty
+        cleanup();
+        resolve(null);
+      } else if (parsed.length === 0) {
+        // Invalid input — shake the input
+        input.style.borderColor = '#ef4444';
+        setTimeout(() => { input.style.borderColor = ''; }, 600);
+        input.focus();
+        input.select();
+      } else {
+        cleanup();
+        resolve(parsed);
+      }
+    }
+
+    function onCancel() {
+      cleanup();
+      reject(new Error('PDF page selection cancelled'));
+    }
+
+    function onBackdrop(e) {
+      if (e.target === overlay) onCancel();
+    }
+
+    function onKeydown(e) {
+      if (e.key === 'Enter') onConfirm();
+      if (e.key === 'Escape') onCancel();
+    }
+
+    allBtn.addEventListener('click', onAll);
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onBackdrop);
+    input.addEventListener('keydown', onKeydown);
+
+    overlay.style.display = 'flex';
+  });
+}
+
+/**
  * Process PDF by rendering each page via pdfjs, then sending to native recognizer.
  * Keeps pdfjs for page rendering since that's a pure JS UI concern.
+ *
+ * @param {File} file - The PDF file
+ * @param {number[]|null|undefined} pageRange - Array of 1-based page numbers to process,
+ *        null for all pages (capped by MAX_PDF_PAGES), undefined to show dialog
+ * @param {function} onProgress - Progress callback
  */
-async function processPDFNative(file, onProgress) {
+async function processPDFNative(file, pageRange, onProgress) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPages = pdf.numPages;
-  const pages = [];
 
-  for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-    if (onProgress) onProgress({ page: pageNum, total: totalPages, pct: Math.round(pageNum / totalPages * 100) });
+  // If pageRange was not pre-determined, show the selection dialog now
+  if (pageRange === undefined) {
+    try {
+      pageRange = await showPageRangeDialog(totalPages);
+    } catch (_) {
+      throw new Error('PDF processing cancelled by user');
+    }
+  }
+
+  // Determine which pages to process
+  let pagesToProcess;
+  if (pageRange) {
+    // User-specified range, filter to valid pages
+    pagesToProcess = pageRange.filter(p => p >= 1 && p <= totalPages);
+  } else {
+    // All pages, but cap at MAX_PDF_PAGES
+    const count = Math.min(totalPages, MAX_PDF_PAGES);
+    pagesToProcess = Array.from({ length: count }, (_, i) => i + 1);
+    if (totalPages > MAX_PDF_PAGES) {
+      Logger.warn('PDF', `Truncated to ${MAX_PDF_PAGES} pages (total ${totalPages})`);
+    }
+  }
+
+  if (pagesToProcess.length === 0) {
+    throw new Error('No valid pages selected');
+  }
+
+  const pages = [];
+  const totalToProcess = pagesToProcess.length;
+
+  for (let idx = 0; idx < totalToProcess; idx++) {
+    const pageNum = pagesToProcess[idx];
+    if (onProgress) onProgress({ page: idx + 1, total: totalToProcess, pct: Math.round((idx + 1) / totalToProcess * 100) });
     const page = await pdf.getPage(pageNum);
     const viewport = page.getViewport({ scale: 2 });
     const canvas = document.createElement('canvas');
@@ -49,17 +205,16 @@ async function processPDFNative(file, onProgress) {
 
   const Ocr = OcrNative;
     const result = await Ocr.recognizeMixed({ image: base64 });
-    // Mixed native now returns "text" (formattedText from Java layout engine).
-    // Fall back to raw region texts only if formatted text is empty.
     const mixedText = result.text || result.regions?.map(r => r.text).filter(Boolean).join('\n') || '';
     const latex = result.regions?.filter(r => r.type === 'formula').map(r => r.text).join(' \\\\ ') || '';
-    pages.push({ latex: mixedText || latex, confidence: result.confidence || 0.5 });
+    pages.push({ latex: mixedText || latex, confidence: result.confidence || 0.5, page: pageNum });
   }
 
   return {
     latex: pages.map(p => p.latex).join('\n\n'),
     confidence: pages.reduce((s, p) => s + p.confidence, 0) / pages.length,
-    pageCount: totalPages,
+    pageCount: totalToProcess,
+    totalPages,
     pages,
   };
 }
@@ -112,14 +267,35 @@ export async function processImage(file) {
 
       if (file.type === 'application/pdf') {
         setStatus('processing', t('status.recognizingPdf'), true);
-        const pdfResult = await processPDFNative(file, (info) => {
-          showProgress('PDF ' + info.page + '/' + info.total, info.pct);
-        });
+
+        // processPDFNative reads the PDF once, shows page range dialog,
+        // then renders and recognizes only selected pages
+        let pdfResult;
+        try {
+          pdfResult = await processPDFNative(file, undefined, (info) => {
+            showProgress('PDF ' + info.page + '/' + info.total, info.pct);
+          });
+        } catch (e) {
+          // User cancelled or error — restore UI
+          URL.revokeObjectURL(url);
+          hideProgress();
+          setStatus('ready', t('status.ready'), false);
+          if (els.preview) els.preview.style.display = 'none';
+          if (els.dropContent) els.dropContent.style.display = '';
+          // Only show error if it wasn't user cancellation
+          if (e.message !== 'PDF processing cancelled by user') {
+            showError(t('recog.recognitionFailed', {msg: e.message || e}));
+          }
+          return null;
+        }
+
         hideProgress();
         lastRecognitionTime = Date.now();
         if (pdfResult.pages && pdfResult.pages.length > 1) {
           showPDFBrowser(pdfResult.pages);
           showResult(pdfResult.pages[0].latex, pdfResult.pages[0].confidence, pdfResult.pageCount + ' 页');
+        } else if (pdfResult.pages && pdfResult.pages.length === 1) {
+          showResult(pdfResult.pages[0].latex, pdfResult.pages[0].confidence);
         } else {
           showResult(pdfResult.latex, pdfResult.confidence, pdfResult.pageCount + ' 页');
         }

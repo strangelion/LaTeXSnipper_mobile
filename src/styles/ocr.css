@@ -215,6 +215,49 @@ pre.result-code {
   background: none; color: #fff; padding: 4px 8px; font-size: 1.2rem;
 }
 
+/* ── PDF page range dialog ── */
+.pdf-range-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.pdf-range-dialog {
+  background: var(--card-bg); border-radius: 16px;
+  padding: 1.5rem; width: 100%; max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.pdf-range-title {
+  font-size: 1.1rem; font-weight: 700; color: var(--fg);
+}
+.pdf-range-desc {
+  font-size: 0.85rem; color: var(--muted); line-height: 1.5;
+}
+.pdf-range-input-row {
+  display: flex; gap: 0.5rem; align-items: center;
+}
+.pdf-range-input {
+  flex: 1; padding: 0.6rem 0.75rem; border-radius: 10px;
+  border: 1px solid var(--border-color); background: var(--bg);
+  color: var(--fg); font-size: 0.95rem; font-family: inherit;
+  outline: none; transition: border-color 0.2s;
+}
+.pdf-range-input:focus { border-color: var(--accent); }
+.pdf-range-all {
+  white-space: nowrap; flex-shrink: 0;
+  padding: 0.6rem 0.75rem; font-size: 0.8rem;
+}
+.pdf-range-hint {
+  font-size: 0.75rem; color: var(--muted); opacity: 0.7;
+}
+.pdf-range-actions {
+  display: flex; gap: 0.5rem; margin-top: 0.25rem;
+}
+.pdf-range-actions .ocr-btn {
+  flex: 1; text-align: center; padding: 0.6rem 0.75rem;
+}
+
 /* ── PDF page browser ── */
 .pdf-browser { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .pdf-browser.show { display: flex !important; }

@@ -65,6 +65,12 @@ export default {
   "pdf.prev": "上一页",
   "pdf.next": "下一页",
   "pdf.selectPage": "选择页面",
+  "pdf.rangeTitle": "选择识别页",
+  "pdf.rangeDesc": "PDF 共 {{total}} 页，请选择要识别的页面：",
+  "pdf.rangeHint": "例：1-5、1,3,5-7、3（全部页面 = 1-{{total}}）",
+  "pdf.rangePlaceholder": "页码范围",
+  "pdf.rangeAll": "识别全部",
+  "pdf.rangeConfirm": "识别所选页",
 
   // ── Settings ──
   "settings.title": "设置",

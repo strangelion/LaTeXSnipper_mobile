@@ -66,6 +66,12 @@ export default {
   "pdf.prev": "Previous",
   "pdf.next": "Next",
   "pdf.selectPage": "Select Page",
+  "pdf.rangeTitle": "Select Pages",
+  "pdf.rangeDesc": "PDF has {{total}} pages. Select pages to recognize:",
+  "pdf.rangeHint": "e.g. 1-5, 1,3,5-7, 3 (all pages = 1-{{total}})",
+  "pdf.rangePlaceholder": "Page range",
+  "pdf.rangeAll": "Recognize All",
+  "pdf.rangeConfirm": "Recognize Selected",
 
   // ── Settings ──
   "settings.title": "Settings",

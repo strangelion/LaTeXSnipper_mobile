@@ -162,6 +162,23 @@
 
       <div class="error-msg" id="errorMsg" style="display:none;"></div>
 
+      <!-- PDF page range dialog -->
+      <div class="pdf-range-overlay" id="pdfRangeOverlay" style="display:none;">
+        <div class="pdf-range-dialog">
+          <div class="pdf-range-title" id="pdfRangeTitle" data-i18n="pdf.rangeTitle">选择识别页</div>
+          <div class="pdf-range-desc" id="pdfRangeDesc">PDF 共 N 页，请选择要识别的页面：</div>
+          <div class="pdf-range-input-row">
+            <input type="text" class="pdf-range-input" id="pdfRangeInput" data-i18n-placeholder="pdf.rangePlaceholder" placeholder="页码范围" autocomplete="off">
+            <button class="ocr-btn secondary pdf-range-all" id="pdfRangeAll" data-i18n="pdf.rangeAll">识别全部</button>
+          </div>
+          <div class="pdf-range-hint" data-i18n="pdf.rangeHint">例：1-5、1,3,5-7、3（全部页面 = 1-N）</div>
+          <div class="pdf-range-actions">
+            <button class="ocr-btn secondary" id="pdfRangeCancel" data-i18n="common.cancel">取消</button>
+            <button class="ocr-btn" id="pdfRangeConfirm" data-i18n="pdf.rangeConfirm">识别所选页</button>
+          </div>
+        </div>
+      </div>
+
       <!-- PDF page browser -->
       <div class="pdf-browser" id="pdfBrowser" style="display:none;">
         <div class="pdf-nav">
