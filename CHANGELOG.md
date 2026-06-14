@@ -22,6 +22,10 @@
   - 默认镜像：`gh.zwy.one`、`gh.xxooo.cf`
 - **SHA256 完整性校验** — 打包脚本自动生成 ZIP 的 SHA256 哈希，下载后用 Web Crypto API 校验
 - **断点续传** — HTTP Range header 支持中断后继续下载，进度持久化到 localStorage
+- **APK 体积优化（281 MB → 32 MB debug）** — pandoc.wasm（55.7 MB）改为按需下载 + 移除 NotoSansCJKsc 字体（15.7 MB，用系统字体回退）
+- **Pandoc WASM 按需下载** — 设置页添加下载按钮，下载后缓存到文件系统；未下载时导出菜单只显示 PNG/SVG/Typst
+- **下载进度条 + 通知栏** — 模型下载和 pandoc 下载均显示 UI 进度条 + Android 通知栏进度
+- **镜像测速优先** — 下载前并行 HEAD 请求测试所有源延迟，按速度排序优先使用最快的
 
 ### 新功能
 

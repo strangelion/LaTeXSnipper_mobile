@@ -8,6 +8,7 @@ import { showZipImportDialog, showFileImportDialog } from './model-import.js';
 import { openPackageBuilder } from './package-builder.js';
 import { t } from '../lang/i18n.js';
 import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
+import { showProgress, hideProgress } from './status.js';
 
 const CAT_LABELS = {
   'formula-det': '公式检测',
@@ -166,14 +167,44 @@ function bindEvents(container) {
       const variant = allVars[cat]?.variants.find(v => v.id === vid);
       if (!variant) return;
 
+      const catLabel = t(`model.cat_${cat}`) || cat;
       btn.disabled = true;
       btn.textContent = t('model.downloading');
+      showProgress(`${t('model.downloading')} ${catLabel}...`, 0);
+
+      // Start notification bar progress
+      if (isNativeOcrAvailable()) {
+        OcrNative.showNotification(`${t('model.downloading')} ${catLabel}`, 0, 100);
+      }
+
       try {
         await downloadVariant(source, cat, vid, variant, (info) => {
-          btn.textContent = `${info.downloaded}/${info.total}`;
+          // Update button text
+          if (info.downloading && info.total > 0) {
+            const pct = Math.round(info.downloaded / info.total * 100);
+            btn.textContent = `${pct}%`;
+            showProgress(`${t('model.downloading')} ${catLabel}`, pct);
+            if (isNativeOcrAvailable()) {
+              OcrNative.showNotification(`${t('model.downloading')} ${catLabel}`, pct, 100);
+            }
+          } else if (info.verifying) {
+            btn.textContent = 'SHA256...';
+            showProgress('SHA256...', 100);
+            if (isNativeOcrAvailable()) {
+              OcrNative.showNotification('SHA256...', 100, 100);
+            }
+          } else if (info.verified) {
+            btn.textContent = t('model.downloading');
+          } else if (info.file && info.total > 0) {
+            btn.textContent = `${info.downloaded}/${info.total}`;
+          }
         });
+        hideProgress();
+        if (isNativeOcrAvailable()) OcrNative.hideNotification();
         renderModelSettings(container);
       } catch (err) {
+        hideProgress();
+        if (isNativeOcrAvailable()) OcrNative.hideNotification();
         btn.textContent = t('model.downloadFailed');
         setTimeout(() => { btn.disabled = false; btn.textContent = t('model.download'); }, 2000);
       }

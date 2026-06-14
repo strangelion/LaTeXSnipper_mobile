@@ -94,6 +94,14 @@ export const OcrNative = {
   setAcceleration(opts) { return wrap('setAcceleration', opts.mode); },
   addListener() { return { remove: () => {} }; },
   removeAllListeners() {},
+
+  // Notification bar progress (fire-and-forget)
+  showNotification(title, progress, max) {
+    try { NO().showNotification(title, progress, max); } catch {}
+  },
+  hideNotification() {
+    try { NO().hideNotification(); } catch {}
+  },
 };
 
 export function isNativeOcrAvailable() {

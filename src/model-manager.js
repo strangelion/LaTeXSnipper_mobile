@@ -537,16 +537,47 @@ async function downloadFileWithMirrors(urls, progressKey, onProgress) {
 }
 
 /**
- * Build download URL list: primary baseUrl + mirrors.
+ * Build download URL list: primary baseUrl + mirrors, sorted by speed.
  */
-function buildMirrorUrls(baseUrl, mirrorUrls, filename) {
+async function buildMirrorUrls(baseUrl, mirrorUrls, filename) {
   const urls = [`${baseUrl}/${filename}`];
   if (mirrorUrls && Array.isArray(mirrorUrls)) {
     for (const mirror of mirrorUrls) {
       urls.push(`${mirror}/${filename}`);
     }
   }
-  return urls;
+  return sortUrlsBySpeed(urls);
+}
+
+/**
+ * Test download speed of each URL by requesting a small range.
+ * Returns URLs sorted by latency (fastest first).
+ */
+async function sortUrlsBySpeed(urls) {
+  if (urls.length <= 1) return urls;
+
+  const results = await Promise.allSettled(
+    urls.map(async (url) => {
+      const t0 = performance.now();
+      try {
+        const resp = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+        const latency = performance.now() - t0;
+        return { url, latency, ok: resp.ok };
+      } catch {
+        return { url, latency: Infinity, ok: false };
+      }
+    })
+  );
+
+  const sorted = results
+    .map(r => r.status === 'fulfilled' ? r.value : { url: '', latency: Infinity, ok: false })
+    .filter(r => r.ok)
+    .sort((a, b) => a.latency - b.latency);
+
+  if (sorted.length === 0) return urls;
+  const fastest = sorted.map(r => r.url);
+  const rest = urls.filter(u => !fastest.includes(u));
+  return [...fastest, ...rest];
 }
 
 // ── Download from manifest source ──

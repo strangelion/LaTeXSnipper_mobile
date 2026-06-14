@@ -2,15 +2,21 @@ package com.latexsnipper.app.ocr;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+
+import androidx.core.app.NotificationCompat;
 
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
@@ -613,5 +619,46 @@ public class NativeOcrBridge {
             }
         }
         return sb.toString();
+    }
+
+    // ── Notification bar progress ──
+
+    private static final String NOTIFICATION_CHANNEL_ID = "model_download";
+    private static final int NOTIFICATION_ID = 1001;
+
+    @JavascriptInterface
+    public void showNotification(String title, int progress, int max) {
+        try {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID, "Model Download", NotificationManager.IMPORTANCE_LOW);
+                channel.setDescription("Model package download progress");
+                nm.createNotificationChannel(channel);
+            }
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(title)
+                .setProgress(max, progress, max == 0)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true);
+
+            nm.notify(NOTIFICATION_ID, builder.build());
+        } catch (Exception e) {
+            Log.w(TAG, "showNotification failed: " + e.getMessage());
+        }
+    }
+
+    @JavascriptInterface
+    public void hideNotification() {
+        try {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(NOTIFICATION_ID);
+        } catch (Exception e) {
+            Log.w(TAG, "hideNotification failed: " + e.getMessage());
+        }
     }
 }

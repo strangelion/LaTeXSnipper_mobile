@@ -6,6 +6,8 @@ import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
 import Logger from '../shared/logger.js';
 import { shareFile } from '../shared/share.js';
 import { initModelSettings } from '../ui/model-settings.js';
+import { isPandocAvailable, downloadPandocWasm } from '../export/pandoc-init.js';
+import { showProgress, hideProgress } from '../ui/status.js';
 
 export function initSettings() {
   const extDiv = document.getElementById('extSettings');
@@ -323,6 +325,62 @@ export function initSettings() {
     } catch (_) {
       btn.textContent = t('btn.cacheClearFailed');
       setTimeout(() => btn.textContent = t('btn.clearCache'), 1500);
+    }
+  });
+
+  // ═══ Pandoc WASM download ═══
+  const pandocBtn = document.getElementById('btnDownloadPandoc');
+  const pandocStatus = document.getElementById('pandocStatus');
+  async function updatePandocStatus() {
+    try {
+      const available = await isPandocAvailable();
+      if (pandocStatus) {
+        pandocStatus.textContent = available ? '✓ 已下载' : '未下载';
+        pandocStatus.style.color = available ? 'var(--accent)' : 'var(--muted)';
+      }
+      if (pandocBtn) {
+        pandocBtn.textContent = available ? '重新下载' : '下载 Pandoc WASM（~58 MB）';
+        pandocBtn.disabled = false;
+      }
+    } catch {}
+  }
+  updatePandocStatus();
+
+  pandocBtn?.addEventListener('pointerdown', async e => {
+    e.preventDefault();
+    if (pandocBtn.disabled) return;
+    pandocBtn.disabled = true;
+    pandocBtn.textContent = '下载中...';
+    showProgress('下载 Pandoc WASM...', 0);
+
+    if (isNativeOcrAvailable()) {
+      OcrNative.showNotification('下载 Pandoc WASM', 0, 100);
+    }
+
+    try {
+      await downloadPandocWasm((info) => {
+        if (info.phase === 'downloading' && info.total > 0) {
+          const pct = Math.round(info.downloaded / info.total * 100);
+          pandocBtn.textContent = `${pct}%`;
+          showProgress(`下载 Pandoc WASM (${(info.downloaded / 1024 / 1024).toFixed(1)}/${(info.total / 1024 / 1024).toFixed(1)} MB)`, pct);
+          if (isNativeOcrAvailable()) {
+            OcrNative.showNotification('下载 Pandoc WASM', pct, 100);
+          }
+        } else if (info.phase === 'cached') {
+          pandocBtn.textContent = '✓ 已下载';
+          showProgress('缓存中...', 100);
+        }
+      });
+      hideProgress();
+      if (isNativeOcrAvailable()) OcrNative.hideNotification();
+      await updatePandocStatus();
+    } catch (err) {
+      hideProgress();
+      if (isNativeOcrAvailable()) OcrNative.hideNotification();
+      pandocBtn.textContent = '下载失败';
+      pandocBtn.disabled = false;
+      Logger.error('SETTINGS', 'Pandoc download failed', err);
+      setTimeout(() => { pandocBtn.textContent = '下载 Pandoc WASM（~58 MB）'; }, 2000);
     }
   });
 

@@ -10,8 +10,10 @@
 // structural converter instead of pandoc for Typst).
 
 import Logger from '../shared/logger.js';
+import { isPandocAvailable } from './pandoc-init.js';
 
 // ── Export format definitions ──
+// action: 'render' = KaTeX SVG/PNG (no pandoc), 'pandoc' = needs pandoc.wasm, 'typst' = pure JS
 export const EXPORT_FORMATS = [
   { id: 'png',      action: 'render', ext: 'png',  mime: 'image/png',       label: 'PNG' },
   { id: 'svg',      action: 'render', ext: 'svg',  mime: 'image/svg+xml',   label: 'SVG' },
@@ -23,6 +25,25 @@ export const EXPORT_FORMATS = [
   { id: 'docx',     action: 'pandoc', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'Word' },
   { id: 'plain',    action: 'pandoc', ext: 'txt',  mime: 'text/plain',      label: 'Plain Text' },
 ];
+
+/**
+ * Get available export formats based on pandoc availability.
+ * If pandoc is not downloaded, only show render (PNG/SVG) and typst formats.
+ */
+export async function getAvailableFormats() {
+  const pandocReady = await isPandocAvailable();
+  if (pandocReady) return EXPORT_FORMATS;
+  return EXPORT_FORMATS.filter(f => f.action !== 'pandoc');
+}
+
+/**
+ * Check if pandoc is needed but not available.
+ */
+export async function isPandocNeeded(formatId) {
+  const fmt = EXPORT_FORMATS.find(f => f.id === formatId);
+  if (!fmt || fmt.action !== 'pandoc') return false;
+  return !(await isPandocAvailable());
+}
 
 export function getFormatLabel(fmt, t) {
   const key = 'export.format.' + fmt.id;
@@ -476,44 +497,49 @@ export function createExportDropdown(container, { getText, t }) {
   const list = document.createElement('div');
   list.className = 'export-dropdown-list';
 
-  EXPORT_FORMATS.forEach(fmt => {
-    const item = document.createElement('div');
-    item.className = 'export-dropdown-item';
-    item.textContent = getFormatLabel(fmt, _t);
-    item.dataset.fmt = fmt.id;
+  // Rebuild items on each open to reflect current pandoc availability
+  async function rebuildItems() {
+    list.innerHTML = '';
+    const formats = await getAvailableFormats();
+    formats.forEach(fmt => {
+      const item = document.createElement('div');
+      item.className = 'export-dropdown-item';
+      item.textContent = getFormatLabel(fmt, _t);
+      item.dataset.fmt = fmt.id;
 
-    item.addEventListener('pointerdown', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      closeExportDropdowns();
+      item.addEventListener('pointerdown', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeExportDropdowns();
 
-      const text = getText();
-      if (!text || !text.trim()) return;
+        const text = getText();
+        if (!text || !text.trim()) return;
 
-      btn.textContent = _t('export.exporting');
-      btn.disabled = true;
+        btn.textContent = _t('export.exporting');
+        btn.disabled = true;
 
-      try {
-        await exportLatex(text, fmt);
-      } catch (err) {
-        Logger.error('EXPORT', 'Export via dropdown failed', err);
-      } finally {
-        btn.textContent = _t('export.trigger');
-        btn.disabled = false;
-      }
+        try {
+          await exportLatex(text, fmt);
+        } catch (err) {
+          Logger.error('EXPORT', 'Export via dropdown failed', err);
+        } finally {
+          btn.textContent = _t('export.trigger');
+          btn.disabled = false;
+        }
+      });
+
+      list.appendChild(item);
     });
-
-    list.appendChild(item);
-  });
+  }
   wrap.appendChild(list);
 
-  btn.addEventListener('pointerdown', (e) => {
+  btn.addEventListener('pointerdown', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     const isOpen = list.classList.contains('show');
-    // Close any other export dropdowns first
     closeExportDropdowns();
     if (!isOpen) {
+      await rebuildItems();
       list.classList.add('show');
       btn.classList.add('open');
     }
