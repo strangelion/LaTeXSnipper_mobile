@@ -362,6 +362,11 @@ async function boot() {
 
   // 10. Load models — initModels handles its own status bar updates
   initModels();
+
+  // 11. Check first launch — show welcome dialog if needed
+  import('./ui/welcome-dialog.js').then(({ checkFirstLaunch }) => {
+    checkFirstLaunch();
+  }).catch(() => {});
 }
 
 setupTabs();

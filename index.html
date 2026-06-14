@@ -165,16 +165,39 @@
       <!-- PDF page range dialog -->
       <div class="pdf-range-overlay" id="pdfRangeOverlay" style="display:none;">
         <div class="pdf-range-dialog">
-          <div class="pdf-range-title" id="pdfRangeTitle" data-i18n="pdf.rangeTitle">选择识别页</div>
-          <div class="pdf-range-desc" id="pdfRangeDesc">PDF 共 N 页，请选择要识别的页面：</div>
-          <div class="pdf-range-input-row">
-            <input type="text" class="pdf-range-input" id="pdfRangeInput" data-i18n-placeholder="pdf.rangePlaceholder" placeholder="页码范围" autocomplete="off">
-            <button class="ocr-btn secondary pdf-range-all" id="pdfRangeAll" data-i18n="pdf.rangeAll">识别全部</button>
+          <div class="pdf-range-header">
+            <div class="pdf-range-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
+            <div>
+              <div class="pdf-range-title" id="pdfRangeTitle" data-i18n="pdf.rangeTitle">选择识别页</div>
+              <div class="pdf-range-desc" id="pdfRangeDesc">PDF 共 N 页</div>
+            </div>
           </div>
-          <div class="pdf-range-hint" data-i18n="pdf.rangeHint">例：1-5、1,3,5-7、3（全部页面 = 1-N）</div>
+
+          <div class="pdf-range-quick-btns">
+            <button class="pdf-range-quick" id="pdfRangeAll" data-i18n="pdf.rangeAll">全部页面</button>
+            <button class="pdf-range-quick" data-range="1">第1页</button>
+            <button class="pdf-range-quick" data-range="1-5">前5页</button>
+            <button class="pdf-range-quick" data-range="1-10">前10页</button>
+          </div>
+
+          <div class="pdf-range-input-group">
+            <label class="pdf-range-label" data-i18n="pdf.rangeInputLabel">自定义范围</label>
+            <input type="text" class="pdf-range-input" id="pdfRangeInput" data-i18n-placeholder="pdf.rangePlaceholder" placeholder="例：1-5、1,3,5-7" autocomplete="off">
+          </div>
+
+          <div class="pdf-range-hint" data-i18n="pdf.rangeHint">支持格式：1-5、1,3,5-7、3</div>
+
           <div class="pdf-range-actions">
-            <button class="ocr-btn secondary" id="pdfRangeCancel" data-i18n="common.cancel">取消</button>
-            <button class="ocr-btn" id="pdfRangeConfirm" data-i18n="pdf.rangeConfirm">识别所选页</button>
+            <button class="pdf-range-btn secondary" id="pdfRangeCancel" data-i18n="common.cancel">取消</button>
+            <button class="pdf-range-btn primary" id="pdfRangeConfirm" data-i18n="pdf.rangeConfirm">开始识别</button>
           </div>
         </div>
       </div>
@@ -258,142 +281,180 @@
     <!-- ── Tab 4: Settings ── -->
     <div class="page" id="page-settings">
       <div class="settings-body">
-        <div class="set-section">
-          <div class="set-section-title" data-i18n="settings.engine">识别引擎</div>
-          <div class="set-select-wrap">
-            <select class="set-select" id="setEngineSelect">
-              <option value="builtin" selected data-i18n="settings.engine.builtin">本地识别</option>
-              <option value="hybrid" data-i18n="settings.engine.hybrid">本地识别 + AI整理</option>
-              <option value="external" data-i18n="settings.engine.external">AI全托管</option>
-            </select>
-          </div>
-          <p class="set-hint" data-i18n="settings.engineHint">内置识别使用本地ONNX模型离线运行。AI整理可将识别结果发送到外部LLM纠错。</p>
+
+        <!-- Settings sub-tabs -->
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-settings-tab="recog" data-i18n="settings.tabRecog">识别</button>
+          <button class="settings-tab" data-settings-tab="models" data-i18n="settings.tabModels">模型</button>
+          <button class="settings-tab" data-settings-tab="general" data-i18n="settings.tabGeneral">通用</button>
         </div>
 
-        <div id="extSettings" style="display:none;">
-          <div class="set-section">
-            <div class="set-section-title" data-i18n="settings.presets">预设</div>
-            <div class="set-select-wrap">
-            <select class="set-select" id="setPresetSelect">
-              <option value="" data-i18n="settings.custom">自定义</option>
-              <option value="paddle">PaddleOCR</option>
-              <option value="silicon">SiliconFlow</option>
-              <option value="gemini">Gemini</option>
-              <option value="mineru-native">MinerU</option>
-            </select>
+        <!-- ═══ Tab: 识别 ═══ -->
+        <div class="settings-panel" data-panel="recog">
+          <div class="set-group">
+            <div class="set-group-title" data-i18n="settings.engine">识别引擎</div>
+
+            <div class="set-section">
+              <div class="set-section-title" data-i18n="settings.engine">引擎模式</div>
+              <div class="set-select-wrap">
+                <select class="set-select" id="setEngineSelect">
+                  <option value="builtin" selected data-i18n="settings.engine.builtin">本地识别</option>
+                  <option value="hybrid" data-i18n="settings.engine.hybrid">本地识别 + AI整理</option>
+                  <option value="external" data-i18n="settings.engine.external">AI全托管</option>
+                </select>
+              </div>
+              <p class="set-hint" data-i18n="settings.engineHint">内置识别使用本地ONNX模型离线运行。AI整理可将识别结果发送到外部LLM纠错。</p>
+            </div>
+
+            <div id="extSettings" style="display:none;">
+              <div class="set-section">
+                <div class="set-section-title" data-i18n="settings.presets">预设</div>
+                <div class="set-select-wrap">
+                  <select class="set-select" id="setPresetSelect">
+                    <option value="" data-i18n="settings.custom">自定义</option>
+                    <option value="paddle">PaddleOCR</option>
+                    <option value="silicon">SiliconFlow</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="mineru-native">MinerU</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="set-section">
+                <div class="set-section-title" data-i18n="settings.connection">连接配置</div>
+                <input class="set-input" id="setBaseUrl" data-i18n-placeholder="settings.externalBaseUrl" placeholder="https://api.openai.com/v1">
+                <input class="set-input" id="setModel" data-i18n-placeholder="settings.externalModel" placeholder="模型名称，如 gpt-4o" style="margin-top:0.5rem;">
+                <input class="set-input" type="password" id="setApiKey" data-i18n-placeholder="settings.externalApiKey" placeholder="API Key（sk-...）" style="margin-top:0.5rem;">
+                <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.6rem;" data-i18n="settings.test">测试连接</button>
+                <span id="setTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
+                <p class="set-hint" style="margin-top:0.4rem;">支持 OpenAI 兼容 API (DeepSeek / SiliconFlow / Gemini 等)</p>
+              </div>
+            </div>
+
+            <div class="set-section" id="polishSection" style="display:none;">
+              <div class="set-section-title" data-i18n="btn.aiPolish">AI 整理 (纠错/格式化)</div>
+              <input class="set-input" id="setPolishBaseUrl" placeholder="https://api.deepseek.com">
+              <input class="set-input" id="setPolishModel" placeholder="deepseek-chat" style="margin-top:0.4rem;">
+              <input class="set-input" type="password" id="setPolishApiKey" placeholder="API Key（sk-...）" style="margin-top:0.4rem;">
+              <button class="ocr-btn secondary" id="setPolishTest" style="width:100%;margin-top:0.4rem;" data-i18n="settings.test">测试连接</button>
+              <span id="setPolishTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
+              <p class="set-hint" style="margin-top:0.4rem;">支持 OpenAI 兼容 API。建议使用文本能力强的模型 (DeepSeek / GPT 等)。</p>
+            </div>
+
+            <div class="set-section">
+              <div class="set-section-title" data-i18n="settings.accel">加速模式</div>
+              <div class="set-select-wrap">
+                <select class="set-select" id="setAccelSelect">
+                  <option value="gpu" data-i18n="settings.accelGpu">GPU (NNAPI 加速)</option>
+                  <option value="cpu" data-i18n="settings.accelCpu">CPU (兼容模式)</option>
+                </select>
+              </div>
+              <p class="set-hint" data-i18n="settings.accelHint" style="font-size:0.78rem;">GPU加速使用Android NNAPI，自动调用OpenGL/Vulkan NPU。识别效果与CPU一致，速度更快。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Tab: 模型 ═══ -->
+        <div class="settings-panel" data-panel="models" style="display:none;">
+          <div class="set-group">
+            <div id="modelManagement">
+              <!-- JS dynamically renders model management UI -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Tab: 通用 ═══ -->
+        <div class="settings-panel" data-panel="general" style="display:none;">
+          <div class="set-group">
+            <div class="set-group-title" data-i18n="settings.appearance">外观</div>
+
+            <div class="set-section">
+              <div class="set-section-title" data-i18n="settings.skin">皮肤</div>
+              <div class="set-select-wrap">
+                <select class="set-select" id="setSkinSelect">
+                  <option value="default">Material 蓝</option>
+                  <option value="miui">MIUI 渐变</option>
+                  <option value="ios">iOS 蓝</option>
+                  <option value="sakura">樱花和风</option>
+                  <option value="matrix">黑客矩阵</option>
+                  <option value="warm">暖咖纸墨</option>
+                  <option value="minimal">极简纤白</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="set-section">
+              <div class="set-section-title" data-i18n="settings.language">语言 / Language</div>
+              <div class="set-select-wrap">
+                <select class="set-select" id="setLangSelect">
+                  <option value="zh-CN">中文</option>
+                  <option value="zh-TW">繁體中文</option>
+                  <option value="en">English</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="set-section">
+              <div class="set-section-title" data-i18n="settings.renderEngine">公式渲染引擎</div>
+              <div class="set-select-wrap">
+                <select class="set-select" id="setRenderEngineSelect">
+                  <option value="katex" data-i18n="settings.renderEngine.katex">KaTeX（轻量快速）</option>
+                  <option value="mathjax" data-i18n="settings.renderEngine.mathjax">MathJax（兼容性更好）</option>
+                </select>
+              </div>
+              <p class="set-hint" data-i18n="settings.renderEngineHint">KaTeX体积小(265KB)，渲染快；MathJax兼容性更好。</p>
             </div>
           </div>
 
-          <div class="set-section">
-            <div class="set-section-title" data-i18n="settings.connection">连接配置</div>
-            <input class="set-input" id="setBaseUrl" data-i18n-placeholder="settings.externalBaseUrl" placeholder="https://api.openai.com/v1">
-            <input class="set-input" id="setModel" data-i18n-placeholder="settings.externalModel" placeholder="模型名称，如 gpt-4o" style="margin-top:0.5rem;">
-            <input class="set-input" type="password" id="setApiKey" data-i18n-placeholder="settings.externalApiKey" placeholder="API Key（sk-...）" style="margin-top:0.5rem;">
-            <button class="ocr-btn secondary" id="setTestConn" style="width:100%;margin-top:0.6rem;" data-i18n="settings.test">测试连接</button>
-            <div id="setTestResult" style="font-size:0.8rem;margin-top:0.4rem;"></div>
+          <div class="set-group">
+            <div class="set-group-title" data-i18n="settings.about">关于</div>
+
+            <div class="set-section">
+              <button class="ocr-btn secondary" id="checkUpdateBtn" style="width:100%;" data-i18n="update.checkUpdate">检查更新</button>
+              <label class="set-toggle" style="margin-top:0.6rem;">
+                <input type="checkbox" id="setAutoUpdate">
+                <span class="set-toggle-track"></span>
+                自动检查更新
+              </label>
+            </div>
           </div>
-            <span id="setTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
-            <p class="set-hint" style="margin-top:0.4rem;">支持 OpenAI 兼容 API (DeepSeek / SiliconFlow / Gemini 等)</p>
+
+          <!-- ═══ 开发者选项 (默认隐藏) ═══ -->
+          <div class="set-group">
+            <div class="set-group-title" style="cursor:pointer;" id="devGroupTitle">
+              开发者选项 ▸
+            </div>
+            <div id="devOptions" style="display:none;">
+              <div class="set-section">
+                <label class="set-toggle">
+                  <input type="checkbox" id="setDevMode">
+                  <span class="set-toggle-track"></span>
+                  <span data-i18n="dev.devMode">开发者模式</span>
+                </label>
+              </div>
+              <div class="set-section" id="devOptionsContent" style="display:none;">
+                <label class="set-toggle">
+                  <input type="checkbox" id="devMultiThread" checked>
+                  <span class="set-toggle-track"></span>
+                  <span data-i18n="dev.multiThread">ONNX 多线程 (最多8核+SIMD)</span>
+                </label>
+                <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
+                <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+                  <button class="ocr-btn secondary" id="devShowLogs" data-i18n="dev.showLogs" style="flex:1;">查看日志</button>
+                  <button class="ocr-btn secondary" id="devClearLogs" data-i18n="dev.clearLogs" style="flex:1;">清空日志</button>
+                  <button class="ocr-btn secondary" id="devExportLogs" data-i18n="dev.exportLogs" style="flex:1;">导出日志</button>
+                </div>
+                <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;" data-i18n="btn.clearCache">清除模型缓存</button>
+              </div>
+            </div>
           </div>
-        </div>
-
-
-        <div class="set-section" id="polishSection" style="margin-top:1rem;">
-          <div class="set-section-title" data-i18n="btn.aiPolish">AI 整理 (纠错/格式化)</div>
-          <input class="set-input" id="setPolishBaseUrl" placeholder="https://api.deepseek.com">
-          <input class="set-input" id="setPolishModel" placeholder="deepseek-chat" style="margin-top:0.4rem;">
-          <input class="set-input" type="password" id="setPolishApiKey" placeholder="API Key（sk-...）" style="margin-top:0.4rem;">
-          <button class="ocr-btn secondary" id="setPolishTest" style="width:100%;margin-top:0.4rem;" data-i18n="settings.test">测试连接</button>
-          <span id="setPolishTestResult" style="font-size:0.78rem;display:block;margin-top:0.3rem;"></span>
-          <p class="set-hint" style="margin-top:0.4rem;">支持 OpenAI 兼容 API。建议使用文本能力强的模型 (DeepSeek / GPT 等)。</p>
-        </div>
-
-        <div class="set-section" style="margin-top:1rem;">
-          <div class="set-section-title" data-i18n="settings.accel">加速模式</div>
-          <div class="set-select-wrap">
-            <select class="set-select" id="setAccelSelect">
-              <option value="gpu" data-i18n="settings.accelGpu">GPU (NNAPI 加速)</option>
-              <option value="cpu" data-i18n="settings.accelCpu">CPU (兼容模式)</option>
-            </select>
-          </div>
-          <p class="set-hint" data-i18n="settings.accelHint" style="font-size:0.78rem;">GPU加速使用Android NNAPI，自动调用OpenGL/Vulkan NPU。识别效果与CPU一致，速度更快。</p>
-        </div>
-
-        <div class="set-section" style="margin-top:1rem;">
-          <div class="set-section-title" data-i18n="settings.skin">皮肤</div>
-          <div class="set-select-wrap">
-            <select class="set-select" id="setSkinSelect">
-              <option value="default">Material 蓝</option>
-              <option value="miui">MIUI 渐变</option>
-              <option value="ios">iOS 蓝</option>
-              <option value="sakura">樱花和风</option>
-              <option value="matrix">黑客矩阵</option>
-              <option value="warm">暖咖纸墨</option>
-              <option value="minimal">极简纤白</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="set-section" style="margin-top:1rem;">
-          <div class="set-section-title" data-i18n="settings.language">语言 / Language</div>
-          <div class="set-select-wrap">
-            <select class="set-select" id="setLangSelect">
-              <option value="zh-CN">中文</option>
-              <option value="zh-TW">繁體中文</option>
-              <option value="en">English</option>
-              <option value="ja">日本語</option>
-              <option value="ko">한국어</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="set-section" style="margin-top:1rem;">
-          <button class="ocr-btn secondary" id="checkUpdateBtn" style="width:100%;" data-i18n="update.checkUpdate">检查更新</button>
-          <label class="set-toggle" style="margin-top:0.6rem;">
-            <input type="checkbox" id="setAutoUpdate">
-            <span class="set-toggle-track"></span>
-            自动检查更新
-          </label>
-        </div>
-
-        <!-- ═══ Formula Render Engine ═══ -->
-        <div class="set-section" style="margin-top:1rem;">
-          <div class="set-section-title" data-i18n="settings.renderEngine">公式渲染引擎</div>
-          <div class="set-select-wrap">
-            <select class="set-select" id="setRenderEngineSelect">
-              <option value="katex" data-i18n="settings.renderEngine.katex">KaTeX（轻量快速）</option>
-              <option value="mathjax" data-i18n="settings.renderEngine.mathjax">MathJax（兼容性更好）</option>
-            </select>
-          </div>
-          <p class="set-hint" data-i18n="settings.renderEngineHint">KaTeX体积小(265KB)，渲染快；MathJax兼容性更好。设置后刷新OCR结果页生效。</p>
         </div>
 
         <button class="ocr-btn" id="settingsSave" style="width:100%;margin-top:0.8rem;" data-i18n="btn.saveSettings">保存设置</button>
 
-        <div class="set-section" style="margin-top:1.2rem;">
-          <div class="set-section-title" data-i18n="dev.title">开发者选项</div>
-          <label class="set-toggle">
-            <input type="checkbox" id="setDevMode">
-            <span class="set-toggle-track"></span>
-            <span data-i18n="dev.devMode">开发者模式</span>
-          </label>
-          <div id="devOptions" style="display:none;margin-top:0.6rem;">
-            <label class="set-toggle">
-              <input type="checkbox" id="devMultiThread" checked>
-              <span class="set-toggle-track"></span>
-              <span data-i18n="dev.multiThread">ONNX 多线程 (最多8核+SIMD)</span>
-            </label>
-            <pre id="devLogOutput" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg);border-radius:8px;font-size:0.72rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
-            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
-              <button class="ocr-btn secondary" id="devShowLogs" data-i18n="dev.showLogs" style="flex:1;">查看日志</button>
-              <button class="ocr-btn secondary" id="devClearLogs" data-i18n="dev.clearLogs" style="flex:1;">清空日志</button>
-              <button class="ocr-btn secondary" id="devExportLogs" data-i18n="dev.exportLogs" style="flex:1;">导出日志</button>
-            </div>
-            <button class="ocr-btn secondary" id="devClearCache" style="width:100%;margin-top:0.3rem;" data-i18n="btn.clearCache">清除模型缓存</button>
-          </div>
-        </div>
-
-        <p class="set-hint">外部模型通过云端 API 识别，需网络和 API Key。内置 ONNX 完全离线运行。</p>
+        <p class="set-hint" style="margin-top:1rem;margin-bottom:2rem;">外部模型通过云端 API 识别，需网络和 API Key。内置 ONNX 完全离线运行。</p>
       </div>
     </div>
 

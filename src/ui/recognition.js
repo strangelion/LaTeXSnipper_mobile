@@ -70,7 +70,6 @@ function showPageRangeDialog(totalPages) {
     const overlay = document.getElementById('pdfRangeOverlay');
     const input = document.getElementById('pdfRangeInput');
     const desc = document.getElementById('pdfRangeDesc');
-    const hint = document.querySelector('.pdf-range-hint');
     const allBtn = document.getElementById('pdfRangeAll');
     const confirmBtn = document.getElementById('pdfRangeConfirm');
     const cancelBtn = document.getElementById('pdfRangeCancel');
@@ -80,18 +79,28 @@ function showPageRangeDialog(totalPages) {
       return;
     }
 
-    // Update description and hint with page count
+    // Update description with page count
     if (desc) desc.textContent = t('pdf.rangeDesc', { total: totalPages });
-    if (hint) hint.textContent = t('pdf.rangeHint', { total: totalPages });
 
     // Default: suggest all pages
     input.value = '1-' + totalPages;
     input.placeholder = t('pdf.rangePlaceholder');
-    input.focus();
-    input.select();
+
+    // Quick select buttons
+    const quickBtns = overlay.querySelectorAll('.pdf-range-quick[data-range]');
+    quickBtns.forEach(btn => {
+      btn.onclick = () => {
+        const range = btn.dataset.range;
+        if (range) {
+          input.value = range;
+          input.focus();
+        }
+      };
+    });
 
     function cleanup() {
       overlay.style.display = 'none';
+      quickBtns.forEach(btn => { btn.onclick = null; });
       allBtn.removeEventListener('click', onAll);
       confirmBtn.removeEventListener('click', onConfirm);
       cancelBtn.removeEventListener('click', onCancel);
@@ -107,11 +116,9 @@ function showPageRangeDialog(totalPages) {
     function onConfirm() {
       const parsed = parsePageRange(input.value, totalPages);
       if (parsed === null) {
-        // Parsed as "all" or empty
         cleanup();
         resolve(null);
       } else if (parsed.length === 0) {
-        // Invalid input — shake the input
         input.style.borderColor = '#ef4444';
         setTimeout(() => { input.style.borderColor = ''; }, 600);
         input.focus();
@@ -143,6 +150,8 @@ function showPageRangeDialog(totalPages) {
     input.addEventListener('keydown', onKeydown);
 
     overlay.style.display = 'flex';
+    input.focus();
+    input.select();
   });
 }
 
@@ -223,10 +232,8 @@ async function processPDFNative(file, pageRange, onProgress) {
 
 export async function processImage(file) {
   // ── Check models are ready before processing ──
-  // If native mode but models haven't finished loading, wait.
   if (isNative() && !window.__modelsReady) {
     setStatus('loading', t('status.loadingModel'), true);
-    // Poll for models up to 3 minutes
     for (let i = 0; i < 180; i++) {
       await new Promise(r => setTimeout(r, 1000));
       if (window.__modelsReady) break;
@@ -256,16 +263,25 @@ export async function processImage(file) {
     return processImageExternal(file, settings);
   }
 
-  // ── Native mode (Android) ──
+  // ── Native mode — check if models are actually available ──
   if (isNative()) {
+    const mode = window.__recogMode?.() || 'formula';
+    const hasFormulaModels = window.__nativeModelStatus?.formulaDet && window.__nativeModelStatus?.formulaRec;
+    const hasTextModels = window.__nativeModelStatus?.textDet && window.__nativeModelStatus?.textRec;
+    Logger.info('recog', `Mode: ${mode}, formulaModels: ${hasFormulaModels}, textModels: ${hasTextModels}, nativeModelStatus: ${JSON.stringify(window.__nativeModelStatus)}`);
+
+    if ((mode === 'formula' && !hasFormulaModels) || (mode === 'text' && !hasTextModels) || (mode === 'mixed' && !hasFormulaModels && !hasTextModels)) {
+      const msg = t('status.noModels') || 'No local models installed. Download models in Settings or switch to External API.';
+      showError(msg);
+      setStatus('ready', msg, false);
+      return null;
+    }
     try {
-      // Pass original file to native — Java side handles all preprocessing/resize
-      // (compressImage only runs for camera output > 500KB)
       const base64 = await fileToBase64(file);
-      const mode = window.__recogMode?.() || 'formula';
       const Ocr = OcrNative;
 
-      if (file.type === 'application/pdf') {
+      const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
         setStatus('processing', t('status.recognizingPdf'), true);
 
         // processPDFNative reads the PDF once, shows page range dialog,
@@ -333,6 +349,7 @@ export async function processImage(file) {
 
       URL.revokeObjectURL(url);
       lastRecognitionTime = Date.now();
+      Logger.info('recog', `Result: ${JSON.stringify({ error: result?.error, latex: result?.latex?.substring(0, 50), text: result?.text?.substring(0, 50), confidence: result?.confidence, regions: result?.regions?.length })}`);
 
       if (result && result.error) {
         showError(t('recog.recognitionFailed', {msg: result.error}));
@@ -343,6 +360,7 @@ export async function processImage(file) {
       // Extract text: formula/text modes use latex/text, mixed mode uses formattedText or regions
       let text = result.latex || result.text || '';
       let confidence = result.confidence || 0;
+      Logger.info('recog', `Extracted text: "${text.substring(0, 100)}", confidence: ${confidence}`);
 
       // Mixed mode: if formattedText is empty, fall back to combining region texts
       if (!text && result.regions) {
@@ -352,6 +370,7 @@ export async function processImage(file) {
       }
 
       if (!text) {
+        Logger.warn('recog', `Empty result: confidence=${confidence}, result=${JSON.stringify(result).substring(0, 200)}`);
         showError((confidence ? t('recog.confidenceTooLow', {pct: (confidence*100).toFixed(1)}) : t('recog.emptyResult')));
         setStatus('ready', t('status.readyRetry'), false);
         return null;

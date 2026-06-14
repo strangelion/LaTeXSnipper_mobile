@@ -123,6 +123,17 @@ function bindGlobalEvents() {
 // ── Model initialization (Native OcrPlugin on Android) ──
 
 export async function initModels(onProgress) {
+  // Check if external API mode — skip native model loading entirely
+  let settings = {};
+  try { settings = JSON.parse(localStorage.getItem('ls_settings') || '{}'); } catch (_) {}
+  if (settings.engine && settings.engine !== 'builtin' && settings.baseUrl) {
+    Logger.info('init', 'External API mode, skipping native model loading');
+    window.__modelsReady = true;
+    window.__nativeModelStatus = { formulaDet: false, formulaRec: false, textDet: false, textRec: false, docOri: false };
+    setStatusSafe('ready', 'status.ready', false);
+    return;
+  }
+
   // Wait up to 8s for the Android native bridge to be injected
   const bridgeReady = await waitForNativeOcr(8000);
   if (!bridgeReady) {
@@ -133,13 +144,11 @@ export async function initModels(onProgress) {
 
   Logger.info('init', 'NativeOcr bridge detected');
   try {
-    // Apply saved acceleration mode before loading
     try {
       const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
       await OcrNative.setAcceleration({ mode: saved.accel || 'gpu' });
     } catch (_) {}
 
-    // Load models (background thread on Java, poll until ready)
     setStatusSafe('loading', 'status.loadingModel', true);
     OcrNative._loadProgress = 5;
 
@@ -152,7 +161,16 @@ export async function initModels(onProgress) {
       return;
     }
 
-    Logger.info('init', 'Models loaded in ' + ((performance.now() - t0) / 1000).toFixed(1) + 's');
+    // Query which models actually loaded
+    try {
+      const statusRaw = await window.NativeOcr.getModelStatus();
+      window.__nativeModelStatus = typeof statusRaw === 'string' ? JSON.parse(statusRaw) : statusRaw;
+    } catch (_) {
+      window.__nativeModelStatus = { formulaDet: false, formulaRec: false, textDet: false, textRec: false, docOri: false };
+    }
+
+    const avail = Object.values(window.__nativeModelStatus).filter(Boolean).length;
+    Logger.info('init', 'Models loaded in ' + ((performance.now() - t0) / 1000).toFixed(1) + 's (' + avail + '/5 available)');
     window.__modelsReady = true;
     if (updateSplash) updateSplash('就绪', 100);
     await new Promise(r => setTimeout(r, 300));

@@ -76,12 +76,40 @@ public class NativeOcrBridge {
             logs = logBuffer.toString();
             logBuffer.setLength(0);
         }
+        // Also append OcrEngine file log
+        try {
+            java.io.File logFile = new java.io.File(context.getFilesDir(), "ocr-debug.log");
+            if (logFile.exists()) {
+                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(logFile));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line).append("\n");
+                br.close();
+                if (sb.length() > 0) logs += "\n\n=== OcrEngine Debug Log ===\n" + sb.toString();
+                logFile.delete(); // Clear after reading
+            }
+        } catch (Exception e) { /* ignore */ }
         return logs;
     }
 
     @JavascriptInterface
     public boolean isReady() {
         return ocrEngine.isReady();
+    }
+
+    @JavascriptInterface
+    public String getModelStatus() {
+        try {
+            org.json.JSONObject status = new org.json.JSONObject();
+            status.put("formulaDet", ocrEngine.getRunner().isFormulaDetReady());
+            status.put("formulaRec", ocrEngine.getRunner().isFormulaRecReady());
+            status.put("textDet", ocrEngine.getRunner().isTextDetReady());
+            status.put("textRec", ocrEngine.getRunner().isTextRecReady());
+            status.put("docOri", ocrEngine.getRunner().isDocOriReady());
+            return status.toString();
+        } catch (Exception e) {
+            return "{}";
+        }
     }
 
     @JavascriptInterface
@@ -105,6 +133,23 @@ public class NativeOcrBridge {
     }
 
     @JavascriptInterface
+    public String reloadModels() {
+        loadingStarted = true;
+        new Thread(() -> {
+            try {
+                addLog("MODEL", "Reloading models...");
+                ocrEngine.reloadModels(context);
+                addLog("MODEL", "Models reloaded");
+                Log.d(TAG, "Models reloaded");
+            } catch (Exception e) {
+                addLog("MODEL", "Reload FAILED: " + e.getMessage());
+                Log.e(TAG, "reloadModels failed", e);
+            }
+        }, "model-reloader").start();
+        return "loading";
+    }
+
+    @JavascriptInterface
     public String getStatus() {
         if (ocrEngine.isReady()) return "ready";
         if (loadingStarted) return "loading";
@@ -121,14 +166,12 @@ public class NativeOcrBridge {
         String key = type + "_" + (callCounter++);
         final String logKey = key;
         Log.d(TAG, "Starting " + type + " (key=" + logKey + ")");
+        addLog("OCR", "Starting " + type + " recognition");
         executor.submit(() -> {
             try {
                 boolean[] exifApplied = new boolean[1];
                 long t0 = System.currentTimeMillis();
                 Bitmap bitmap = decodeImageWithOrientation(base64Image, exifApplied);
-                Log.d(TAG, type + " decode=" + (System.currentTimeMillis()-t0) + "ms "
-                    + bitmap.getWidth() + "x" + bitmap.getHeight()
-                    + " exif=" + exifApplied[0]);
                 addLog("OCR", type + " decode " + (System.currentTimeMillis()-t0) + "ms "
                     + bitmap.getWidth() + "x" + bitmap.getHeight());
 
@@ -144,15 +187,21 @@ public class NativeOcrBridge {
                     addLog("OCR", "EXIF already oriented: " + bitmap.getWidth() + "x" + bitmap.getHeight());
                 }
 
+                addLog("OCR", type + " starting inference, bitmap=" + bitmap.getWidth() + "x" + bitmap.getHeight());
                 t0 = System.currentTimeMillis();
                 String result = rec.run(bitmap);
                 bitmap.recycle();
-                Log.d(TAG, type + " done in " + (System.currentTimeMillis()-t0) + "ms");
-                addLog("OCR", type + " done " + (System.currentTimeMillis()-t0) + "ms");
+                long elapsed = System.currentTimeMillis()-t0;
+                addLog("OCR", type + " done " + elapsed + "ms, result length=" + (result != null ? result.length() : 0));
+                // Log first 200 chars of result for debugging
+                if (result != null && result.length() > 0) {
+                    addLog("OCR", type + " result preview: " + result.substring(0, Math.min(200, result.length())));
+                }
                 pendingResult = result;
                 pendingKey = key;
             } catch (Exception e) {
                 Log.e(TAG, type + " FAILED (key=" + logKey + ")", e);
+                addLog("OCR", type + " FAILED: " + e.getClass().getSimpleName() + ": " + e.getMessage());
                 pendingResult = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
                 pendingKey = key;
             }
@@ -183,7 +232,13 @@ public class NativeOcrBridge {
     @JavascriptInterface
     public String recognizeMixed(String base64Image) {
         return launchAsync("mixed", base64Image, (bitmap) -> {
+            addLog("OCR", "mixed: calling ocrEngine.recognizeMixed, bitmap=" + bitmap.getWidth() + "x" + bitmap.getHeight());
             OcrEngine.MixedResult mixed = ocrEngine.recognizeMixed(bitmap);
+            addLog("OCR", "mixed: regions=" + mixed.regions.size() + " confidence=" + mixed.confidence + " timeMs=" + mixed.timeMs);
+            for (int i = 0; i < mixed.regions.size(); i++) {
+                OcrEngine.MixedResult.RegionResult r = mixed.regions.get(i);
+                addLog("OCR", "mixed region[" + i + "]: type=" + r.type + " text=" + (r.text != null ? r.text.substring(0, Math.min(50, r.text.length())) : "null") + " conf=" + r.confidence);
+            }
             StringBuilder sb = new StringBuilder("{\"done\":true,\"text\":\"");
             sb.append(escapeJson(mixed.formattedText != null ? mixed.formattedText : ""));
             sb.append("\",\"regions\":[");
@@ -245,8 +300,115 @@ public class NativeOcrBridge {
     }
 
     @JavascriptInterface
+    public String getModelsDir() {
+        return context.getFilesDir() + "/models";
+    }
+
+    @JavascriptInterface
+    public String getInstalledModels() {
+        ModelManager mm = new ModelManager(context);
+        org.json.JSONObject result = new org.json.JSONObject();
+        try {
+            String[] categories = {"formula-det", "formula-rec", "text-det", "text-rec", "doc-ori"};
+            for (String cat : categories) {
+                result.put(cat, new org.json.JSONArray(mm.listInstalled(cat)));
+            }
+        } catch (Exception e) {
+            return "{}";
+        }
+        return result.toString();
+    }
+
+    @JavascriptInterface
+    public String getActiveModels() {
+        ModelManager mm = new ModelManager(context);
+        org.json.JSONObject result = new org.json.JSONObject();
+        try {
+            String[] categories = {"formula-det", "formula-rec", "text-det", "text-rec", "doc-ori"};
+            for (String cat : categories) {
+                String active = mm.getActiveVariant(cat);
+                if (active != null) result.put(cat, active);
+            }
+        } catch (Exception e) {
+            return "{}";
+        }
+        return result.toString();
+    }
+
+    @JavascriptInterface
+    public String setActiveModel(String category, String variantId) {
+        ModelManager mm = new ModelManager(context);
+        mm.setActiveVariant(category, variantId);
+        return "ok";
+    }
+
+    @JavascriptInterface
+    public String deleteModel(String category, String variantId) {
+        ModelManager mm = new ModelManager(context);
+        boolean ok = mm.deleteVariant(category, variantId);
+        return ok ? "ok" : "error:delete failed";
+    }
+
+    @JavascriptInterface
     public void release() {
         ocrEngine.release();
+    }
+
+    // ── Chunked model file writing (avoids OOM for large files) ──
+
+    private java.io.FileOutputStream modelWriteStream = null;
+
+    /**
+     * Start writing a model file. Creates parent directories and opens output stream.
+     * Call writeModelChunk() repeatedly, then finishModelWrite().
+     */
+    @JavascriptInterface
+    public String startModelWrite(String category, String variantId, String filename) {
+        try {
+            java.io.File dir = new java.io.File(context.getFilesDir(),
+                "models/" + category + "/" + variantId);
+            dir.mkdirs();
+            java.io.File file = new java.io.File(dir, filename);
+            modelWriteStream = new java.io.FileOutputStream(file);
+            return "ok";
+        } catch (Exception e) {
+            Log.e(TAG, "startModelWrite failed: " + e.getMessage());
+            return "error:" + e.getMessage();
+        }
+    }
+
+    /**
+     * Write a base64-encoded chunk to the current model file.
+     */
+    @JavascriptInterface
+    public String writeModelChunk(String base64Chunk) {
+        if (modelWriteStream == null) return "error:no stream";
+        try {
+            byte[] data = android.util.Base64.decode(base64Chunk, android.util.Base64.NO_WRAP);
+            modelWriteStream.write(data);
+            return "ok";
+        } catch (Exception e) {
+            Log.e(TAG, "writeModelChunk failed: " + e.getMessage());
+            return "error:" + e.getMessage();
+        }
+    }
+
+    /**
+     * Finish writing the current model file. Closes the output stream.
+     */
+    @JavascriptInterface
+    public String finishModelWrite() {
+        try {
+            if (modelWriteStream != null) {
+                modelWriteStream.flush();
+                modelWriteStream.close();
+                modelWriteStream = null;
+            }
+            return "ok";
+        } catch (Exception e) {
+            Log.e(TAG, "finishModelWrite failed: " + e.getMessage());
+            return "error:" + e.getMessage();
+        }
     }
 
     // ── Save file to Downloads (via MediaStore, lets user choose location) ──
@@ -333,7 +495,9 @@ public class NativeOcrBridge {
         String base64 = dataUri.contains(",")
             ? dataUri.substring(dataUri.indexOf(',') + 1)
             : dataUri;
+        addLog("OCR", "decodeImage: base64 length=" + base64.length() + " chars, dataUri length=" + dataUri.length());
         byte[] decoded = Base64.decode(base64, Base64.DEFAULT);
+        addLog("OCR", "decodeImage: decoded bytes=" + decoded.length + " (" + (decoded.length / 1024) + " KB)");
 
         // Read EXIF orientation from JPEG bytes
         int orientation = 1;
@@ -345,6 +509,7 @@ public class NativeOcrBridge {
 
         Bitmap bm = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
         if (bm == null) throw new IllegalArgumentException("Failed to decode image");
+        addLog("OCR", "decodeImage: Bitmap " + bm.getWidth() + "x" + bm.getHeight() + " (" + (bm.getByteCount() / 1024) + " KB)");
 
         // Auto-rotate based on EXIF
         if (orientation != 1) {

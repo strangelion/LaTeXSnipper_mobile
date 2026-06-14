@@ -1,3 +1,66 @@
+## v1.3.0 — 动态模型管理、移除内置模型、官方模型包 (2026-06-13)
+
+### 架构变更
+
+- **移除内置模型** — ONNX 模型不再打包进 APK（节省 ~220 MB），改为按需下载或导入
+  - 模型加载优雅失败：缺失模型不再崩溃，跳过并记录日志
+  - 外部 API 模式完全独立：选择外部 API 时不加载本地模型，无需任何模型文件
+  - 模型状态查询：`NativeOcr.getModelStatus()` 返回各模型可用状态
+  - 识别时检查：无对应模型时提示用户下载或切换外部 API
+- **弃用 region-det** — `chinese_detector.onnx` 已弃用，从模型管理系统中移除（OcrEngine 内部仍使用 bundled fallback）
+
+### 新功能
+
+- **动态模型管理系统** — 完整的模型生命周期管理：
+  - 模型清单（manifest）系统：支持多源清单（官方 + 自定义 URL）
+  - ZIP 导入：拖入模型包自动解析清单、写入文件系统、注册安装状态
+  - 单文件导入：`.onnx` 文件自动分析（protobuf 解析输入/输出形状推断类别）
+  - 变体选择：每个类别支持多变体，radio 按钮切换，Java 端 SharedPreferences 持久化
+  - 下载系统：从 GitHub Releases 下载模型，支持进度回调
+  - 应用内打包器：按类别拖入 `.onnx` 文件 → 生成 manifest + ZIP 导出或直接安装
+- **官方模型包** — 预打包的模型 ZIP 文件，支持按类别和完整包下载：
+  - `latexsnipper-formula-det.zip`（76.6 MB）— YOLOv8 公式检测
+  - `latexsnipper-formula-rec.zip`（112.2 MB）— TrOCR 公式识别
+  - `latexsnipper-text-det.zip`（4.5 MB）— DBNet 文字检测
+  - `latexsnipper-text-rec.zip`（32.0 MB）— CRNN 文字识别 + 方向检测
+  - `latexsnipper-doc-ori.zip`（6.5 MB）— 文档方向检测
+  - `latexsnipper-models-all.zip`（208.5 MB）— 全部模型完整包
+- **模型打包脚本** — `scripts/package-models.js`：从 `public/models/` 自动生成模型包
+- **GitHub Actions 打包工作流** — `package-models.yml`：一键构建 + 上传到 GitHub Releases
+- **ONNX 元数据分析器** — `src/model-analyzer.js`：解析 protobuf 提取输入/输出形状，自动推断模型类别
+- **模型管理 UI** — 设置页新增模型管理区块：清单源管理、变体选择、下载/删除、导入按钮
+- **模型包创建器** — `src/ui/package-builder.js`：应用内拖入文件创建模型包
+- **首次启动引导** — 欢迎弹窗引导用户下载模型或使用外部 API
+
+### 改进
+
+- **`loadModelData` 资产回退修复** — 动态加载路径从 `public/models/{category}/` 修正为 `public/models/mathcraft-{category}/`，修复首次安装时资产回退失败的问题
+- **Doc-ori 跨类别回退** — 文档方向检测模型支持从 `text-rec` 目录回退加载，兼容只导入 text-rec 包的场景
+- **弃用 region-det** — `chinese_detector.onnx` 已弃用，从模型管理系统和打包中移除，bundled asset 仍作为 fallback
+- **per-category ZIP 独立清单** — 每个按类别拆分的 ZIP 包含独立的单类别 manifest，避免导入时覆盖完整清单
+- **外部 API 独立运行** — 不导入本地模型时，外部 API（SiliconFlow、Gemini 等）可正常使用，无需本地模型依赖
+
+### 依赖新增
+
+| 依赖 | 用途 |
+|------|------|
+| `src/model-manager.js` | 模型清单解析、CRUD、下载、导入 |
+| `src/model-analyzer.js` | ONNX protobuf 解析器 |
+| `src/ui/model-import.js` | ZIP/单文件导入 UI |
+| `src/ui/model-settings.js` | 设置页模型管理 UI |
+| `src/ui/package-builder.js` | 模型包创建器 |
+| `scripts/package-models.js` | 模型打包脚本 |
+| `.github/workflows/package-models.yml` | 模型打包工作流 |
+| `android/.../ModelManager.java` | Java 端模型路径/活跃变体管理 |
+
+### 测试
+
+- 打包脚本验证通过 — 5 个类别 ZIP + 1 个完整包正确生成
+- ZIP 结构验证通过 — `{category}/{variantId}/{filename}` 格式兼容 `importFromZip()`
+- Manifest 格式验证通过 — variant ID 与 Java 默认值匹配
+
+---
+
 ## v1.2.2 — 依赖安全更新、构建工具升级、CI 安全扫描 (2026-06-06)
 
 ### 安全

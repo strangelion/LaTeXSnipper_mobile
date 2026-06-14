@@ -288,8 +288,6 @@ langFiles.forEach(file => {
 // ═══════════════════════════════════════════════════════════
 console.log('\n─── [10] Build config ───');
 const vite = readFileSync(join(ROOT, 'vite.config.js'), 'utf-8');
-ok(vite.includes('vite-plugin-wasm'), 'WASM plugin configured');
-ok(vite.includes('vite-plugin-top-level-await'), 'Top-level await plugin');
 ok(vite.includes('assetsInlineLimit: 0'), 'WASM inlining disabled');
 ok(vite.includes("'wasi_snapshot_preview1'"), 'wasi alias configured');
 

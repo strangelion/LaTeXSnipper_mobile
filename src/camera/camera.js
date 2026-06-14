@@ -709,6 +709,10 @@ export function confirmCrop() {
       if (np[i].y > My) My = np[i].y;
     }
     const bw = Math.round(Mx - mx), bh = Math.round(My - my);
+    console.log('[crop] LASSO DEBUG: scale=' + scale + ' pathPoints=' + camCropPath.length);
+    console.log('[crop] LASSO DEBUG: first point raw:', camCropPath[0].x, camCropPath[0].y);
+    console.log('[crop] LASSO DEBUG: first point scaled:', np[0].x, np[0].y);
+    console.log('[crop] LASSO DEBUG: bbox: mx=' + mx + ' my=' + my + ' bw=' + bw + ' bh=' + bh);
     console.log('[crop] lasso bbox:', mx, my, bw, bh, 'canvas:', src.width, src.height);
     if (bw > 10 && bh > 10) {
       const out = document.createElement('canvas'); out.width = bw; out.height = bh;

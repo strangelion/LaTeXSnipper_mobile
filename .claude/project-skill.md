@@ -23,12 +23,8 @@ LaTeXSnipper_mobile/
 │   │   ├── katex.min.css      # KaTeX CSS + fonts/ 字体
 │   │   ├── mathlive/          # MathLive 编辑器
 │   │   └── pdf.min.js         # PDF.js
-│   ├── models/                # ONNX 模型文件
-│   │   ├── mathcraft-formula-det/   # YOLOv8 公式检测
-│   │   ├── mathcraft-formula-rec/   # TrOCR 公式识别
-│   │   ├── mathcraft-text-det/      # DBNet 文字检测
-│   │   ├── mathcraft-text-rec/      # CRNN 文字识别 + 方向检测 + 区域分类
-│   │   └── chinese_detector.onnx    # 中文/公式分类
+│   ├── models/                # 模型目录（.gitignore，不打包进 APK）
+│   │   └── .gitignore         # 模型文件通过 GitHub Releases 下载
 │   ├── fonts/                 # 中文字体
 │   ├── sw.js                  # Service Worker
 │   └── manifest.json          # PWA 清单
@@ -51,14 +47,19 @@ LaTeXSnipper_mobile/
 │   ├── settings/              # 设置页面逻辑
 │   ├── ui/                    # UI 组件
 │   │   ├── ui.js              # 状态栏/进度条/拖放/模式切换
-│   │   ├── recognition.js     # 识别入口（Native → External API → fallback）
+│   │   ├── recognition.js     # 识别入口（Native → External API，模型可用性检查）
 │   │   ├── result.js          # 结果显示/KaTeX预览/复制/分享/PDF分页/导出
 │   │   ├── splash.js          # 启动加载进度
 │   │   ├── custom-select.js   # 自定义下拉选择器
 │   │   ├── status.js          # 状态栏（带图标）
 │   │   ├── theme.js           # 日/夜主题切换
 │   │   ├── polish.js          # AI 整理（DeepSeek API）
+│   │   ├── model-settings.js  # 设置页模型管理 UI（源/变体选择/下载/删除/导入）
+│   │   ├── model-import.js    # ZIP/单文件导入 UI
+│   │   ├── package-builder.js # 模型包创建器（拖入 .onnx → ZIP 导出/直接安装）
 │   │   └── dom-refs.js        # DOM 元素引用共享
+│   ├── model-manager.js       # 模型清单解析、CRUD、下载、导入、变体合并
+│   ├── model-analyzer.js      # ONNX protobuf 解析器（自动推断模型类别）
 │   └── styles/                # CSS 样式模块
 │       ├── base.css           # CSS 变量、布局、导航、自定义下拉
 │       ├── ocr.css            # 识别页面 + 导出下拉菜单样式
@@ -90,13 +91,17 @@ LaTeXSnipper_mobile/
 │   ├── test_katex.js          # KaTeX 公式渲染（35 项）
 │   ├── test_integration.js    # 集成/模块/配置检查（227 项）
 │   └── test_e2e.js            # 全量 E2E（20 大类 309 项）
+├── scripts/
+│   ├── package-models.js      # 模型打包脚本（生成 per-category + 完整 ZIP）
+│   └── quantize.py            # 模型量化
 ├── vite.config.js             # Vite 8 配置（wasm + top-level-await 原生支持）
 ├── SECURITY.md                # 安全政策
 ├── capacitor.config.json      # Capacitor 配置
 └── .github/workflows/
     ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
     ├── build-ios.yml                  # iOS 模拟器构建
-    └── security-scan.yml   # 安全扫描
+    ├── package-models.yml             # 模型打包 + 上传 GitHub Releases
+    └── security-scan.yml              # 安全扫描
 ```
 
 ---
@@ -155,17 +160,45 @@ JS → window.NativeOcr.recognizeFormula(base64) → NativeOcrBridge (后台线�
 
 ---
 
-## 四、ONNX 模型清单
+## 四、ONNX 模型清单（按需下载，不内置）
 
-| 模型 | 输入 | 输出 | 用途 |
-|------|------|------|------|
-| `mathcraft-mfd.onnx` | [1,3,768,768] | [1,6,N] | YOLOv8 公式检测 |
-| `encoder_model.onnx` | [1,3,384,384] | [1,577,384] | TrOCR 编码器 (DeiT) |
-| `decoder_model.onnx` | input_ids + hidden | logits | TrOCR 解码器 |
-| `ppocrv5_mobile_det.onnx` | [1,3,H,W] | [1,1,H,W] | DBNet 文字检测 |
-| `ppocrv5_mobile_rec.onnx` | [1,3,48,320] | [1,seq,vocab] | CRNN 文字识别 |
-| `chinese_detector.onnx` | [N,3,64,64] | [N,2] | 中文/公式分类 |
-| `pplcnet_doc_ori.onnx` | [1,3,224,224] | [1,4] | 0°/90°/180°/270° 方向检测 |
+模型不再打包进 APK，通过 GitHub Releases 下载 ZIP 包导入。
+
+| 类别 | 默认 variant ID | 模型文件 | 用途 |
+|------|----------------|----------|------|
+| `formula-det` | `mathcraft-mfd` | `mathcraft-mfd.onnx` | YOLOv8 公式检测 |
+| `formula-rec` | `trocr-deit` | `encoder_model.onnx` + `decoder_model.onnx` | TrOCR 公式识别 |
+| `text-det` | `ppocrv5-mobile` | `ppocrv5_mobile_det.onnx` | DBNet 文字检测 |
+| `text-rec` | `ppocrv5-mobile` | `ppocrv5_mobile_rec.onnx` + dict + ori models | CRNN 文字识别 |
+| `doc-ori` | `pplcnet-doc-ori` | `pplcnet_doc_ori.onnx` | 方向检测 |
+
+### 模型管理系统
+
+```
+JS 端:
+  model-manager.js    — 清单解析、CRUD、下载、导入、变体合并
+  model-analyzer.js   — ONNX protobuf 解析，自动推断类别
+  model-import.js     — ZIP/单文件导入 UI
+  model-settings.js   — 设置页模型管理（源/变体/下载/删除）
+  package-builder.js  — 应用内模型包创建器
+
+Java 端:
+  ModelManager.java   — 文件路径、活跃变体（SharedPreferences）、安装状态
+  OnnxRunner.java     — 动态加载（文件系统优先 → 资产回退 → null）
+  NativeOcrBridge.java — getModelStatus() 返回各模型可用状态
+```
+
+### 存储路径
+
+- JS: `localStorage` (sources/active/installed/manifests) + Capacitor Filesystem (`DATA/models/{category}/{variantId}/`)
+- Java: `SharedPreferences "ModelManagerPrefs"` + `ctx.getFilesDir()/models/{category}/{variantId}/`
+
+### 打包脚本
+
+```bash
+node scripts/package-models.js --output dist-models
+# 生成: dist-models/latexsnipper-{category}.zip + latexsnipper-models-all.zip
+```
 
 ---
 
@@ -262,15 +295,16 @@ bash test/run_tests.sh
 ```
 
 ### 注意事项
-1. **模型非常庞大** — encoder_model.onnx 87MB，总模型 ~220MB。低端设备可能 OOM，已启用 `largeHeap` + 模型加载失败自动清理 session
-2. **图片解码** — `is.available()` 在 APK 压缩资产中返回压缩后大小，必须用 `ByteArrayOutputStream` 分段读取
-3. **文件分享** — Capacitor Share 传 base64 文件在某些 Android 版本失败时，直接触发下载而非弹系统分享（避免"没有应用可执行此操作"）
-4. **MathLive 自定义元素** — `<mathlive-field>` 在部分 WebView 中不注册，改用 `new MathfieldElement()` 创建
-5. **虚拟键盘策略** — 三态切换：`manual`(关闭) → `manual` + `toggleVirtualKeyboard`(MathLive 键盘) → `sandboxed`(系统键盘)。切换时先 blur 再 focus 确保键盘弹出
-6. **相机按钮** — 必须用 `pointerdown` + `stopPropagation`，`click` 在 WebView 中不可靠
-7. **COOP/COEP 头** — Capacitor 和 Vite 中已配置
-8. **iOS 构建** — 需要 Apple Developer（$99/年），CI 只能验证模拟器编译
-9. **模型加载** — 所有模型内置在资产文件中，不依赖网络
-10. **大图拍照** — >500KB 自动压缩到最长边 1920px
-11. **KaTeX 替换 MathJax** — 公式渲染不再依赖 MathJax SVG 模式，使用 KaTeX HTML 渲染，轻量快速，中文字体由页面 CSS 控制
-12. **Typst 不经过 Pandoc WASM** — pandoc-wasm WASM 二进制不支持完整 LaTeX math mode，Typst 导出使用纯 JS 符号映射 + 结构转换器
+1. **模型按需下载** — ONNX 模型不再内置 APK（~220MB），通过设置页下载 ZIP 包导入，或使用外部 API
+2. **模型加载优雅失败** — 缺失模型不崩溃，`loadModelData` 返回 null，`createSession` 返回 null，OcrEngine 跳过并记录
+3. **外部 API 独立** — 选择外部 API 模式时不加载本地模型，`initModels()` 直接跳过
+4. **图片解码** — `is.available()` 在 APK 压缩资产中返回压缩后大小，必须用 `ByteArrayOutputStream` 分段读取
+5. **文件分享** — Capacitor Share 传 base64 文件在某些 Android 版本失败时，直接触发下载而非弹系统分享
+6. **MathLive 自定义元素** — `<mathlive-field>` 在部分 WebView 中不注册，改用 `new MathfieldElement()` 创建
+7. **虚拟键盘策略** — 三态切换：`manual`(关闭) → `manual` + `toggleVirtualKeyboard`(MathLive 键盘) → `sandboxed`(系统键盘)
+8. **相机按钮** — 必须用 `pointerdown` + `stopPropagation`，`click` 在 WebView 中不可靠
+9. **COOP/COEP 头** — Capacitor 和 Vite 中已配置
+10. **iOS 构建** — 需要 Apple Developer（$99/年），CI 只能验证模拟器编译
+11. **大图拍照** — >500KB 自动压缩到最长边 1920px
+12. **KaTeX 替换 MathJax** — 公式渲染使用 KaTeX HTML 渲染，轻量快速
+13. **Typst 不经过 Pandoc WASM** — Typst 导出使用纯 JS 符号映射 + 结构转换器

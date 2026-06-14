@@ -1,0 +1,76 @@
+name: Package Models
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (leave empty to use package.json version)'
+        required: false
+        type: string
+      upload_release:
+        description: 'Upload to GitHub Release'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  package-models:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set version
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(node -e "console.log(require('./package.json').version)")
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version: $VERSION"
+
+      - name: Package models
+        run: node scripts/package-models.js --output dist-models
+
+      - name: List output
+        run: ls -lh dist-models/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-packages
+          path: dist-models/
+
+      - name: Create Release
+        if: ${{ inputs.upload_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: models-v${{ env.VERSION }}
+          name: Model Packages v${{ env.VERSION }}
+          files: dist-models/*.zip
+          draft: false
+          body: |
+            ## Model Packages v${{ env.VERSION }}
+
+            ### Per-category packages
+            - `latexsnipper-formula-det.zip` — Formula Detection (YOLOv8)
+            - `latexsnipper-formula-rec.zip` — Formula Recognition (TrOCR)
+            - `latexsnipper-text-det.zip` — Text Detection (DBNet)
+            - `latexsnipper-text-rec.zip` — Text Recognition (CRNN) + Doc Orientation
+            - `latexsnipper-doc-ori.zip` — Document Orientation
+            - `latexsnipper-region-det.zip` — Region Classification
+
+            ### Complete package
+            - `latexsnipper-models-all.zip` — All models in one package
+
+            ### Usage
+            1. Download a ZIP file
+            2. In LaTeXSnipper → Settings → Model Management → Import from ZIP
+            3. Select the downloaded ZIP file
+            4. Models will be imported and available for selection

@@ -1,0 +1,8 @@
+# Model files — not tracked in git (too large for repo)
+# Models are distributed via GitHub Releases as downloadable packages.
+# See: scripts/package-models.js and .github/workflows/package-models.yml
+
+*.onnx
+*.txt
+*.json
+mathcraft-*/

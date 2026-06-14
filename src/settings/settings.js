@@ -5,10 +5,25 @@ import { isNativeOcrAvailable, OcrNative } from '../native/ocr-native.js';
 import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
 import Logger from '../shared/logger.js';
 import { shareFile } from '../shared/share.js';
+import { initModelSettings } from '../ui/model-settings.js';
 
 export function initSettings() {
   const extDiv = document.getElementById('extSettings');
   const polishSection = document.getElementById('polishSection');
+
+  // ═══ Settings sub-tabs ═══
+  const settingsTabs = document.querySelectorAll('.settings-tab');
+  const settingsPanels = document.querySelectorAll('.settings-panel');
+  settingsTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.settingsTab;
+      settingsTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      settingsPanels.forEach(p => {
+        p.style.display = p.dataset.panel === target ? '' : 'none';
+      });
+    });
+  });
 
   // ═══ Engine dropdown ═══
   const engineSelect = document.getElementById('setEngineSelect');
@@ -247,8 +262,19 @@ export function initSettings() {
   // ═══ Developer options ═══
   const devMode = document.getElementById('setDevMode');
   const devOptions = document.getElementById('devOptions');
+  const devOptionsContent = document.getElementById('devOptionsContent');
+  const devGroupTitle = document.getElementById('devGroupTitle');
+
+  // Toggle dev options group on title click
+  devGroupTitle?.addEventListener('click', () => {
+    const visible = devOptions.style.display !== 'none';
+    devOptions.style.display = visible ? 'none' : '';
+    devGroupTitle.textContent = visible ? '开发者选项 ▸' : '开发者选项 ▾';
+  });
+
+  // Toggle dev mode checkbox
   devMode?.addEventListener('change', () => {
-    if (devOptions) devOptions.style.display = devMode.checked ? '' : 'none';
+    if (devOptionsContent) devOptionsContent.style.display = devMode.checked ? '' : 'none';
   });
 
   const devMultiThread = document.getElementById('devMultiThread');
@@ -321,4 +347,7 @@ export function initSettings() {
       btn.disabled = false; btn.textContent = t('update.checkUpdate');
     });
   });
+
+  // Initialize model management UI
+  initModelSettings();
 }

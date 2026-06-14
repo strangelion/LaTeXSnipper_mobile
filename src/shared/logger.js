@@ -152,7 +152,7 @@ const Logger = {
   getExportText() {
     load();
     const lines = logBuffer.slice(-MAX_LOG_LINES);
-    return [
+    let text = [
       '=== LaTeXSnipper 调试日志 ===',
       `导出时间: ${new Date().toLocaleString('zh-CN')}`,
       `平台: ${typeof window.NativeOcr !== 'undefined' ? 'Android' : '浏览器'}`,
@@ -160,6 +160,17 @@ const Logger = {
       '',
       ...lines,
     ].join('\n');
+
+    // Append Java native logs
+    if (typeof window.NativeOcr !== 'undefined' && window.NativeOcr.getLogs) {
+      try {
+        const javaLogs = window.NativeOcr.getLogs();
+        if (javaLogs && javaLogs.trim()) {
+          text += '\n\n══════ Java Native Logs ══════\n' + javaLogs;
+        }
+      } catch (_) {}
+    }
+    return text;
   },
 
   getLastLines(n = 100) {

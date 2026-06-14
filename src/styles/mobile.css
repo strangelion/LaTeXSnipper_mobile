@@ -47,9 +47,7 @@
   .snippet-panel { grid-template-columns: repeat(3, 1fr); }
   .bottom-nav button { font-size: 0.65rem; }
   .bottom-nav button svg { width: 20px; height: 20px; }
-
-  /* Install banner mobile */
-  .install-banner { left: 0.5rem; right: 0.5rem; bottom: calc(65px + var(--safe-b)); font-size: 0.78rem; }
+  .settings-tab { padding: 8px 0; font-size: 0.8rem; }
 }
 
 /* ── Landscape handwriting mode ── */

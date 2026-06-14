@@ -73,7 +73,9 @@ function recognizeAsync(image, type) {
 export const OcrNative = {
   isReady() { return wrap('isReady').then(r => ({ ready: r })); },
   loadModels() { return wrap('loadModels'); },
+  reloadModels() { return wrap('reloadModels'); },
   getStatus() { return wrap('getStatus'); },
+  getModelStatus() { return wrap('getModelStatus'); },
 
   recognizeFormula(opts) {
     return recognizeAsync(opts.image, 'recognizeFormula');

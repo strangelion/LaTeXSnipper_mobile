@@ -29,6 +29,16 @@ public class OcrEngine {
 
     private boolean modelsLoaded = false;
     private boolean loading = false;
+
+    // File-based logging for debugging
+    private static final String LOG_FILE = "ocr-debug.log";
+    private static void flog(Context ctx, String msg) {
+        try {
+            java.io.FileWriter fw = new java.io.FileWriter(new java.io.File(ctx.getFilesDir(), LOG_FILE), true);
+            fw.write(System.currentTimeMillis() + " " + msg + "\n");
+            fw.close();
+        } catch (Exception e) { /* ignore */ }
+    }
     private Context appContext;
 
     public OcrEngine() {
@@ -61,24 +71,32 @@ public class OcrEngine {
         if (modelsLoaded) return;
         loading = true;
         appContext = ctx.getApplicationContext();
+        ModelManager mm = new ModelManager(ctx);
         try {
             Log.d(TAG, "Loading models (sync)...");
-            runner.loadFormulaDetModel(ctx);
-            Log.d(TAG, "  formula-det loaded");
-            runner.loadFormulaRecModels(ctx);
-            recPostProc.loadTokenizer(ctx);
-            Log.d(TAG, "  formula-rec loaded");
-            runner.loadTextDetModel(ctx);
-            Log.d(TAG, "  text-det loaded");
-            runner.loadTextRecModel(ctx);
-            textRecPost.loadKeys(ctx);
-            Log.d(TAG, "  text-rec loaded");
+            String fdVariant = mm.getActiveVariant("formula-det");
+            String frVariant = mm.getActiveVariant("formula-rec");
+            String tdVariant = mm.getActiveVariant("text-det");
+            String trVariant = mm.getActiveVariant("text-rec");
+            String doVariant = mm.getActiveVariant("doc-ori");
+
+            int loaded = 0;
+            if (runner.loadFormulaDetModel(ctx, mm, fdVariant)) { loaded++; Log.d(TAG, "  formula-det OK"); }
+            if (runner.loadFormulaRecModels(ctx, mm, frVariant)) {
+                recPostProc.loadTokenizer(ctx); loaded++; Log.d(TAG, "  formula-rec OK");
+            }
+            if (runner.loadTextDetModel(ctx, mm, tdVariant)) { loaded++; Log.d(TAG, "  text-det OK"); }
+            if (runner.loadTextRecModel(ctx, mm, trVariant)) {
+                textRecPost.loadKeys(ctx); loaded++; Log.d(TAG, "  text-rec OK");
+            }
+            runner.loadRegionDetModel(ctx, mm, null);
+            if (runner.loadDocOriModel(ctx, mm, doVariant)) { loaded++; Log.d(TAG, "  doc-ori OK"); }
+
             modelsLoaded = true;
-            Log.d(TAG, "All models loaded (sync)");
+            Log.d(TAG, "Model loading complete: " + loaded + "/5 categories available");
         } catch (Exception e) {
-            Log.e(TAG, "Model loading failed, cleaning up sessions", e);
-            runner.release();
-            throw new RuntimeException("Model loading failed", e);
+            Log.e(TAG, "Model loading error", e);
+            modelsLoaded = true; // still mark as loaded — app can use external API
         } finally {
             loading = false;
         }
@@ -89,29 +107,37 @@ public class OcrEngine {
         if (loading) return;
         loading = true;
         appContext = ctx.getApplicationContext();
+        ModelManager mm = new ModelManager(ctx);
 
         new Thread(() -> {
             try {
+                String fdVariant = mm.getActiveVariant("formula-det");
+                String frVariant = mm.getActiveVariant("formula-rec");
+                String tdVariant = mm.getActiveVariant("text-det");
+                String trVariant = mm.getActiveVariant("text-rec");
+                String doVariant = mm.getActiveVariant("doc-ori");
+
                 if (cb != null) cb.onProgress("公式检测模型", 0);
-                runner.loadFormulaDetModel(ctx);
+                runner.loadFormulaDetModel(ctx, mm, fdVariant);
                 if (cb != null) cb.onProgress("公式编码器模型", 25);
-                runner.loadFormulaRecModels(ctx);
-                recPostProc.loadTokenizer(ctx);
+                if (runner.loadFormulaRecModels(ctx, mm, frVariant)) {
+                    recPostProc.loadTokenizer(ctx);
+                }
                 if (cb != null) cb.onProgress("文字检测模型", 50);
-                runner.loadTextDetModel(ctx);
+                runner.loadTextDetModel(ctx, mm, tdVariant);
                 if (cb != null) cb.onProgress("文字识别模型", 75);
-                runner.loadTextRecModel(ctx);
-                textRecPost.loadKeys(ctx);
-                if (cb != null) cb.onProgress("区域检测模型", 85);
-                runner.loadRegionDetModel(ctx);
-                if (cb != null) cb.onProgress("方向检测模型", 95);
-                runner.loadDocOriModel(ctx);
+                if (runner.loadTextRecModel(ctx, mm, trVariant)) {
+                    textRecPost.loadKeys(ctx);
+                }
+                if (cb != null) cb.onProgress("方向检测模型", 90);
+                runner.loadRegionDetModel(ctx, mm, null);
+                runner.loadDocOriModel(ctx, mm, doVariant);
                 modelsLoaded = true;
-                if (cb != null) cb.onProgress("全部模型加载完成", 100);
-                Log.d(TAG, "All models loaded");
+                if (cb != null) cb.onProgress("模型加载完成", 100);
+                Log.d(TAG, "Model loading complete");
             } catch (Exception e) {
-                Log.e(TAG, "Model loading failed, cleaning up sessions", e);
-                runner.release();
+                Log.e(TAG, "Model loading error", e);
+                modelsLoaded = true; // still mark loaded — app can use external API
             } finally {
                 loading = false;
             }
@@ -287,6 +313,7 @@ public class OcrEngine {
 
         // Step 1: Text detection
         TextDetProcessor.PreResult detPre = TextDetProcessor.preprocess(bitmap);
+        Log.d(TAG, "TextDet preprocess done: input=" + detPre.data.length + " shape=" + java.util.Arrays.toString(detPre.inputShape));
         List<TextDetProcessor.Box> textBoxes;
 
         try {
@@ -300,6 +327,7 @@ public class OcrEngine {
 
             // Fallback: if no boxes, try with lower threshold (treat as single text region)
             if (textBoxes.isEmpty()) {
+                Log.d(TAG, "TextDet: no boxes, adding full-image fallback");
                 textBoxes.add(new TextDetProcessor.Box(0, 0, detPre.origW, detPre.origH, 0.5f));
             }
         } catch (Exception e) {
@@ -371,8 +399,13 @@ public class OcrEngine {
         float totalConf = 0;
         int confCount = 0;
 
+        flog(appContext, "=== recognizeMixed START === bitmap=" + bitmap.getWidth() + "x" + bitmap.getHeight());
+        Log.d(TAG, "=== recognizeMixed START === bitmap=" + bitmap.getWidth() + "x" + bitmap.getHeight());
+
         // Step 1: Formula detection
         DetPreProcess.Result detPre = DetPreProcess.run(bitmap);
+        flog(appContext, "DetPre done: input=" + detPre.data.length + " origW=" + detPre.origW + " origH=" + detPre.origH);
+        Log.d(TAG, "DetPre done: input=" + detPre.data.length + " origW=" + detPre.origW + " origH=" + detPre.origH);
         try {
             ai.onnxruntime.OrtSession.Result detResult = runner.runFormulaDet(
                 FloatBuffer.wrap(detPre.data));
@@ -380,6 +413,8 @@ public class OcrEngine {
             List<FormulaDetPostProcess.Box> formulaBoxes = FormulaDetPostProcess.run(
                 detOutput, detPre.origW, detPre.origH,
                 detPre.scale, detPre.padX, detPre.padY);
+            flog(appContext, "FormulaDet boxes: " + formulaBoxes.size());
+            Log.d(TAG, "FormulaDet boxes: " + formulaBoxes.size());
 
             // Step 2: Text detection on original (unmasked) image, matching desktop behavior.
             // DBNet runs on the original image so it produces contiguous text boxes
@@ -398,6 +433,8 @@ public class OcrEngine {
                 Log.e(TAG, "Text detection failed in mixed mode", e);
                 textBoxes = new ArrayList<>();
             }
+            flog(appContext, "TextDet boxes: " + textBoxes.size());
+            Log.d(TAG, "TextDet boxes: " + textBoxes.size());
 
             // Step 3: Split text boxes around formula x-ranges (desktop split_text_box_around_formulas)
             for (TextDetProcessor.Box textBox : textBoxes) {
@@ -473,8 +510,11 @@ public class OcrEngine {
 
         // Fallback: if no results, try full-image formula recognition (desktop behavior)
         if (results.isEmpty()) {
+            flog(appContext, "Mixed mode: no regions found, falling back to formula rec");
             Log.d(TAG, "Mixed mode: no regions found, falling back to formula rec");
             RecognizeResult fr = recognizeFormulaFullImage(bitmap);
+            flog(appContext, "Fallback formula rec: text=" + (fr.text != null ? fr.text.substring(0, Math.min(50, fr.text.length())) : "null") + " conf=" + fr.confidence);
+            Log.d(TAG, "Fallback formula rec: text=" + (fr.text != null ? fr.text.substring(0, Math.min(50, fr.text.length())) : "null") + " conf=" + fr.confidence);
             if (fr.text != null && !fr.text.isEmpty()) {
                 results.add(new MixedResult.RegionResult(
                     0, 0, bitmap.getWidth(), bitmap.getHeight(), "formula",
@@ -1575,5 +1615,13 @@ public class OcrEngine {
 
     public void release() {
         runner.release();
+    }
+
+    /** Release and reload models (e.g. after importing new models). */
+    public synchronized void reloadModels(Context ctx) {
+        runner.release();
+        modelsLoaded = false;
+        loading = false;
+        loadAllModelsSync(ctx);
     }
 }
