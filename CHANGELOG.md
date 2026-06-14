@@ -1,13 +1,22 @@
-## v1.3.0 — 动态模型管理、移除内置模型、官方模型包 (2026-06-13)
+## v1.3.0 — 动态模型管理、标准化打包格式、OCR 修复 (2026-06-14)
 
 ### 架构变更
 
 - **移除内置模型** — ONNX 模型不再打包进 APK（节省 ~220 MB），改为按需下载或导入
-  - 模型加载优雅失败：缺失模型不再崩溃，跳过并记录日志
-  - 外部 API 模式完全独立：选择外部 API 时不加载本地模型，无需任何模型文件
-  - 模型状态查询：`NativeOcr.getModelStatus()` 返回各模型可用状态
-  - 识别时检查：无对应模型时提示用户下载或切换外部 API
-- **弃用 region-det** — `chinese_detector.onnx` 已弃用，从模型管理系统中移除（OcrEngine 内部仍使用 bundled fallback）
+  - doc-ori 方向检测模型（6.5 MB）仍内置 APK
+  - tokenizer.json（41 KB）和 ppocrv5_keys.txt（90 KB）内置 APK 作为 fallback
+  - 公式检测/识别、文字检测/识别的 ONNX 模型通过 ZIP 包下载
+- **标准化模型包格式** — 对齐 HuggingFace ONNX + PaddleOCR 规范：
+  - 每个模型包包含 `config.json`（模型类型、输入输出形状、预处理参数、后处理配置）
+  - 文件命名统一：`model.onnx`（单文件）或 `encoder.onnx` + `decoder.onnx`（多文件）
+  - `ModelConfig.java` 解析 config.json，支持第三方模型自描述
+  - OnnxRunner 使用已知文件名加载（避免多 ONNX 目录误选）
+- **模型目录重组** — 每个分类独立目录，不再共享：
+  - `mathcraft-text-rec/` 只含文字识别模型 + 字典
+  - `mathcraft-doc-ori/` 独立目录（含 doc-ori + textline-ori）
+  - `model-sources/` 存放打包源文件（ONNX + 字典），不被 Vite 复制到 dist
+- **弃用 region-det** — `chinese_detector.onnx` 已弃用，从模型管理系统中移除
+- **下载链接标准化** — manifest baseUrl 指向 `dist-models/`，source URL 含路径前缀
 
 ### 新功能
 
@@ -16,48 +25,58 @@
   - ZIP 导入：拖入模型包自动解析清单、写入文件系统、注册安装状态
   - 单文件导入：`.onnx` 文件自动分析（protobuf 解析输入/输出形状推断类别）
   - 变体选择：每个类别支持多变体，radio 按钮切换，Java 端 SharedPreferences 持久化
-  - 下载系统：从 GitHub Releases 下载模型，支持进度回调
+  - 下载系统：从 GitHub 下载 ZIP 模型包，支持进度回调
   - 应用内打包器：按类别拖入 `.onnx` 文件 → 生成 manifest + ZIP 导出或直接安装
-- **官方模型包** — 预打包的模型 ZIP 文件，支持按类别和完整包下载：
-  - `latexsnipper-formula-det.zip`（76.6 MB）— YOLOv8 公式检测
-  - `latexsnipper-formula-rec.zip`（112.2 MB）— TrOCR 公式识别
-  - `latexsnipper-text-det.zip`（4.5 MB）— DBNet 文字检测
-  - `latexsnipper-text-rec.zip`（32.0 MB）— CRNN 文字识别 + 方向检测
-  - `latexsnipper-doc-ori.zip`（6.5 MB）— 文档方向检测
-  - `latexsnipper-models-all.zip`（208.5 MB）— 全部模型完整包
-- **模型打包脚本** — `scripts/package-models.js`：从 `public/models/` 自动生成模型包
-- **GitHub Actions 打包工作流** — `package-models.yml`：一键构建 + 上传到 GitHub Releases
-- **ONNX 元数据分析器** — `src/model-analyzer.js`：解析 protobuf 提取输入/输出形状，自动推断模型类别
-- **模型管理 UI** — 设置页新增模型管理区块：清单源管理、变体选择、下载/删除、导入按钮
-- **模型包创建器** — `src/ui/package-builder.js`：应用内拖入文件创建模型包
-- **首次启动引导** — 欢迎弹窗引导用户下载模型或使用外部 API
+- **官方模型包** — 标准化 ZIP 文件，每个包含 config.json + ONNX + 字典：
+  - `latexsnipper-formula-det.zip`（66.5 MB）— YOLOv8 公式检测
+  - `latexsnipper-formula-rec.zip`（103.7 MB）— TrOCR 公式识别 + tokenizer
+  - `latexsnipper-text-det.zip`（4.2 MB）— DBNet 文字检测
+  - `latexsnipper-text-rec.zip`（13.5 MB）— CRNN 文字识别 + 字典
+  - `latexsnipper-models-all.zip`（187.9 MB）— 全部模型合集
+  - doc-ori 内置 APK，不单独提供下载包
+- **ModelConfig.java** — config.json 解析器 + 模型文件发现工具
+  - `load()` 从模型目录读取 config.json
+  - `findModelFile/findEncoderFile/findDecoderFile` 自动发现 ONNX 文件
+  - `findTokenizerFile` 发现 tokenizer/字典文件
+- **模型打包脚本更新** — `scripts/package-models.js`：
+  - 自动生成 config.json（含 model_type、input/output shape、preprocessing、postprocessing）
+  - 验证 decoder 关键文件（tokenizer.json、ppocrv5_keys.txt）存在性
+  - 输出到 `dist-models/`（Vite 不清理的独立目录）
+  - 排除 .gitignore 等非模型文件
+
+### 修复
+
+- **公式识别 tokenizer 编码损坏** — `tokenizer.json` 从 git 恢复时 PowerShell `Out-File` 破坏 UTF-8 编码，导致公式输出全是"臓"乱码。修复：用 `git checkout` 代替 `Out-File`，Java 端增加文件系统加载路径
+- **文字识别空结果** — `ppocrv5_keys.txt` 同样编码损坏 + `loadKeys()` 只从 assets 加载。修复：增加文件系统回退加载，用 `git checkout` 恢复正确编码
+- **混合模式 auto-rotate 错误** — doc-ori 模型把横向裁剪区域（885x349）旋转为纵向（349x885）。修复：禁用相机裁剪图片的自动旋转
+- **混合模式文本区域误判为公式** — `splitAroundFormulas` 按 x 轴分割后，formula 片段裁剪使用了 textDet 框的 y 坐标而非 formulaDet 框的 y 坐标。修复：SegInterval 增加 `formulaY/formulaH` 字段，裁剪和 RegionResult 坐标均使用正确值
+- **混合模式公式重复输出** — Step 3 的公式片段 RegionResult 使用 `textBox.y/h` 导致 Step 4 overlap check 失败，同一公式被识别两次。修复：公式片段 RegionResult 使用 `cropY/cropH`（formulaDet 框坐标）
+- **`loadModelData` 资产回退修复** — 动态加载路径从 `public/models/{category}/` 修正为 `public/models/mathcraft-{category}/`
+- **ModelConfig.findModelFile 误选 ONNX** — text-rec 目录含 3 个 ONNX，`findModelFile` 可能选到 doc-ori 而非 rec 模型。修复：所有动态加载方法使用已知文件名，不再盲选
+- **tokenizer.json/keys.txt 未打入 ZIP** — 打包脚本不包含字典文件。修复：`.gitignore` 允许追踪，打包自动包含
+- **npm run build 覆盖 dist ZIP** — Vite 复制 public/models/ 覆盖已生成的 ZIP。修复：ZIP 输出到 `dist-models/`（dist 之外）
 
 ### 改进
 
-- **`loadModelData` 资产回退修复** — 动态加载路径从 `public/models/{category}/` 修正为 `public/models/mathcraft-{category}/`，修复首次安装时资产回退失败的问题
-- **Doc-ori 跨类别回退** — 文档方向检测模型支持从 `text-rec` 目录回退加载，兼容只导入 text-rec 包的场景
-- **弃用 region-det** — `chinese_detector.onnx` 已弃用，从模型管理系统和打包中移除，bundled asset 仍作为 fallback
-- **per-category ZIP 独立清单** — 每个按类别拆分的 ZIP 包含独立的单类别 manifest，避免导入时覆盖完整清单
-- **外部 API 独立运行** — 不导入本地模型时，外部 API（SiliconFlow、Gemini 等）可正常使用，无需本地模型依赖
+- **per-category ZIP 独立清单** — 每个 ZIP 包含独立的单类别 manifest + `zipFile` 字段
+- **外部 API 独立运行** — 不导入本地模型时外部 API 可正常使用
+- **Doc-ori 跨类别回退** — 支持从 `text-rec` 目录回退加载，兼容旧版数据
+- **`model-sources/` 分离** — ONNX 源文件不放入 `public/models/`，APK 不含大模型文件
 
 ### 依赖新增
 
 | 依赖 | 用途 |
 |------|------|
-| `src/model-manager.js` | 模型清单解析、CRUD、下载、导入 |
-| `src/model-analyzer.js` | ONNX protobuf 解析器 |
-| `src/ui/model-import.js` | ZIP/单文件导入 UI |
-| `src/ui/model-settings.js` | 设置页模型管理 UI |
-| `src/ui/package-builder.js` | 模型包创建器 |
-| `scripts/package-models.js` | 模型打包脚本 |
-| `.github/workflows/package-models.yml` | 模型打包工作流 |
-| `android/.../ModelManager.java` | Java 端模型路径/活跃变体管理 |
+| `ModelConfig.java` | config.json 解析 + 模型文件发现 |
+| `model-sources/` | 打包用 ONNX 源文件目录 |
 
 ### 测试
 
-- 打包脚本验证通过 — 5 个类别 ZIP + 1 个完整包正确生成
-- ZIP 结构验证通过 — `{category}/{variantId}/{filename}` 格式兼容 `importFromZip()`
-- Manifest 格式验证通过 — variant ID 与 Java 默认值匹配
+- 打包脚本验证通过 — 4 个类别 ZIP + 1 个合集正确生成，含 config.json
+- ZIP 内容验证 — formula-rec 含 tokenizer.json，text-rec 含 ppocrv5_keys.txt
+- APK 内容验证 — 只含 doc-ori ONNX（6.5 MB）+ tokenizer/keys 小文件
+- 文字识别验证 — "不再生成。最终" 正确识别，confidence 0.954
+- 混合识别验证 — 文本"计算旋转体体积：" + 公式正确分离，无重复
 
 ---
 

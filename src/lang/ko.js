@@ -202,4 +202,56 @@ export default {
   "export.format.typst": "Typst",
   "export.format.docx": "Word",
   "export.format.plain": "일반 텍스트",
+
+  // ── Settings tabs ──
+  "settings.tabRecog": "인식",
+  "settings.tabModels": "모델",
+  "settings.tabGeneral": "일반",
+  "settings.appearance": "외관",
+  "settings.about": "정보",
+
+  // ── PDF ──
+  "pdf.rangeInputLabel": "사용자 지정 범위",
+
+  // ── Status ──
+  "status.noModels": "로컬 모델이 설치되지 않았습니다. 설정에서 모델을 다운로드하거나 외부 API로 전환하세요",
+
+  // ── Recognition ──
+  "recog.resultLabel": "결과",
+
+  // ── Model management ──
+  "model.management": "모델 관리",
+  "model.sources": "매니페스트 소스",
+  "model.addSource": "소스 추가",
+  "model.sourceUrl": "매니페스트 URL 입력...",
+  "model.currentModels": "현재 사용 중인 모델",
+  "model.import": "가져오기",
+  "model.importZip": "ZIP에서 가져오기",
+  "model.importFile": "파일에서 가져오기",
+  "model.importing": "가져오는 중...",
+  "model.importSuccess": "{{count}}개 파일을 가져왔습니다",
+  "model.importFailed": "가져오기 실패: {{msg}}",
+  "model.category": "카테고리",
+  "model.variantName": "모델 이름",
+  "model.refresh": "매니페스트 새로고침",
+  "model.builtin": "(내장)",
+  "model.downloading": "다운로드 중...",
+  "model.downloadFailed": "다운로드 실패",
+  "model.download": "다운로드",
+  "model.delete": "삭제",
+  "model.deleteConfirm": "삭제하시겠습니까",
+  "model.switching": "전환 중...",
+  "model.cancel": "취소",
+  "model.confirm": "확인",
+  "model.cat_formula-det": "수식 감지",
+  "model.cat_formula-rec": "수식 인식",
+  "model.cat_text-det": "텍스트 감지",
+  "model.cat_text-rec": "텍스트 인식",
+  "model.cat_doc-ori": "문서 방향",
+  "model.cat_region-det": "영역 분류",
+
+  // ── Buttons ──
+  "btn.cancel": "취소",
+  "btn.confirm": "확인",
+  "btn.import": "가져오기",
 }

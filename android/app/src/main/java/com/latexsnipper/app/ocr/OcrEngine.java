@@ -83,11 +83,11 @@ public class OcrEngine {
             int loaded = 0;
             if (runner.loadFormulaDetModel(ctx, mm, fdVariant)) { loaded++; Log.d(TAG, "  formula-det OK"); }
             if (runner.loadFormulaRecModels(ctx, mm, frVariant)) {
-                recPostProc.loadTokenizer(ctx); loaded++; Log.d(TAG, "  formula-rec OK");
+                recPostProc.loadTokenizer(ctx, frVariant); loaded++; Log.d(TAG, "  formula-rec OK");
             }
             if (runner.loadTextDetModel(ctx, mm, tdVariant)) { loaded++; Log.d(TAG, "  text-det OK"); }
             if (runner.loadTextRecModel(ctx, mm, trVariant)) {
-                textRecPost.loadKeys(ctx); loaded++; Log.d(TAG, "  text-rec OK");
+                textRecPost.loadKeys(ctx, trVariant); loaded++; Log.d(TAG, "  text-rec OK");
             }
             runner.loadRegionDetModel(ctx, mm, null);
             if (runner.loadDocOriModel(ctx, mm, doVariant)) { loaded++; Log.d(TAG, "  doc-ori OK"); }
@@ -121,13 +121,13 @@ public class OcrEngine {
                 runner.loadFormulaDetModel(ctx, mm, fdVariant);
                 if (cb != null) cb.onProgress("公式编码器模型", 25);
                 if (runner.loadFormulaRecModels(ctx, mm, frVariant)) {
-                    recPostProc.loadTokenizer(ctx);
+                    recPostProc.loadTokenizer(ctx, frVariant);
                 }
                 if (cb != null) cb.onProgress("文字检测模型", 50);
                 runner.loadTextDetModel(ctx, mm, tdVariant);
                 if (cb != null) cb.onProgress("文字识别模型", 75);
                 if (runner.loadTextRecModel(ctx, mm, trVariant)) {
-                    textRecPost.loadKeys(ctx);
+                    textRecPost.loadKeys(ctx, trVariant);
                 }
                 if (cb != null) cb.onProgress("方向检测模型", 90);
                 runner.loadRegionDetModel(ctx, mm, null);
@@ -441,7 +441,10 @@ public class OcrEngine {
                 List<SegInterval> segments = splitAroundFormulas(textBox, formulaBoxes);
 
                 for (SegInterval seg : segments) {
-                    Bitmap crop = cropBitmap(bitmap, seg.x, textBox.y, seg.w, textBox.h);
+                    // Use formula box y/h for formula segments, textDet box y/h for text segments
+                    int cropY = seg.isFormula && seg.formulaH > 0 ? seg.formulaY : textBox.y;
+                    int cropH = seg.isFormula && seg.formulaH > 0 ? seg.formulaH : textBox.h;
+                    Bitmap crop = cropBitmap(bitmap, seg.x, cropY, seg.w, cropH);
                     if (seg.isFormula) {
                         // Use line splitter for tall formulas (multi-line), fallback to single for simple ones
                         String latex;
@@ -455,7 +458,7 @@ public class OcrEngine {
                         }
                         if (latex != null && !latex.isEmpty()) {
                             results.add(new MixedResult.RegionResult(
-                                seg.x, textBox.y, seg.w, textBox.h, "formula",
+                                seg.x, cropY, seg.w, cropH, "formula",
                                 latex, conf, seg.formulaKind));
                             totalConf += conf;
                             confCount++;
@@ -705,7 +708,7 @@ public class OcrEngine {
                     List<SegInterval> replacements = new ArrayList<>();
                     if (leftW > 6)
                         replacements.add(new SegInterval(s.x, leftW, false));
-                    replacements.add(new SegInterval(fb.x, fb.w, true, fb.label));
+                    replacements.add(new SegInterval(fb.x, fb.w, true, fb.label, fb.y, fb.h));
                     if (rightW > 6)
                         replacements.add(new SegInterval(rightX, rightW, false));
                     segs.remove(i);
@@ -750,12 +753,18 @@ public class OcrEngine {
     private static class SegInterval {
         final int x, w;
         final boolean isFormula;
-        final String formulaKind; // "embedding" or "isolated" for formula segments; "" for text
+        final String formulaKind;
+        final int formulaY, formulaH; // y/h from the formulaDet box (for correct cropping)
         SegInterval(int x, int w, boolean isFormula) {
-            this(x, w, isFormula, "");
+            this(x, w, isFormula, "", 0, 0);
         }
         SegInterval(int x, int w, boolean isFormula, String formulaKind) {
-            this.x = x; this.w = w; this.isFormula = isFormula; this.formulaKind = formulaKind;
+            this(x, w, isFormula, formulaKind, 0, 0);
+        }
+        SegInterval(int x, int w, boolean isFormula, String formulaKind, int formulaY, int formulaH) {
+            this.x = x; this.w = w; this.isFormula = isFormula;
+            this.formulaKind = formulaKind;
+            this.formulaY = formulaY; this.formulaH = formulaH;
         }
     }
 

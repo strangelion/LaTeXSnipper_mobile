@@ -11,7 +11,7 @@
 - **多格式导出** — PNG / SVG / LaTeX / MathML / Markdown / HTML / Typst / Word (.docx) / Plain Text
 - **AI 整理** — 连接 DeepSeek 兼容 API 对识别结果进行纠错和格式化
 - **公式渲染引擎切换** — KaTeX（轻量快速）/ MathJax（兼容性更好）
-- **完全离线** — 所有模型和依赖内置，安装后无需网络
+- **完全离线** — doc-ori 方向检测模型内置 APK，其他 OCR 模型按需下载 ZIP 包导入
 - **7 套视觉皮肤** — Material 蓝、MIUI 渐变、iOS 蓝、樱花和风、黑客矩阵、暖咖纸墨、极简纤白
 - **GPU 加速** — Android NNAPI (OpenGL/Vulkan/NPU) 加速推理
 - **日/夜主题** — 自动跟随系统或手动切换
@@ -74,7 +74,7 @@ LaTeXSnipper_mobile/
 │   │   ├── katex.min.js       # KaTeX 公式渲染 (265KB)
 │   │   ├── katex.min.css      # KaTeX CSS + 字体
 │   │   └── fonts/             # KaTeX 符号字体
-│   ├── models/                # ONNX 模型文件
+│   ├── models/                # 内置模型（仅 doc-ori ONNX + tokenizer/keys fallback）
 │   ├── fonts/                 # 中文字体
 │   ├── sw.js                  # Service Worker
 │   └── manifest.json          # PWA 清单
@@ -123,8 +123,21 @@ LaTeXSnipper_mobile/
 └── .github/workflows/
     ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
     ├── build-ios.yml                  # iOS 模拟器构建
-    └── security-scan.yml   # 安全扫描（恶意代码/密钥/合规检查）
+    ├── package-models.yml             # 模型打包 + 上传 GitHub Releases
+    └── security-scan.yml              # 安全扫描（恶意代码/密钥/合规检查）
 ```
+
+## 模型下载
+
+OCR 模型通过 ZIP 包下载（设置 → 模型管理），doc-ori 方向检测内置 APK。
+
+| 包名 | 大小 | 内容 |
+|------|------|------|
+| `latexsnipper-formula-det.zip` | 66.5 MB | YOLOv8 公式检测 + config.json |
+| `latexsnipper-formula-rec.zip` | 103.7 MB | TrOCR 公式识别 + tokenizer.json + config.json |
+| `latexsnipper-text-det.zip` | 4.2 MB | DBNet 文字检测 + config.json |
+| `latexsnipper-text-rec.zip` | 13.5 MB | CRNN 文字识别 + ppocrv5_keys.txt + config.json |
+| `latexsnipper-models-all.zip` | 187.9 MB | 以上全部合集 |
 
 ## 导出格式
 

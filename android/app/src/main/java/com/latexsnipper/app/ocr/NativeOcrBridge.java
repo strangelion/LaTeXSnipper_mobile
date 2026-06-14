@@ -175,15 +175,10 @@ public class NativeOcrBridge {
                 addLog("OCR", type + " decode " + (System.currentTimeMillis()-t0) + "ms "
                     + bitmap.getWidth() + "x" + bitmap.getHeight());
 
-                // Only run ONNX auto-orient if EXIF didn't already correct the image
-                if (!exifApplied[0]) {
-                    Bitmap oriented = ocrEngine.autoOrient(bitmap);
-                    if (oriented != bitmap) {
-                        bitmap.recycle();
-                        bitmap = oriented;
-                        addLog("OCR", "Auto-rotate applied: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-                    }
-                } else {
+                // Skip auto-orient: camera crop already handles rotation correctly.
+                // Doc-orient model is unreliable for cropped regions and can rotate
+                // correctly-oriented images to wrong orientation (e.g. landscape→portrait).
+                if (exifApplied[0]) {
                     addLog("OCR", "EXIF already oriented: " + bitmap.getWidth() + "x" + bitmap.getHeight());
                 }
 

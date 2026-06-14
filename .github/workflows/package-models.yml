@@ -60,14 +60,15 @@ jobs:
 
             ### Per-category packages
             - `latexsnipper-formula-det.zip` — Formula Detection (YOLOv8)
-            - `latexsnipper-formula-rec.zip` — Formula Recognition (TrOCR)
+            - `latexsnipper-formula-rec.zip` — Formula Recognition (TrOCR) + tokenizer
             - `latexsnipper-text-det.zip` — Text Detection (DBNet)
-            - `latexsnipper-text-rec.zip` — Text Recognition (CRNN) + Doc Orientation
-            - `latexsnipper-doc-ori.zip` — Document Orientation
-            - `latexsnipper-region-det.zip` — Region Classification
+            - `latexsnipper-text-rec.zip` — Text Recognition (CRNN) + keys dictionary
 
             ### Complete package
-            - `latexsnipper-models-all.zip` — All models in one package
+            - `latexsnipper-models-all.zip` — All downloadable models in one package
+
+            ### Bundled in APK
+            - Doc Orientation (pplcnet_doc_ori.onnx, 6.5 MB) — built-in, no download needed
 
             ### Usage
             1. Download a ZIP file

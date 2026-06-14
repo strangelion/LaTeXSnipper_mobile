@@ -690,6 +690,7 @@ export function confirmCrop() {
   function finish(resultCanvas) {
     _wasCapture = false;
     _captureLock = false;
+    console.log('[crop] finish: canvas=' + resultCanvas.width + 'x' + resultCanvas.height);
     camCropCanvas.style.display = 'none'; camCropActions.style.display = 'none'; camModal.classList.remove('show');
     hideRotateBar();
     camCropImg = null; camCropDisplay = null; camCropPoints = null; camCropPath = null;
@@ -730,9 +731,12 @@ export function confirmCrop() {
   // ── Quad crop: clip to quad, fill outside with white
   if (camCropPoints) {
     const confirmScale = rotW / camCropCanvas.width || 1;
+    console.log('[crop] QUAD DEBUG: confirmScale=' + confirmScale + ' points=' + JSON.stringify(camCropPoints));
     const np = camCropPoints.map(p => ({ x: p.x * confirmScale, y: p.y * confirmScale }));
+    console.log('[crop] QUAD DEBUG: scaled points=' + JSON.stringify(np));
     const bb = quadBoundingBox(np);
     const bw = Math.round(bb.w), bh = Math.round(bb.h);
+    console.log('[crop] QUAD DEBUG: bb.x=' + bb.x + ' bb.y=' + bb.y + ' bw=' + bw + ' bh=' + bh + ' src=' + src.width + 'x' + src.height);
     if (bw >= 10 && bh >= 10) {
       const out = document.createElement('canvas');
       out.width = bw; out.height = bh;
@@ -749,7 +753,7 @@ export function confirmCrop() {
   }
 
   // ── No crop: export whole rotated image
-  console.log('[crop] no crop points, exporting full src');
+  console.log('[crop] no crop points, exporting full src canvas:', src.width, 'x', src.height);
   return finish(src);
 }
 

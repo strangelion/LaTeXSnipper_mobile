@@ -83,6 +83,7 @@ LaTeXSnipper_mobile/
 │           ├── TextRecPreProcess.java      # CRNN 预处理
 │           ├── TextRecPostProcess.java     # CTC 解码
 │           ├── DocOriPreProcess.java       # 方向检测
+│           ├── ModelConfig.java            # config.json 解析 + 模型文件发现
 │           └── ImagePreProcess.java        # 图像增强
 ├── test/                      # 测试套件
 │   ├── run_tests.sh           # 一键运行全部（10 项）
@@ -123,7 +124,7 @@ Android 端使用纯 Java ONNX Runtime 管线，桌面端 Python `mathcraft-ocr`
 
 ### 公式识别 (formula mode)
 ```
-图片 → autoOrient (EXIF + PP-LCNet) → FormulaDetPreProcess (768×768 letterbox)
+图片 → FormulaDetPreProcess (768×768 letterbox)
   → 公式检测 (YOLOv8) → 结果区域 → 每个区域:
     → FormulaRecPreProcess (短边384+中心裁剪) → TrOCR 编码器(DeiT) → 束搜索解码(beam=3)
     → LaTeX 修复 → 输出
@@ -131,7 +132,7 @@ Android 端使用纯 Java ONNX Runtime 管线，桌面端 Python `mathcraft-ocr`
 
 ### 文字识别 (text mode)
 ```
-图片 → autoOrient → TextDetPreProcess (最长边960, stride32对齐)
+图片 → TextDetPreProcess (最长边960, stride32对齐)
   → DBNet 推理 → Moore-Neighbor 轮廓追踪 → unclip → box_thresh=0.5
   → 每个文本框 → TextRecPreProcess (BGR 48×320) → CRNN 推理 → CTC 解码
   → 输出文本
@@ -139,11 +140,12 @@ Android 端使用纯 Java ONNX Runtime 管线，桌面端 Python `mathcraft-ocr`
 
 ### 混合模式 (mixed mode)
 ```
-图片 → autoOrient → 公式检测 (YOLOv8) → 原图文字检测 (DBNet)
-  → splitTextBoxAroundFormulas (按公式 x 范围裁剪)
-    → 公式段 → 公式行分割（投影→逐行识别→重组{aligned}）
-    → 文字段 → 直接 CRNN 识别
-  → 独立显示公式加入 → 去重 → 行分组（union box y-overlap≥0.45）
+图片 → 公式检测 (YOLOv8) + 文字检测 (DBNet)
+  → splitTextBoxAroundFormulas (按公式 x 范围 + y 重叠分割)
+    → 公式段 → crop 使用 formulaDet 框坐标 → 公式行分割/单行识别
+    → 文字段 → crop 使用 textDet 框坐标 → 直接 CRNN 识别
+  → 独立显示公式加入 → overlap check 去重（使用正确坐标避免重复）
+  → 行分组（union box y-overlap≥0.45）
   → 版面输出（inline 用 $…$，display 用 $$\n…\n$$）
 ```
 
@@ -160,17 +162,39 @@ JS → window.NativeOcr.recognizeFormula(base64) → NativeOcrBridge (后台线�
 
 ---
 
-## 四、ONNX 模型清单（按需下载，不内置）
+## 四、ONNX 模型清单（按需下载，doc-ori 内置）
 
-模型不再打包进 APK，通过 GitHub Releases 下载 ZIP 包导入。
+模型通过 ZIP 包下载导入，doc-ori 方向检测模型内置 APK（6.5 MB）。
+ZIP 包格式对齐 HuggingFace ONNX + PaddleOCR 规范，每个包含 `config.json`。
 
-| 类别 | 默认 variant ID | 模型文件 | 用途 |
-|------|----------------|----------|------|
-| `formula-det` | `mathcraft-mfd` | `mathcraft-mfd.onnx` | YOLOv8 公式检测 |
-| `formula-rec` | `trocr-deit` | `encoder_model.onnx` + `decoder_model.onnx` | TrOCR 公式识别 |
-| `text-det` | `ppocrv5-mobile` | `ppocrv5_mobile_det.onnx` | DBNet 文字检测 |
-| `text-rec` | `ppocrv5-mobile` | `ppocrv5_mobile_rec.onnx` + dict + ori models | CRNN 文字识别 |
-| `doc-ori` | `pplcnet-doc-ori` | `pplcnet_doc_ori.onnx` | 方向检测 |
+| 类别 | 默认 variant ID | 模型文件 | 分发方式 |
+|------|----------------|----------|----------|
+| `formula-det` | `yolov8-mfd` | `mathcraft-mfd.onnx` | 下载 ZIP |
+| `formula-rec` | `trocr-deit` | `encoder_model.onnx` + `decoder_model.onnx` + `tokenizer.json` | 下载 ZIP |
+| `text-det` | `ppocrv5-mobile` | `ppocrv5_mobile_det.onnx` | 下载 ZIP |
+| `text-rec` | `ppocrv5-mobile` | `ppocrv5_mobile_rec.onnx` + `ppocrv5_keys.txt` | 下载 ZIP |
+| `doc-ori` | `pplcnet-doc-ori` | `pplcnet_doc_ori.onnx` | **内置 APK** |
+
+### ZIP 包结构
+
+```
+{category}/{variantId}/
+  model.onnx (或 encoder_model.onnx + decoder_model.onnx)  — ONNX 模型权重
+  config.json                                               — 模型自描述（类型/输入/输出/预处理/后处理）
+  tokenizer.json / ppocrv5_keys.txt                         — 解码器字典文件
+```
+
+### ModelConfig.java — config.json 解析
+
+```java
+ModelConfig.load(modelDir)       // 从模型目录读取 config.json
+ModelConfig.findModelFile(dir)   // 发现 ONNX 文件（model.onnx → *.onnx）
+ModelConfig.findEncoderFile(dir) // 发现编码器 ONNX（encoder.onnx → encoder_model.onnx）
+ModelConfig.findDecoderFile(dir) // 发现解码器 ONNX
+ModelConfig.findTokenizerFile(dir) // 发现字典文件（tokenizer.json → ppocr_keys.txt）
+```
+
+注意：已知模型加载使用**硬编码文件名**（避免多 ONNX 目录误选），`findModelFile` 仅供第三方模型发现使用。
 
 ### 模型管理系统
 
@@ -197,7 +221,25 @@ Java 端:
 
 ```bash
 node scripts/package-models.js --output dist-models
-# 生成: dist-models/latexsnipper-{category}.zip + latexsnipper-models-all.zip
+# 生成: dist-models/latexsnipper-{category}.zip + model-manifest.json
+# ONNX 源文件在 model-sources/（不被 Vite 清理）
+# 每个 ZIP 包含 config.json（自动从 CATEGORY_MAP 生成）
+```
+
+### 模型目录结构
+
+```
+model-sources/          ← 打包源文件（.gitignore，不在 git 中）
+  mathcraft-formula-det/
+  mathcraft-formula-rec/
+  mathcraft-text-det/
+  mathcraft-text-rec/
+  mathcraft-doc-ori/
+
+public/models/          ← 仅含内置 APK 的文件
+  mathcraft-doc-ori/pplcnet_doc_ori.onnx  ← 内置方向检测（6.5 MB）
+  mathcraft-formula-rec/tokenizer.json     ← 公式 tokenizer fallback
+  mathcraft-text-rec/ppocrv5_keys.txt      ← 文字 CTC 字典 fallback
 ```
 
 ---

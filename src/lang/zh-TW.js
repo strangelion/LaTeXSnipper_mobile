@@ -202,4 +202,56 @@ export default {
   "export.format.typst": "Typst",
   "export.format.docx": "Word",
   "export.format.plain": "純文字",
+
+  // ── Settings tabs ──
+  "settings.tabRecog": "識別",
+  "settings.tabModels": "模型",
+  "settings.tabGeneral": "通用",
+  "settings.appearance": "外觀",
+  "settings.about": "關於",
+
+  // ── PDF ──
+  "pdf.rangeInputLabel": "自訂範圍",
+
+  // ── Status ──
+  "status.noModels": "未安裝本端模型。請在設定中下載模型，或切換到外部 API",
+
+  // ── Recognition ──
+  "recog.resultLabel": "結果",
+
+  // ── Model management ──
+  "model.management": "模型管理",
+  "model.sources": "清單來源",
+  "model.addSource": "新增來源",
+  "model.sourceUrl": "輸入清單URL...",
+  "model.currentModels": "目前使用的模型",
+  "model.import": "匯入",
+  "model.importZip": "從ZIP匯入",
+  "model.importFile": "從檔案匯入",
+  "model.importing": "正在匯入…",
+  "model.importSuccess": "成功匯入 {{count}} 個檔案",
+  "model.importFailed": "匯入失敗: {{msg}}",
+  "model.category": "分類",
+  "model.variantName": "模型名稱",
+  "model.refresh": "重新整理清單",
+  "model.builtin": "（內建）",
+  "model.downloading": "下載中...",
+  "model.downloadFailed": "下載失敗",
+  "model.download": "下載",
+  "model.delete": "刪除",
+  "model.deleteConfirm": "確定刪除",
+  "model.switching": "切換中...",
+  "model.cancel": "取消",
+  "model.confirm": "確定",
+  "model.cat_formula-det": "公式偵測",
+  "model.cat_formula-rec": "公式辨識",
+  "model.cat_text-det": "文字偵測",
+  "model.cat_text-rec": "文字辨識",
+  "model.cat_doc-ori": "方向偵測",
+  "model.cat_region-det": "區域分類",
+
+  // ── Buttons ──
+  "btn.cancel": "取消",
+  "btn.confirm": "確定",
+  "btn.import": "匯入",
 }

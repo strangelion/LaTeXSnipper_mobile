@@ -2,7 +2,15 @@
 # Models are distributed via GitHub Releases as downloadable packages.
 # See: scripts/package-models.js and .github/workflows/package-models.yml
 
+# Ignore large model files
 *.onnx
-*.txt
-*.json
-mathcraft-*/
+
+# Keep doc-ori model (bundled in APK, ~6.5 MB)
+!mathcraft-doc-ori/pplcnet_doc_ori.onnx
+
+# Ignore model resource JSONs (large), but keep tokenizer.json (small, needed for decoding)
+mathcraft-*/*.json
+!mathcraft-formula-rec/tokenizer.json
+
+# Keep keys file for text recognition (needed by Java CTC decoder)
+!mathcraft-text-rec/ppocrv5_keys.txt

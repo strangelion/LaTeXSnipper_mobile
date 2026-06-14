@@ -19,7 +19,7 @@ const DEFAULT_SOURCES = [
   {
     id: 'official',
     label: 'Official',
-    url: 'https://github.com/strangelion/LaTeXSnipper_mobile',
+    url: 'https://github.com/strangelion/LaTeXSnipper_mobile/tree/main/dist-models',
     builtin: true,
   }
 ];

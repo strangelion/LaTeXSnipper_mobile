@@ -2,61 +2,174 @@
 // Package models into importable ZIP files for LaTeXSnipper.
 // Usage: node scripts/package-models.js [--output dist-models]
 //
+// Package format follows HuggingFace ONNX + PaddleOCR conventions:
+//   {category}/{variantId}/
+//     model.onnx (or encoder.onnx + decoder.onnx)  — ONNX model weights
+//     config.json                                   — model architecture & preprocessing config
+//     tokenizer.json                                — [formula-rec] HuggingFace tokenizer vocab
+//     ppocr_keys.txt                                — [text-rec] CTC decoding dictionary
+//
 // Generates:
-//   dist-models/model-manifest.json          — manifest for LaTeXSnipper-models repo
-//   dist-models/latexsnipper-models-all.zip   — complete package (all categories)
-//   dist-models/latexsnipper-formula-det.zip  — per-category packages
-//   dist-models/latexsnipper-formula-rec.zip
-//   dist-models/latexsnipper-text-det.zip
-//   dist-models/latexsnipper-text-rec.zip
-//   dist-models/latexsnipper-doc-ori.zip
-//   dist-models/latexsnipper-region-det.zip
+//   dist-models/model-manifest.json
+//   dist-models/latexsnipper-models-all.zip
+//   dist-models/latexsnipper-{category}.zip
 
-import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, createWriteStream } from 'fs';
-import { join, resolve, relative } from 'path';
-import { createHash } from 'crypto';
+import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from 'fs';
+import { join, resolve } from 'path';
 import zlib from 'zlib';
 
 // ── Config ──
 
 const ROOT = resolve(import.meta.dirname, '..');
-const MODELS_DIR = join(ROOT, 'public', 'models');
+const MODELS_DIR = join(ROOT, 'model-sources');
 const OUTPUT_DIR = resolve(process.argv.includes('--output')
   ? process.argv[process.argv.indexOf('--output') + 1]
   : join(ROOT, 'dist-models'));
 
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')).version;
 
-// Category → { sourceDir, variantId, files }
-// Maps logical categories to actual directory/file structure in public/models/
+// Category → { sourceDir, variantId, files, config }
+// files: null = all files in source directory
+// config: model config to generate as config.json (HuggingFace/PaddleOCR convention)
 const CATEGORY_MAP = {
   'formula-det': {
     sourceDir: 'mathcraft-formula-det',
-    variantId: 'mathcraft-mfd',
-    files: null, // null = all .onnx files in directory
+    variantId: 'yolov8-mfd',
+    files: ['mathcraft-mfd.onnx'],
+    config: {
+      model_type: 'yolov8',
+      model_family: 'YOLOv8 Math Formula Detection',
+      license: 'Apache-2.0',
+      input: {
+        name: 'images',
+        shape: [1, 3, 768, 768],
+        dtype: 'float32',
+        range: [0.0, 1.0],
+      },
+      output: {
+        name: 'output0',
+        shape: [1, 6, 8400],
+        description: '[batch, 6, num_detections] — 6 = (x, y, w, h, confidence, class)',
+      },
+      preprocessing: {
+        resize: { width: 768, height: 768, keep_ratio: true, pad_value: 114 },
+        normalization: { mean: [0, 0, 0], std: [255, 255, 255] },
+        color_format: 'BGR',
+      },
+      postprocessing: {
+        type: 'yolo_nms',
+        confidence_threshold: 0.25,
+        iou_threshold: 0.45,
+        max_detections: 100,
+      },
+    },
   },
   'formula-rec': {
     sourceDir: 'mathcraft-formula-rec',
     variantId: 'trocr-deit',
-    files: null,
+    files: null, // encoder.onnx, decoder.onnx, tokenizer.json, config.json
+    config: {
+      model_type: 'trocr',
+      model_family: 'TrOCR (Transformer OCR) for LaTeX Formula Recognition',
+      license: 'MIT',
+      encoder: {
+        input: {
+          name: 'pixel_values',
+          shape: [1, 3, 384, 384],
+          dtype: 'float32',
+          range: [-1.0, 1.0],
+        },
+        output: {
+          name: 'last_hidden_state',
+          shape: [1, 577, 384],
+        },
+      },
+      decoder: {
+        input_ids: { name: 'input_ids', dtype: 'int64' },
+        encoder_hidden: { name: 'encoder_hidden_states' },
+        output: { name: 'logits', shape: [1, -1, 50265] },
+        max_length: 512,
+        eos_token_id: 2,
+        pad_token_id: 0,
+      },
+      preprocessing: {
+        resize: { width: 384, height: 384, keep_ratio: true, pad_value: 0 },
+        normalization: { mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5] },
+        color_format: 'RGB',
+      },
+      decoding: {
+        type: 'beam_search',
+        beam_width: 3,
+        top_k: 5,
+        tokenizer_file: 'tokenizer.json',
+      },
+    },
   },
   'text-det': {
     sourceDir: 'mathcraft-text-det',
     variantId: 'ppocrv5-mobile',
     files: null,
+    config: {
+      model_type: 'dbnet',
+      model_family: 'PaddleOCRv5 Differentiable Binarization Text Detection',
+      license: 'Apache-2.0',
+      input: {
+        name: 'x',
+        shape: [1, 3, -1, -1], // dynamic H, W
+        dtype: 'float32',
+        range: [0.0, 1.0],
+      },
+      output: {
+        name: 'save_infer_model/scale_0.tmp_1',
+        shape: [1, 1, -1, -1],
+        description: 'probability map for text regions',
+      },
+      preprocessing: {
+        normalization: { mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225] },
+        color_format: 'RGB',
+        divisible_by: 32,
+      },
+      postprocessing: {
+        type: 'dbnet',
+        threshold: 0.3,
+        box_threshold: 0.5,
+        max_candidates: 1000,
+        unclip_ratio: 1.5,
+      },
+    },
   },
   'text-rec': {
     sourceDir: 'mathcraft-text-rec',
     variantId: 'ppocrv5-mobile',
-    files: null,
-    // Include all files from text-rec dir (rec model + doc-ori + orientation + dict)
+    files: null, // ppocrv5_mobile_rec.onnx + ppocrv5_keys.txt
+    config: {
+      model_type: 'crnn_ctc',
+      model_family: 'PaddleOCRv5 CRNN Text Recognition with CTC',
+      license: 'Apache-2.0',
+      input: {
+        name: 'x',
+        shape: [1, 3, 48, 320],
+        dtype: 'float32',
+        range: [0.0, 1.0],
+      },
+      output: {
+        name: 'save_infer_model/scale_0.tmp_1',
+        shape: [1, -1, 6637],
+        description: '[batch, seq_len, vocab_size] CTC logits',
+      },
+      preprocessing: {
+        resize: { height: 48, width: 320, keep_ratio: true, pad_value: 0 },
+        normalization: { mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5] },
+        color_format: 'RGB',
+      },
+      decoding: {
+        type: 'ctc_greedy',
+        blank_id: 0,
+        keys_file: 'ppocr_keys.txt',
+      },
+    },
   },
-  'doc-ori': {
-    sourceDir: 'mathcraft-text-rec',
-    variantId: 'pplcnet-doc-ori',
-    files: ['pplcnet_doc_ori.onnx'],
-  },
-  // 'region-det' deprecated — chinese_detector.onnx remains bundled in APK as fallback
+  // 'doc-ori' — bundled in APK, not distributed as downloadable package
 };
 
 const CAT_LABELS = {
@@ -212,6 +325,8 @@ function getAllFiles(dir, prefix = '') {
     if (entry.isDirectory()) {
       result.push(...getAllFiles(fullPath, relPath));
     } else if (entry.isFile()) {
+      // Skip non-model files: .gitignore, .txt (non-dict), build artifacts
+      if (entry.name === '.gitignore') continue;
       result.push({ relPath, fullPath, size: statSync(fullPath).size });
     }
   }
@@ -228,6 +343,7 @@ function formatSize(bytes) {
 
 function main() {
   console.log(`LaTeXSnipper Model Packager v${VERSION}`);
+  console.log(`Format: HuggingFace ONNX + PaddleOCR conventions`);
   console.log(`Models dir: ${MODELS_DIR}`);
   console.log(`Output dir: ${OUTPUT_DIR}`);
   console.log();
@@ -235,15 +351,18 @@ function main() {
   mkdirSync(OUTPUT_DIR, { recursive: true });
 
   // Build manifest
+  // baseUrl: GitHub raw URL for the directory containing ZIPs
+  const manifestBaseUrl = 'https://raw.githubusercontent.com/strangelion/LaTeXSnipper_mobile/main/dist-models';
   const manifest = {
     sourceId: 'official',
     sourceLabel: 'LaTeXSnipper Official',
     version: VERSION,
-    baseUrl: '',
+    baseUrl: manifestBaseUrl,
     categories: {},
   };
 
-  const categoryFiles = {}; // category → [{ variantPath, sourcePath, filename, size }]
+  const categoryFiles = {}; // category → [{ zipPath, sourcePath, filename, size }]
+  let missingDictWarnings = [];
 
   for (const [category, config] of Object.entries(CATEGORY_MAP)) {
     const sourceDir = join(MODELS_DIR, config.sourceDir);
@@ -252,27 +371,54 @@ function main() {
     // Get files for this category
     let files;
     if (config.files) {
-      // Specific files
       files = config.files.map(f => {
         const fullPath = join(sourceDir, f);
-        const size = statSync(fullPath).size;
-        return { relPath: f, fullPath, size };
-      });
+        if (!existsSync(fullPath)) {
+          console.error(`  ERROR: ${fullPath} not found!`);
+          return null;
+        }
+        return { relPath: f, fullPath, size: statSync(fullPath).size };
+      }).filter(Boolean);
     } else {
-      // All files in directory
       files = getAllFiles(sourceDir);
     }
 
+    // Validate decoder-critical files
+    if (category === 'formula-rec') {
+      if (!files.some(f => f.relPath === 'tokenizer.json')) {
+        missingDictWarnings.push(`${category}: tokenizer.json missing — formula decoding will fail`);
+      }
+    }
+    if (category === 'text-rec') {
+      if (!files.some(f => f.relPath === 'ppocrv5_keys.txt' || f.relPath === 'ppocr_keys.txt')) {
+        missingDictWarnings.push(`${category}: ppocr_keys.txt missing — text decoding will fail`);
+      }
+    }
+
     // Build ZIP paths: {category}/{variantId}/{filename}
-    categoryFiles[category] = files.map(f => ({
+    const zipFiles = files.map(f => ({
       zipPath: `${category}/${variantId}/${f.relPath}`,
       sourcePath: f.fullPath,
       filename: f.relPath,
       size: f.size,
     }));
 
+    // Add config.json to ZIP (generated from CATEGORY_MAP config)
+    if (config.config) {
+      zipFiles.push({
+        zipPath: `${category}/${variantId}/config.json`,
+        sourcePath: null, // generated, not from disk
+        filename: 'config.json',
+        size: Buffer.byteLength(JSON.stringify(config.config, null, 2)),
+        generated: true,
+        data: JSON.stringify(config.config, null, 2),
+      });
+    }
+
+    categoryFiles[category] = zipFiles;
+
     // Add to manifest
-    const totalSize = files.reduce((s, f) => s + f.size, 0);
+    const totalSize = zipFiles.reduce((s, f) => s + f.size, 0);
     manifest.categories[category] = {
       label: CAT_LABELS[category],
       required: false,
@@ -280,12 +426,21 @@ function main() {
       variants: [{
         id: variantId,
         label: CAT_LABELS[category],
-        files: files.map(f => f.filename),
+        modelType: config.config?.model_type || 'unknown',
+        files: zipFiles.map(f => f.filename),
         sizeBytes: totalSize,
+        zipFile: `latexsnipper-${category}.zip`,
       }],
     };
 
-    console.log(`${category}: ${files.length} files, ${formatSize(totalSize)}`);
+    console.log(`${category}: ${zipFiles.length} files, ${formatSize(totalSize)}`);
+  }
+
+  // Print warnings
+  if (missingDictWarnings.length > 0) {
+    console.error('\n  !! WARNINGS:');
+    for (const w of missingDictWarnings) console.error(`     ${w}`);
+    console.error();
   }
 
   // Write manifest
@@ -296,7 +451,6 @@ function main() {
   // Create per-category ZIPs (each with a single-category manifest)
   for (const [category, files] of Object.entries(categoryFiles)) {
     const zip = new ZipWriter();
-    // Per-category manifest: only this category, unique sourceId
     const catManifest = {
       sourceId: `official-${category}`,
       sourceLabel: `LaTeXSnipper Official — ${CAT_LABELS[category]}`,
@@ -306,7 +460,11 @@ function main() {
     };
     zip.addFile('model-manifest.json', JSON.stringify(catManifest, null, 2));
     for (const f of files) {
-      zip.addFile(f.zipPath, readFileSync(f.sourcePath));
+      if (f.generated) {
+        zip.addFile(f.zipPath, f.data);
+      } else {
+        zip.addFile(f.zipPath, readFileSync(f.sourcePath));
+      }
     }
     const zipData = zip.generate();
     const zipPath = join(OUTPUT_DIR, `latexsnipper-${category}.zip`);
@@ -319,7 +477,11 @@ function main() {
   allZip.addFile('model-manifest.json', JSON.stringify(manifest, null, 2));
   for (const files of Object.values(categoryFiles)) {
     for (const f of files) {
-      allZip.addFile(f.zipPath, readFileSync(f.sourcePath));
+      if (f.generated) {
+        allZip.addFile(f.zipPath, f.data);
+      } else {
+        allZip.addFile(f.zipPath, readFileSync(f.sourcePath));
+      }
     }
   }
   const allZipData = allZip.generate();

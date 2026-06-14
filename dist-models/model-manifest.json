@@ -1,0 +1,83 @@
+{
+  "sourceId": "official",
+  "sourceLabel": "LaTeXSnipper Official",
+  "version": "1.3.0",
+  "baseUrl": "https://raw.githubusercontent.com/strangelion/LaTeXSnipper_mobile/main/dist-models",
+  "categories": {
+    "formula-det": {
+      "label": "Formula Detection",
+      "required": false,
+      "default": "yolov8-mfd",
+      "variants": [
+        {
+          "id": "yolov8-mfd",
+          "label": "Formula Detection",
+          "modelType": "yolov8",
+          "files": [
+            "mathcraft-mfd.onnx",
+            "config.json"
+          ],
+          "sizeBytes": 80312016,
+          "zipFile": "latexsnipper-formula-det.zip"
+        }
+      ]
+    },
+    "formula-rec": {
+      "label": "Formula Recognition",
+      "required": false,
+      "default": "trocr-deit",
+      "variants": [
+        {
+          "id": "trocr-deit",
+          "label": "Formula Recognition",
+          "modelType": "trocr",
+          "files": [
+            "decoder_model.onnx",
+            "encoder_model.onnx",
+            "tokenizer.json",
+            "config.json"
+          ],
+          "sizeBytes": 117654546,
+          "zipFile": "latexsnipper-formula-rec.zip"
+        }
+      ]
+    },
+    "text-det": {
+      "label": "Text Detection",
+      "required": false,
+      "default": "ppocrv5-mobile",
+      "variants": [
+        {
+          "id": "ppocrv5-mobile",
+          "label": "Text Detection",
+          "modelType": "dbnet",
+          "files": [
+            "ppocrv5_mobile_det.onnx",
+            "config.json"
+          ],
+          "sizeBytes": 4746371,
+          "zipFile": "latexsnipper-text-det.zip"
+        }
+      ]
+    },
+    "text-rec": {
+      "label": "Text Recognition",
+      "required": false,
+      "default": "ppocrv5-mobile",
+      "variants": [
+        {
+          "id": "ppocrv5-mobile",
+          "label": "Text Recognition",
+          "modelType": "crnn_ctc",
+          "files": [
+            "ppocrv5_keys.txt",
+            "ppocrv5_mobile_rec.onnx",
+            "config.json"
+          ],
+          "sizeBytes": 16724573,
+          "zipFile": "latexsnipper-text-rec.zip"
+        }
+      ]
+    }
+  }
+}

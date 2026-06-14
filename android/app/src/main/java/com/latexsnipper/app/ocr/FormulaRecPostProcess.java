@@ -41,35 +41,80 @@ public class FormulaRecPostProcess {
     private boolean tokenizerLoaded = false;
 
     /**
-     * Load the HuggingFace tokenizer.json from assets.
+     * Load the HuggingFace tokenizer.json from filesystem (downloaded model) or assets.
      */
     public void loadTokenizer(Context ctx) {
-        try {
-            InputStream is = ctx.getAssets().open(
-                "public/models/mathcraft-formula-rec/tokenizer.json");
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-            br.close();
+        loadTokenizer(ctx, null);
+    }
 
-            JSONObject root = new JSONObject(sb.toString());
-            JSONObject model = root.getJSONObject("model");
-            JSONObject v = model.getJSONObject("vocab");
+    /**
+     * Load the HuggingFace tokenizer.json, trying filesystem first then assets.
+     */
+    public void loadTokenizer(Context ctx, String variantId) {
+        String json = null;
+        String source = null;
 
-            // Invert vocab: {token: id} → {id: token}
-            vocab = new TreeMap<>();
-            java.util.Iterator<String> it = v.keys();
-            while (it.hasNext()) {
-                String key = it.next();
-                int id = v.getInt(key);
-                vocab.put(id, key);
+        // Try filesystem: filesDir/models/formula-rec/{variantId}/tokenizer.json
+        if (variantId != null) {
+            try {
+                java.io.File f = new java.io.File(ctx.getFilesDir(),
+                    "models/formula-rec/" + variantId + "/tokenizer.json");
+                if (f.exists()) {
+                    java.io.FileInputStream fis = new java.io.FileInputStream(f);
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = fis.read(buf)) >= 0) baos.write(buf, 0, n);
+                    fis.close();
+                    json = baos.toString("UTF-8");
+                    source = "filesystem:" + f.getAbsolutePath();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Filesystem tokenizer load failed: " + e.getMessage());
             }
+        }
 
-            tokenizerLoaded = true;
-            Log.d(TAG, "Tokenizer loaded: " + vocab.size() + " tokens");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to load tokenizer", e);
+        // Try bundled asset
+        if (json == null) {
+            try {
+                InputStream is = ctx.getAssets().open(
+                    "public/models/mathcraft-formula-rec/tokenizer.json");
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+                json = sb.toString();
+                source = "assets";
+            } catch (Exception e) {
+                Log.w(TAG, "Asset tokenizer load failed: " + e.getMessage());
+            }
+        }
+
+        if (json != null) {
+            try {
+                JSONObject root = new JSONObject(json);
+                JSONObject model = root.getJSONObject("model");
+                JSONObject v = model.getJSONObject("vocab");
+
+                // Invert vocab: {token: id} → {id: token}
+                vocab = new TreeMap<>();
+                java.util.Iterator<String> it = v.keys();
+                while (it.hasNext()) {
+                    String key = it.next();
+                    int id = v.getInt(key);
+                    vocab.put(id, key);
+                }
+
+                tokenizerLoaded = true;
+                Log.d(TAG, "Tokenizer loaded (" + source + "): " + vocab.size() + " tokens");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to parse tokenizer JSON", e);
+            }
+        }
+
+        if (!tokenizerLoaded) {
+            Log.e(TAG, "Tokenizer not found anywhere — recognition will produce empty output");
             // Build a minimal fallback vocab
             vocab = new TreeMap<>();
             vocab.put(0, "<pad>");

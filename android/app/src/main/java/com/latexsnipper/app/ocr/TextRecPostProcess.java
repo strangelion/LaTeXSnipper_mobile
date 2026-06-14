@@ -25,22 +25,58 @@ public class TextRecPostProcess {
     private static final java.util.Map<Character, Character> T2S = buildT2S();
 
     /**
-     * Load the ppocrv5_keys.txt from assets (one character per line).
+     * Load the ppocrv5_keys.txt, trying filesystem first then assets.
      */
     public void loadKeys(Context ctx) {
-        try {
-            InputStream is = ctx.getAssets().open(
-                "public/models/mathcraft-text-rec/ppocrv5_keys.txt");
-            BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-            String line;
-            while ((line = br.readLine()) != null) {
-                keys.add(line);
+        loadKeys(ctx, null);
+    }
+
+    public void loadKeys(Context ctx, String variantId) {
+        String source = null;
+
+        // Try filesystem: filesDir/models/text-rec/{variantId}/ppocrv5_keys.txt
+        if (variantId != null) {
+            try {
+                java.io.File f = new java.io.File(ctx.getFilesDir(),
+                    "models/text-rec/" + variantId + "/ppocrv5_keys.txt");
+                if (f.exists()) {
+                    java.io.FileInputStream fis = new java.io.FileInputStream(f);
+                    java.io.BufferedReader br = new java.io.BufferedReader(
+                        new InputStreamReader(fis, "UTF-8"));
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        keys.add(line);
+                    }
+                    br.close();
+                    source = "filesystem";
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Filesystem keys load failed: " + e.getMessage());
             }
-            br.close();
+        }
+
+        // Fallback to bundled asset
+        if (keys.isEmpty()) {
+            try {
+                InputStream is = ctx.getAssets().open(
+                    "public/models/mathcraft-text-rec/ppocrv5_keys.txt");
+                BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    keys.add(line);
+                }
+                br.close();
+                source = "assets";
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to load keys from any source", e);
+            }
+        }
+
+        if (!keys.isEmpty()) {
             keysLoaded = true;
-            Log.d(TAG, "Keys loaded: " + keys.size());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to load keys", e);
+            Log.d(TAG, "Keys loaded (" + source + "): " + keys.size() + " tokens");
+        } else {
+            Log.e(TAG, "Keys not found anywhere — text recognition will produce empty output");
         }
     }
 

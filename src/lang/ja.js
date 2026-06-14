@@ -202,4 +202,56 @@ export default {
   "export.format.typst": "Typst",
   "export.format.docx": "Word",
   "export.format.plain": "プレーンテキスト",
+
+  // ── Settings tabs ──
+  "settings.tabRecog": "OCR",
+  "settings.tabModels": "モデル",
+  "settings.tabGeneral": "一般",
+  "settings.appearance": "外観",
+  "settings.about": "について",
+
+  // ── PDF ──
+  "pdf.rangeInputLabel": "カスタム範囲",
+
+  // ── Status ──
+  "status.noModels": "ローカルモデルがインストールされていません。設定からモデルをダウンロードするか、外部APIに切り替えてください",
+
+  // ── Recognition ──
+  "recog.resultLabel": "結果",
+
+  // ── Model management ──
+  "model.management": "モデル管理",
+  "model.sources": "マニフェストソース",
+  "model.addSource": "ソースを追加",
+  "model.sourceUrl": "マニフェストURLを入力...",
+  "model.currentModels": "現在使用中のモデル",
+  "model.import": "インポート",
+  "model.importZip": "ZIPからインポート",
+  "model.importFile": "ファイルからインポート",
+  "model.importing": "インポート中...",
+  "model.importSuccess": "{{count}}件のファイルをインポートしました",
+  "model.importFailed": "インポート失敗: {{msg}}",
+  "model.category": "カテゴリ",
+  "model.variantName": "モデル名",
+  "model.refresh": "マニフェスト更新",
+  "model.builtin": "（バンドル済み）",
+  "model.downloading": "ダウンロード中...",
+  "model.downloadFailed": "ダウンロード失敗",
+  "model.download": "ダウンロード",
+  "model.delete": "削除",
+  "model.deleteConfirm": "削除しますか",
+  "model.switching": "切り替え中...",
+  "model.cancel": "キャンセル",
+  "model.confirm": "確認",
+  "model.cat_formula-det": "数式検出",
+  "model.cat_formula-rec": "数式認識",
+  "model.cat_text-det": "テキスト検出",
+  "model.cat_text-rec": "テキスト認識",
+  "model.cat_doc-ori": "ドキュメント方向",
+  "model.cat_region-det": "リージョン分類",
+
+  // ── Buttons ──
+  "btn.cancel": "キャンセル",
+  "btn.confirm": "確認",
+  "btn.import": "インポート",
 }

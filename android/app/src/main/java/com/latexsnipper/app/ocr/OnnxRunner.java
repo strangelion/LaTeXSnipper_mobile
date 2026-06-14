@@ -137,7 +137,7 @@ public class OnnxRunner {
             case "text-det":    return "public/models/mathcraft-text-det/" + filename;
             case "text-rec":    return "public/models/mathcraft-text-rec/" + filename;
             case "region-det":  return "public/models/" + filename;
-            case "doc-ori":     return "public/models/mathcraft-text-rec/" + filename;
+            case "doc-ori":     return "public/models/mathcraft-doc-ori/" + filename;
             default:            return "public/models/" + category + "/" + filename;
         }
     }
@@ -256,11 +256,18 @@ public class OnnxRunner {
 
     public boolean loadFormulaDetModel(Context ctx, ModelManager mm, String variantId) {
         init();
-        String vid = variantId != null ? variantId : "mathcraft-mfd";
-        formulaDetSession = createSession(loadModelData(ctx, "formula-det", vid, "mathcraft-mfd.onnx"));
+        String vid = variantId != null ? variantId : "yolov8-mfd";
+        // Use known filename
+        ByteBuffer data = loadModelData(ctx, "formula-det", vid, "mathcraft-mfd.onnx");
+        formulaDetSession = createSession(data);
         if (formulaDetSession == null) { Log.w(TAG, "FormulaDet NOT available (variant=" + vid + ")"); return false; }
         formulaDetInput = getInputName(formulaDetSession);
         formulaDetOutput = getOutputName(formulaDetSession);
+
+        java.io.File modelDir = new java.io.File(ctx.getFilesDir(), "models/formula-det/" + vid);
+        ModelConfig cfg = ModelConfig.load(modelDir);
+        if (cfg != null) Log.d(TAG, "FormulaDet config: " + cfg);
+
         Log.d(TAG, "FormulaDet loaded (variant=" + vid + "): " + formulaDetInput + " -> " + formulaDetOutput);
         return true;
     }
@@ -268,6 +275,7 @@ public class OnnxRunner {
     public boolean loadFormulaRecModels(Context ctx, ModelManager mm, String variantId) {
         init();
         String vid = variantId != null ? variantId : "trocr-deit";
+        // Use known filenames — directory has encoder + decoder + tokenizer + config
         encoderSession = createSession(loadModelData(ctx, "formula-rec", vid, "encoder_model.onnx"));
         decoderSession = createSession(loadModelData(ctx, "formula-rec", vid, "decoder_model.onnx"));
         if (encoderSession == null || decoderSession == null) {
@@ -279,6 +287,11 @@ public class OnnxRunner {
         decoderInputIds = decNames[0];
         decoderInputHidden = decNames[1];
         decoderOutput = getOutputName(decoderSession);
+
+        java.io.File modelDir = new java.io.File(ctx.getFilesDir(), "models/formula-rec/" + vid);
+        ModelConfig cfg = ModelConfig.load(modelDir);
+        if (cfg != null) Log.d(TAG, "FormulaRec config: " + cfg);
+
         Log.d(TAG, "FormulaRec loaded (variant=" + vid + ")");
         return true;
     }
@@ -286,10 +299,17 @@ public class OnnxRunner {
     public boolean loadTextDetModel(Context ctx, ModelManager mm, String variantId) {
         init();
         String vid = variantId != null ? variantId : "ppocrv5-mobile";
-        textDetSession = createSession(loadModelData(ctx, "text-det", vid, "ppocrv5_mobile_det.onnx"));
+        // Use known filename — directory may contain multiple ONNX files
+        ByteBuffer data = loadModelData(ctx, "text-det", vid, "ppocrv5_mobile_det.onnx");
+        textDetSession = createSession(data);
         if (textDetSession == null) { Log.w(TAG, "TextDet NOT available (variant=" + vid + ")"); return false; }
         textDetInput = getInputName(textDetSession);
         textDetOutput = getOutputName(textDetSession);
+
+        java.io.File modelDir = new java.io.File(ctx.getFilesDir(), "models/text-det/" + vid);
+        ModelConfig cfg = ModelConfig.load(modelDir);
+        if (cfg != null) Log.d(TAG, "TextDet config: " + cfg);
+
         Log.d(TAG, "TextDet loaded (variant=" + vid + ")");
         return true;
     }
@@ -297,10 +317,17 @@ public class OnnxRunner {
     public boolean loadTextRecModel(Context ctx, ModelManager mm, String variantId) {
         init();
         String vid = variantId != null ? variantId : "ppocrv5-mobile";
-        textRecSession = createSession(loadModelData(ctx, "text-rec", vid, "ppocrv5_mobile_rec.onnx"));
+        // Use known filename — directory contains multiple ONNX (doc-ori, textline-ori, rec)
+        ByteBuffer data = loadModelData(ctx, "text-rec", vid, "ppocrv5_mobile_rec.onnx");
+        textRecSession = createSession(data);
         if (textRecSession == null) { Log.w(TAG, "TextRec NOT available (variant=" + vid + ")"); return false; }
         textRecInput = getInputName(textRecSession);
         textRecOutput = getOutputName(textRecSession);
+
+        java.io.File modelDir = new java.io.File(ctx.getFilesDir(), "models/text-rec/" + vid);
+        ModelConfig cfg = ModelConfig.load(modelDir);
+        if (cfg != null) Log.d(TAG, "TextRec config: " + cfg);
+
         Log.d(TAG, "TextRec loaded (variant=" + vid + ")");
         return true;
     }
@@ -319,6 +346,7 @@ public class OnnxRunner {
     public boolean loadDocOriModel(Context ctx, ModelManager mm, String variantId) {
         init();
         String vid = variantId != null ? variantId : "pplcnet-doc-ori";
+        // Use known filename with multi-category fallback (legacy: doc-ori or text-rec)
         ByteBuffer data = loadModelDataWithFallback(ctx, vid, "pplcnet_doc_ori.onnx",
             new String[]{"doc-ori", "text-rec"});
         docOriSession = createSession(data);
