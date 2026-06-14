@@ -92,6 +92,22 @@
 - 混合识别验证 — 文本"计算旋转体体积：" + 公式正确分离，无重复
 - 镜像源验证 — `gh.zwy.one` 和 `gh.xxooo.cf` 均可访问
 - GitHub Release 上传验证 — 5 个 ZIP + manifest 全部上传成功
+- pandoc.wasm 下载验证 — 通过 gh.xxooo.cf 镜像成功下载 55.7 MB
+- 欢迎弹窗自动下载验证 — 4 个模型全部自动下载成功
+- 模型下载验证 — text-rec 模型通过镜像成功下载
+
+### 追加修复（2026-06-14 晚）
+
+- **欢迎弹窗 "No source available"** — `getLocal(STORAGE_KEYS.SOURCES)` 只读自定义源，遗漏 DEFAULT_SOURCES。修复：改用 `getSources()` 合并默认源
+- **`buildMirrorUrls` 缺少 `await`** — 返回 Promise 对象而非数组，导致所有下载立即 "undefined URL(s) → All mirrors failed"。修复：两处调用添加 `await`
+- **清单获取超时** — `fetchManifest` 无超时设置，在中国网络下可能挂起。修复：每个 URL 添加 `AbortSignal.timeout(10000)` + 镜像回退
+- **pandoc.wasm OOM** — Capacitor Filesystem 用 base64 存储 58MB WASM，读取时 135MB 内存超出 WebView 限制。修复：改为 IndexedDB 原生二进制存储
+- **Android 通知权限** — 添加 `POST_NOTIFICATIONS` Manifest 声明 + Java 运行时权限检查，Android 13+ 不再静默失败
+- **首次下载进度条** — 欢迎弹窗"立即下载"改为自动逐个下载所有模型，弹窗内显示进度条
+- **下载进度条位置** — 原 `#progressWrap` 在识别页面内，设置页不可见。修复：在模型管理区域内嵌进度条
+- **SVG 图标替换 emoji** — `⏳` → loading SVG，`✓` → ready SVG，`✗` → error SVG
+- **刷新清单静默失败** — `.catch(() => {})` 吞掉所有错误。修复：添加 Logger.error 日志
+- **manifest 镜像回退** — `fetchManifest` 支持 gh.zwy.one/gh.xxooo.cf 代理回退
 
 ---
 

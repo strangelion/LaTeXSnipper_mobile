@@ -31,7 +31,7 @@
 | 方向检测 | PP-LCNet 文档方向（内置 APK） |
 | 公式渲染 | KaTeX 0.17 / MathJax（可切换） |
 | 公式编辑 | MathLive 0.104 |
-| 文档转换 | pandoc-wasm 1.0 |
+| 文档转换 | pandoc-wasm 1.0（按需下载，不内置 APK） |
 | 文本导出 | 纯 JS LaTeX → Typst 转换器（200+ 符号映射） |
 | PDF 渲染 | pdfjs-dist 4.2 |
 | 移动框架 | Capacitor 8 (Android/iOS) |
@@ -70,7 +70,6 @@ LaTeXSnipper_mobile/
 ├── public/
 │   ├── vendor/                # 内置库 (katex/mathlive/pdfjs)
 │   ├── models/                # 内置模型（doc-ori ONNX + tokenizer/keys fallback）
-│   ├── fonts/                 # 中文字体
 │   └── ...
 ├── model-sources/             # 打包用 ONNX 源文件（.gitignore，不进 APK）
 │   ├── mathcraft-formula-det/ # YOLOv8 公式检测
@@ -139,6 +138,8 @@ OCR 模型通过 ZIP 包下载（设置 → 模型管理），doc-ori 方向检�
 ```
 
 ## 导出格式
+
+PNG / SVG / Typst 无需 pandoc，LaTeX / MathML / Markdown / HTML / Word / Plain Text 需要先在设置中下载 pandoc.wasm（~58 MB）。
 
 | 格式 | 路径 | 说明 |
 |------|------|------|

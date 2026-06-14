@@ -23,9 +23,7 @@ LaTeXSnipper_mobile/
 │   │   ├── katex.min.css      # KaTeX CSS + fonts/ 字体
 │   │   ├── mathlive/          # MathLive 编辑器
 │   │   └── pdf.min.js         # PDF.js
-│   ├── models/                # 模型目录（.gitignore，不打包进 APK）
-│   │   └── .gitignore         # 模型文件通过 GitHub Releases 下载
-│   ├── fonts/                 # 中文字体
+│   ├── models/                # 模型目录（doc-ori ONNX + tokenizer/keys fallback）
 │   ├── sw.js                  # Service Worker
 │   └── manifest.json          # PWA 清单
 ├── src/
@@ -270,6 +268,39 @@ public/models/          ← 仅含内置 APK 的文件
 | unclip_ratio | 1.6 | RapidOCR 默认 |
 | min_text_score | 0.45 | 文字置信度过滤 |
 | largeHeap | true | AndroidManifest.xml |
+
+---
+
+## 六、欢迎弹窗与首次启动
+
+```
+首次启动 → checkFirstLaunch() → 欢迎弹窗
+  → "立即下载" → refreshManifests() → 逐个下载 4 个模型（弹窗内进度条）
+  → "使用外部 API" → 切换引擎到外部 API
+  → "稍后设置" → 跳过
+```
+
+- 欢迎弹窗自动下载所有模型，弹窗内显示每个模型的下载进度
+- 下载失败可重试，不会自动关闭弹窗
+- `POST_NOTIFICATIONS` 权限在 AndroidManifest.xml 声明，Java 端运行时检查
+
+---
+
+## 七、Pandoc WASM 按需下载
+
+pandoc.wasm（58 MB）不内置 APK，用户在设置页手动下载。
+
+```
+设置页 → "下载 Pandoc WASM" → downloadPandocWasm()
+  → IndexedDB 缓存（避免 base64 OOM）
+  → 首次编译 WASM 显示加载弹窗
+  → 后续导出直接使用缓存实例
+```
+
+- 下载源：GitHub Release + gh.zwy.one + gh.xxooo.cf 镜像
+- 缓存：IndexedDB（原生二进制，无 base64 开销）
+- 导出菜单：pandoc 不可用时仅显示 PNG/SVG/Typst
+- AndroidManifest.xml 声明 `POST_NOTIFICATIONS` 权限
 
 ---
 
