@@ -214,8 +214,22 @@ Java 端:
 
 ### 存储路径
 
-- JS: `localStorage` (sources/active/installed/manifests) + Capacitor Filesystem (`DATA/models/{category}/{variantId}/`)
+- JS: `localStorage` (sources/active/installed/manifests/download_progress) + Capacitor Filesystem (`DATA/models/{category}/{variantId}/`)
 - Java: `SharedPreferences "ModelManagerPrefs"` + `ctx.getFilesDir()/models/{category}/{variantId}/`
+
+### 下载系统（镜像 + 断点续传 + SHA256 校验）
+
+```
+manifest.mirrors[]    — 多下载源，主源失败自动切换
+manifest.checksums{}  — {filename: sha256hex}，下载后校验完整性
+downloadVariant()     — 镜像 fallback → Range 断点续传 → SHA256 校验 → importFromZip
+localStorage          — ls_download_progress 持久化下载进度，支持应用重启恢复
+```
+
+- 镜像 URL 格式：`https://mirror/https://github.com/original-path`
+- 默认镜像：`gh.zwy.one`、`gh.xxooo.cf`
+- 断点续传：HTTP `Range: bytes=N-` header，服务器不支持时自动重新下载
+- SHA256：Web Crypto API `crypto.subtle.digest('SHA-256')`，不匹配则拒绝导入
 
 ### 打包脚本
 

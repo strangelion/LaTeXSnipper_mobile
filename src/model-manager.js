@@ -20,6 +20,7 @@ const DEFAULT_SOURCES = [
     id: 'official',
     label: 'Official',
     url: 'https://github.com/strangelion/LaTeXSnipper_mobile/tree/main/dist-models',
+    mirrors: [], // Add mirror URLs here (e.g., Gitee releases)
     builtin: true,
   }
 ];
@@ -83,6 +84,7 @@ export function parseManifest(json) {
     sourceLabel: json.sourceLabel,
     version: json.version,
     baseUrl: json.baseUrl || '',
+    mirrors: json.mirrors || [],
     categories: json.categories || {},
   };
 }
@@ -403,6 +405,150 @@ export async function importSingleFile(file, category, variantId) {
   return { success: true, analysis };
 }
 
+// ── Download progress (for resume support) ──
+
+const STORAGE_KEYS_DOWNLOAD_PROGRESS = 'ls_download_progress';
+
+function getDownloadProgress() {
+  return getLocal(STORAGE_KEYS_DOWNLOAD_PROGRESS, {});
+}
+
+function setDownloadProgress(key, data) {
+  const progress = getDownloadProgress();
+  if (data) {
+    progress[key] = data;
+  } else {
+    delete progress[key];
+  }
+  setLocal(STORAGE_KEYS_DOWNLOAD_PROGRESS, progress);
+}
+
+function clearAllDownloadProgress() {
+  setLocal(STORAGE_KEYS_DOWNLOAD_PROGRESS, {});
+}
+
+// ── Mirror + resume download ──
+
+/**
+ * Try fetching a URL with resume support (Range header).
+ * Returns { resp, resumable } — resumable=true if server supports Range.
+ */
+async function fetchWithResume(url, onProgress, existingBytes = 0) {
+  const headers = {};
+  if (existingBytes > 0) {
+    headers['Range'] = `bytes=${existingBytes}-`;
+  }
+
+  const resp = await fetch(url, { headers });
+  const totalBytes = parseInt(resp.headers.get('content-length') || '0', 10);
+  const contentRange = resp.headers.get('content-range');
+  const acceptsRange = resp.headers.get('accept-ranges') === 'bytes' || !!contentRange;
+
+  if (existingBytes > 0 && resp.status === 206) {
+    // Server supports resume — append to existing data
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = existingBytes;
+    const fullTotal = contentRange ? parseInt(contentRange.split('/')[1], 10) : totalBytes + existingBytes;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (onProgress) onProgress({ downloaded: received, total: fullTotal });
+    }
+
+    return { data: chunks, total: fullTotal, resumable: true };
+  }
+
+  if (existingBytes > 0 && resp.status === 200) {
+    // Server doesn't support resume — restart from beginning
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (onProgress) onProgress({ downloaded: received, total: totalBytes });
+    }
+
+    return { data: chunks, total: totalBytes, resumable: false };
+  }
+
+  // Fresh download (no resume)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let received = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (onProgress) onProgress({ downloaded: received, total: totalBytes });
+  }
+
+  return { data: chunks, total: totalBytes, resumable: acceptsRange };
+}
+
+/**
+ * Download a single file with mirror fallback + resume support.
+ * Returns ArrayBuffer of the complete file content.
+ */
+async function downloadFileWithMirrors(urls, progressKey, onProgress) {
+  const progress = getDownloadProgress();
+  const saved = progress[progressKey] || {};
+  const existingBytes = saved.bytes || 0;
+  const partialData = saved.chunks || [];
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    try {
+      const { data, total, resumable } = await fetchWithResume(url, onProgress, existingBytes);
+
+      // Merge partial data with new data
+      const allChunks = [...partialData, ...data];
+
+      // Save progress for resume
+      setDownloadProgress(progressKey, {
+        bytes: allChunks.reduce((s, c) => s + c.length, 0),
+        chunks: resumable ? allChunks : data, // only save partial if server supports resume
+        url: url,
+        total: total,
+      });
+
+      return { data: allChunks, total, mirrorIndex: i };
+    } catch (err) {
+      console.warn(`Mirror ${i} failed (${url}): ${err.message}, trying next...`);
+      // Clear partial progress when switching mirrors
+      if (i < urls.length - 1) {
+        setDownloadProgress(progressKey, null);
+      }
+    }
+  }
+
+  throw new Error(`All mirrors failed for ${progressKey}`);
+}
+
+/**
+ * Build download URL list: primary baseUrl + mirrors.
+ */
+function buildMirrorUrls(baseUrl, mirrorUrls, filename) {
+  const urls = [`${baseUrl}/${filename}`];
+  if (mirrorUrls && Array.isArray(mirrorUrls)) {
+    for (const mirror of mirrorUrls) {
+      urls.push(`${mirror}/${filename}`);
+    }
+  }
+  return urls;
+}
+
 // ── Download from manifest source ──
 
 export async function downloadVariant(sourceId, category, variantId, variant, onProgress) {
@@ -415,44 +561,92 @@ export async function downloadVariant(sourceId, category, variantId, variant, on
   if (!manifest) throw new Error(`Manifest for ${sourceId} not loaded`);
 
   const baseUrl = manifest.baseUrl || source.url.replace(/\/[^/]+$/, '');
+  const mirrorUrls = manifest.mirrors || source.mirrors || [];
 
-  // If variant has zipFile, download the complete ZIP and import it
-  if (variant.zipFile) {
-    if (onProgress) onProgress({ file: variant.zipFile, downloaded: 0, total: 1 });
-    const zipUrl = `${baseUrl}/${variant.zipFile}`;
-    const resp = await fetch(zipUrl);
-    if (!resp.ok) throw new Error(`Failed to download ${variant.zipFile}: HTTP ${resp.status}`);
-    if (onProgress) onProgress({ file: variant.zipFile, downloaded: 0, total: 1, downloading: true });
+  try {
+    // If variant has zipFile, download the complete ZIP and import it
+    if (variant.zipFile) {
+      if (onProgress) onProgress({ file: variant.zipFile, downloaded: 0, total: 1 });
 
-    const blob = await resp.blob();
-    const zipFile = new File([blob], variant.zipFile, { type: 'application/zip' });
-    await importFromZip(zipFile, (info) => {
-      if (onProgress) onProgress({ file: info.file, downloaded: info.processed, total: info.total });
-    });
+      const progressKey = `${sourceId}/${category}/${variantId}/${variant.zipFile}`;
+      const urls = buildMirrorUrls(baseUrl, mirrorUrls, variant.zipFile);
+
+      const { data, total, mirrorIndex } = await downloadFileWithMirrors(
+        urls, progressKey,
+        (p) => onProgress({ file: variant.zipFile, downloaded: p.downloaded, total: p.total, downloading: true })
+      );
+
+      // Merge chunks into blob
+      const blob = new Blob(data, { type: 'application/zip' });
+
+      // SHA256 checksum verification
+      const expectedHash = (manifest.checksums || {})[variant.zipFile];
+      if (expectedHash) {
+        if (onProgress) onProgress({ file: variant.zipFile, downloaded: blob.size, total: blob.size, verifying: true });
+        const arrayBuf = await blob.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuf);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        if (hashHex !== expectedHash) {
+          throw new Error(`Checksum mismatch for ${variant.zipFile}: expected ${expectedHash.substring(0, 16)}..., got ${hashHex.substring(0, 16)}...`);
+        }
+        if (onProgress) onProgress({ file: variant.zipFile, downloaded: blob.size, total: blob.size, verified: true });
+        const zipFile = new File([arrayBuf], variant.zipFile, { type: 'application/zip' });
+        await importFromZip(zipFile, (info) => {
+          if (onProgress) onProgress({ file: info.file, downloaded: info.processed, total: info.total });
+        });
+      } else {
+        // No checksum available — import directly
+        const zipFile = new File([blob], variant.zipFile, { type: 'application/zip' });
+        await importFromZip(zipFile, (info) => {
+          if (onProgress) onProgress({ file: info.file, downloaded: info.processed, total: info.total });
+        });
+      }
+
+      // Clear download progress on success
+      setDownloadProgress(progressKey, null);
+      markInstalled(category, variantId, sourceId, variant.files);
+      return { success: true, mirrorIndex };
+    }
+
+    // Fallback: download individual files
+    let downloaded = 0;
+    const total = variant.files.length;
+
+    for (const filename of variant.files) {
+      if (onProgress) onProgress({ file: filename, downloaded, total });
+
+      const progressKey = `${sourceId}/${category}/${variantId}/${filename}`;
+      const urls = buildMirrorUrls(baseUrl, mirrorUrls, `${category}/${variantId}/${filename}`);
+
+      const { data } = await downloadFileWithMirrors(
+        urls, progressKey,
+        (p) => onProgress({ file: filename, downloaded: p.downloaded, total: p.total })
+      );
+
+      // Merge all chunks into single ArrayBuffer
+      const totalLen = data.reduce((s, c) => s + c.length, 0);
+      const merged = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const chunk of data) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      await writeModelFile(category, variantId, filename, merged.buffer);
+
+      // Clear progress on success
+      setDownloadProgress(progressKey, null);
+      downloaded++;
+      if (onProgress) onProgress({ file: filename, downloaded, total });
+    }
+
     markInstalled(category, variantId, sourceId, variant.files);
     return { success: true };
+  } catch (err) {
+    // Don't clear progress on failure — allows resume on retry
+    throw err;
   }
-
-  // Fallback: download individual files
-  let downloaded = 0;
-  const total = variant.files.length;
-
-  for (const filename of variant.files) {
-    if (onProgress) onProgress({ file: filename, downloaded, total });
-
-    const fileUrl = `${baseUrl}/${category}/${variantId}/${filename}`;
-    const resp = await fetch(fileUrl);
-    if (!resp.ok) throw new Error(`Failed to download ${filename}: HTTP ${resp.status}`);
-
-    const data = await resp.arrayBuffer();
-    await writeModelFile(category, variantId, filename, data);
-
-    downloaded++;
-    if (onProgress) onProgress({ file: filename, downloaded, total });
-  }
-
-  markInstalled(category, variantId, sourceId, variant.files);
-  return { success: true };
 }
 
 // ── Readiness check ──

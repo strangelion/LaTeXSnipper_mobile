@@ -1,6 +1,6 @@
 # LaTeXSnipper Mobile
 
-基于 Android + Java ONNX Runtime 的完全离线 LaTeX 公式 OCR 识别 App。
+基于 Android + Java ONNX Runtime 的 LaTeX 公式 OCR 识别 App，支持完全离线运行。
 
 ## 功能
 
@@ -11,7 +11,7 @@
 - **多格式导出** — PNG / SVG / LaTeX / MathML / Markdown / HTML / Typst / Word (.docx) / Plain Text
 - **AI 整理** — 连接 DeepSeek 兼容 API 对识别结果进行纠错和格式化
 - **公式渲染引擎切换** — KaTeX（轻量快速）/ MathJax（兼容性更好）
-- **完全离线** — doc-ori 方向检测模型内置 APK，其他 OCR 模型按需下载 ZIP 包导入
+- **模型按需下载** — doc-ori 方向检测模型内置 APK，其他 OCR 模型通过 ZIP 包下载，支持镜像加速 + 断点续传 + SHA256 校验
 - **7 套视觉皮肤** — Material 蓝、MIUI 渐变、iOS 蓝、樱花和风、黑客矩阵、暖咖纸墨、极简纤白
 - **GPU 加速** — Android NNAPI (OpenGL/Vulkan/NPU) 加速推理
 - **日/夜主题** — 自动跟随系统或手动切换
@@ -24,15 +24,15 @@
 |------|------|
 | 构建 | Vite 8 + Rollup 4 |
 | OCR 引擎 | ONNX Runtime Android (Java) |
-| 公式检测 | YOLOv8 (mathcraft-mfd) |
+| 公式检测 | YOLOv8 |
 | 公式识别 | TrOCR (DeiT 编码器 + 束搜索解码) |
 | 文字检测 | DBNet (PP-OCRv5) + Moore-Neighbor 轮廓追踪 |
 | 文字识别 | CRNN (PP-OCRv5) + CTC 解码 |
-| 方向检测 | PP-LCNet 文档方向 + EXIF 自动旋转 |
-| 公式渲染 | KaTeX 0.17 |
+| 方向检测 | PP-LCNet 文档方向（内置 APK） |
+| 公式渲染 | KaTeX 0.17 / MathJax（可切换） |
 | 公式编辑 | MathLive 0.104 |
-| 文档转换 | pandoc-wasm 1.0（Markdown/HTML/LaTeX/MathML/docx 导出） |
-| 文本导出 | 纯 JS LaTeX → Typst 转换器（200+ 符号映射 + 结构转换） |
+| 文档转换 | pandoc-wasm 1.0 |
+| 文本导出 | 纯 JS LaTeX → Typst 转换器（200+ 符号映射） |
 | PDF 渲染 | pdfjs-dist 4.2 |
 | 移动框架 | Capacitor 8 (Android/iOS) |
 | 存储 | IndexedDB (idb 封装) |
@@ -40,9 +40,9 @@
 ## 快速开始
 
 ```bash
-npm install        # 安装依赖
-npm run dev        # Vite 开发服务器 (:5174)
-npm run build      # 构建到 dist/
+npm install           # 安装依赖
+npm run dev           # Vite 开发服务器 (:5174)
+npm run build         # 构建到 dist/
 npx cap sync android  # 同步到 Android
 cd android && ./gradlew assembleDebug  # 编译 debug APK
 ```
@@ -53,8 +53,6 @@ cd android && ./gradlew assembleDebug  # 编译 debug APK
 conda activate ppocr_finetune
 bash test/run_tests.sh   # 全部 10 项测试
 ```
-
-测试包括：
 
 | # | 测试 | 类型 | 项数 |
 |--|------|------|------|
@@ -71,65 +69,55 @@ LaTeXSnipper_mobile/
 ├── index.html                 # 单页面 SPA，4 个 Tab 页面
 ├── public/
 │   ├── vendor/                # 内置库 (katex/mathlive/pdfjs)
-│   │   ├── katex.min.js       # KaTeX 公式渲染 (265KB)
-│   │   ├── katex.min.css      # KaTeX CSS + 字体
-│   │   └── fonts/             # KaTeX 符号字体
-│   ├── models/                # 内置模型（仅 doc-ori ONNX + tokenizer/keys fallback）
+│   ├── models/                # 内置模型（doc-ori ONNX + tokenizer/keys fallback）
 │   ├── fonts/                 # 中文字体
-│   ├── sw.js                  # Service Worker
-│   └── manifest.json          # PWA 清单
+│   └── ...
+├── model-sources/             # 打包用 ONNX 源文件（.gitignore，不进 APK）
+│   ├── mathcraft-formula-det/ # YOLOv8 公式检测
+│   ├── mathcraft-formula-rec/ # TrOCR 公式识别 + tokenizer
+│   ├── mathcraft-text-det/    # DBNet 文字检测
+│   ├── mathcraft-text-rec/    # CRNN 文字识别 + keys 字典
+│   └── mathcraft-doc-ori/     # 方向检测（也内置 APK）
+├── dist-models/               # 打包输出（.gitignore）
+│   ├── model-manifest.json    # 清单文件（含 baseUrl/mirrors/checksums）
+│   └── latexsnipper-*.zip     # 模型 ZIP 包
 ├── src/
-│   ├── main.js                # 入口：模块组装、事件绑定、启动
-│   ├── constants.js           # 全局常量
-│   ├── update-checker.js      # GitHub Releases 自动更新检查
+│   ├── main.js                # 入口
+│   ├── model-manager.js       # 模型清单、下载（镜像+断点续传+SHA256）、导入
+│   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手
+│   ├── handwriting/           # Canvas 手写板
+│   ├── editor/                # MathLive 编辑器 + KaTeX 预览
+│   ├── history/               # IndexedDB 历史
+│   ├── settings/              # 设置页面
+│   ├── ui/                    # UI 组件（识别/结果/模型管理/导入/打包）
 │   ├── lang/                  # 多语言 (zh-CN/zh-TW/en/ja/ko)
-│   ├── native/                # Android Native Bridge 封装
-│   │   └── ocr-native.js      # window.NativeOcr 异步调用封装
-│   ├── shared/                # 通用工具
-│   │   ├── share.js           # 分享/文件保存
-│   │   └── logger.js          # 日志（localStorage + Java 桥接 + DOM 事件）
-│   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手/旋转
-│   ├── handwriting/           # Canvas 手写板 + 导出
-│   ├── editor/                # MathLive 编辑器 + 虚拟键盘 + KaTeX 预览
-│   ├── export/                # 导出模块
-│   │   └── pandoc-export.js   # 统一导出（Pandoc WASM + KaTeX 图片 + Typst 转换器）
-│   ├── history/               # IndexedDB 历史 (idb 封装)
-│   ├── settings/              # 设置页面逻辑
-│   ├── ui/                    # UI 组件
-│   │   ├── ui.js              # 状态栏/拖放/模式切换
-│   │   ├── result.js          # 结果显示/KaTeX预览/复制/分享/导出
-│   │   ├── recognition.js     # 识别入口（Native/External/PDF）
-│   │   ├── splash.js          # 启动加载进度
-│   │   ├── custom-select.js   # 自定义下拉选择器
-│   │   ├── status.js          # 状态条/进度条/错误显示
-│   │   ├── theme.js           # 日/夜主题切换
-│   │   ├── polish.js          # AI 整理（DeepSeek API）
-│   │   └── dom-refs.js        # DOM 元素引用共享
-│   └── styles/                # CSS 样式模块
-│       ├── base.css           # CSS 变量、布局、导航、自定义下拉、导出下拉
-│       ├── ocr.css            # 识别页面 + 导出下拉样式
-│       ├── editor.css         # MathLive + KaTeX 预览 + 符号工具栏 + 键盘按钮
-│       ├── handwriting.css    # 手写板
-│       ├── history.css        # 历史记录滑动
-│       └── mobile.css         # 移动端适配
+│   └── native/                # Android Native Bridge
 ├── android/                   # Capacitor Android 项目
-│   └── app/src/main/java/com/latexsnipper/app/
-│       ├── MainActivity.java  # 入口 + NativeOcrBridge 注入
-│       └── ocr/               # Java ONNX OCR 引擎
-├── test/                      # 测试套件（6 Python + 4 Node.js）
-├── vite.config.js             # Vite 8 配置（wasm + top-level-await 原生支持）
-├── SECURITY.md                # 安全政策
-├── capacitor.config.json      # Capacitor 配置
+│   └── app/src/main/java/.../ocr/
+│       ├── OcrEngine.java     # 主编排器（formula/text/mixed）
+│       ├── OnnxRunner.java    # ONNX Runtime 会话管理
+│       ├── ModelConfig.java   # config.json 解析 + 模型文件发现
+│       └── ...                # 预处理/后处理/检测/识别
+├── scripts/
+│   └── package-models.js      # 模型打包（config.json + SHA256 + 镜像）
 └── .github/workflows/
-    ├── build-apk.yml                  # Android APK 构建（workflow_dispatch）
-    ├── build-ios.yml                  # iOS 模拟器构建
-    ├── package-models.yml             # 模型打包 + 上传 GitHub Releases
-    └── security-scan.yml              # 安全扫描（恶意代码/密钥/合规检查）
+    ├── build-apk.yml          # Android APK 构建
+    ├── package-models.yml     # 模型打包 + Release 上传
+    └── security-scan.yml      # 安全扫描
 ```
 
 ## 模型下载
 
 OCR 模型通过 ZIP 包下载（设置 → 模型管理），doc-ori 方向检测内置 APK。
+
+### 下载源
+
+- **主源**：GitHub Releases
+- **镜像**：gh.zwy.one、gh.xxooo.cf（主源失败自动切换）
+- **断点续传**：下载中断后重试可从断点继续
+- **SHA256 校验**：下载完成后自动验证文件完整性
+
+### 模型包
 
 | 包名 | 大小 | 内容 |
 |------|------|------|
@@ -138,6 +126,17 @@ OCR 模型通过 ZIP 包下载（设置 → 模型管理），doc-ori 方向检�
 | `latexsnipper-text-det.zip` | 4.2 MB | DBNet 文字检测 + config.json |
 | `latexsnipper-text-rec.zip` | 13.5 MB | CRNN 文字识别 + ppocrv5_keys.txt + config.json |
 | `latexsnipper-models-all.zip` | 187.9 MB | 以上全部合集 |
+
+### manifest 格式
+
+```json
+{
+  "baseUrl": "https://github.com/.../releases/download/models-v1.3.0",
+  "mirrors": ["https://gh.zwy.one/https://github.com/..."],
+  "checksums": { "latexsnipper-text-rec.zip": "sha256hex..." },
+  "categories": { ... }
+}
+```
 
 ## 导出格式
 
@@ -154,4 +153,5 @@ OCR 模型通过 ZIP 包下载（设置 → 模型管理），doc-ori 方向检�
 | Plain Text | Pandoc WASM | 纯文本 |
 
 ## 许可证
-Apache License 2.0
+
+GNU AGPL-3.0。允许学习和个人使用，禁止闭源商业化分发。修改后分发或网络服务必须公开全部源码。

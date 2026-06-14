@@ -16,6 +16,7 @@
 
 import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
+import { createHash } from 'crypto';
 import zlib from 'zlib';
 
 // ── Config ──
@@ -352,12 +353,19 @@ function main() {
 
   // Build manifest
   // baseUrl: GitHub raw URL for the directory containing ZIPs
-  const manifestBaseUrl = 'https://raw.githubusercontent.com/strangelion/LaTeXSnipper_mobile/main/dist-models';
+  // baseUrl: Points to GitHub Release download directory for ZIP files.
+  // Update this when creating a new release: .../releases/download/{tag}/
+  const manifestBaseUrl = process.env.MODEL_BASE_URL || 'https://github.com/strangelion/LaTeXSnipper_mobile/releases/download/models-v1.3.0';
   const manifest = {
     sourceId: 'official',
     sourceLabel: 'LaTeXSnipper Official',
     version: VERSION,
     baseUrl: manifestBaseUrl,
+    mirrors: [
+      'https://gh.zwy.one/https://github.com/strangelion/LaTeXSnipper_mobile/releases/download/models-v1.3.0',
+      'https://gh.xxooo.cf/https://github.com/strangelion/LaTeXSnipper_mobile/releases/download/models-v1.3.0',
+    ],
+    checksums: {}, // { filename: "sha256hex" } — filled after ZIPs are written
     categories: {},
   };
 
@@ -443,11 +451,6 @@ function main() {
     console.error();
   }
 
-  // Write manifest
-  const manifestPath = join(OUTPUT_DIR, 'model-manifest.json');
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-  console.log(`\nManifest: ${manifestPath}`);
-
   // Create per-category ZIPs (each with a single-category manifest)
   for (const [category, files] of Object.entries(categoryFiles)) {
     const zip = new ZipWriter();
@@ -488,6 +491,20 @@ function main() {
   const allZipPath = join(OUTPUT_DIR, 'latexsnipper-models-all.zip');
   writeFileSync(allZipPath, allZipData);
   console.log(`\nComplete package: ${formatSize(allZipData.length)}`);
+
+  // Generate SHA256 checksums for all ZIP files
+  const zipFiles = readdirSync(OUTPUT_DIR).filter(f => f.endsWith('.zip'));
+  for (const zipFile of zipFiles) {
+    const data = readFileSync(join(OUTPUT_DIR, zipFile));
+    const hash = createHash('sha256').update(data).digest('hex');
+    manifest.checksums[zipFile] = hash;
+    console.log(`  ${zipFile}: sha256=${hash.substring(0, 16)}...`);
+  }
+
+  // Write manifest with checksums
+  const manifestPath = join(OUTPUT_DIR, 'model-manifest.json');
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log(`\nManifest: ${manifestPath}`);
 
   // Summary
   console.log('\nDone! Files:');

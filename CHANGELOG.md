@@ -16,7 +16,12 @@
   - `mathcraft-doc-ori/` 独立目录（含 doc-ori + textline-ori）
   - `model-sources/` 存放打包源文件（ONNX + 字典），不被 Vite 复制到 dist
 - **弃用 region-det** — `chinese_detector.onnx` 已弃用，从模型管理系统中移除
-- **下载链接标准化** — manifest baseUrl 指向 `dist-models/`，source URL 含路径前缀
+- **许可证变更** — Apache 2.0 → AGPL-3.0，禁止闭源商业化分发，修改后分发或网络服务必须开源
+- **GitHub Release 分发** — 模型 ZIP 包通过 GitHub Release 发布，manifest baseUrl 指向 Release 下载 URL
+- **镜像源加速** — manifest.mirrors[] 支持配置多个下载源，主源失败自动切换镜像
+  - 默认镜像：`gh.zwy.one`、`gh.xxooo.cf`
+- **SHA256 完整性校验** — 打包脚本自动生成 ZIP 的 SHA256 哈希，下载后用 Web Crypto API 校验
+- **断点续传** — HTTP Range header 支持中断后继续下载，进度持久化到 localStorage
 
 ### 新功能
 
@@ -25,7 +30,7 @@
   - ZIP 导入：拖入模型包自动解析清单、写入文件系统、注册安装状态
   - 单文件导入：`.onnx` 文件自动分析（protobuf 解析输入/输出形状推断类别）
   - 变体选择：每个类别支持多变体，radio 按钮切换，Java 端 SharedPreferences 持久化
-  - 下载系统：从 GitHub 下载 ZIP 模型包，支持进度回调
+  - 下载系统：从 GitHub Release 下载 ZIP 模型包，支持镜像切换 + 断点续传 + SHA256 校验
   - 应用内打包器：按类别拖入 `.onnx` 文件 → 生成 manifest + ZIP 导出或直接安装
 - **官方模型包** — 标准化 ZIP 文件，每个包含 config.json + ONNX + 字典：
   - `latexsnipper-formula-det.zip`（66.5 MB）— YOLOv8 公式检测
@@ -40,9 +45,11 @@
   - `findTokenizerFile` 发现 tokenizer/字典文件
 - **模型打包脚本更新** — `scripts/package-models.js`：
   - 自动生成 config.json（含 model_type、input/output shape、preprocessing、postprocessing）
+  - 自动生成 SHA256 哈希校验值，写入 manifest.checksums
   - 验证 decoder 关键文件（tokenizer.json、ppocrv5_keys.txt）存在性
   - 输出到 `dist-models/`（Vite 不清理的独立目录）
   - 排除 .gitignore 等非模型文件
+- **多语言补齐** — zh-TW/ja/ko 补齐 31 个缺失键（Settings 标签页、模型管理、按钮、PDF/状态/结果）
 
 ### 修复
 
@@ -55,6 +62,7 @@
 - **ModelConfig.findModelFile 误选 ONNX** — text-rec 目录含 3 个 ONNX，`findModelFile` 可能选到 doc-ori 而非 rec 模型。修复：所有动态加载方法使用已知文件名，不再盲选
 - **tokenizer.json/keys.txt 未打入 ZIP** — 打包脚本不包含字典文件。修复：`.gitignore` 允许追踪，打包自动包含
 - **npm run build 覆盖 dist ZIP** — Vite 复制 public/models/ 覆盖已生成的 ZIP。修复：ZIP 输出到 `dist-models/`（dist 之外）
+- **doc-ori ONNX 未被 git 追踪** — CI 构建时方向检测模型缺失。修复：`.gitignore` 添加 `!mathcraft-doc-ori/pplcnet_doc_ori.onnx` 例外
 
 ### 改进
 
@@ -62,6 +70,7 @@
 - **外部 API 独立运行** — 不导入本地模型时外部 API 可正常使用
 - **Doc-ori 跨类别回退** — 支持从 `text-rec` 目录回退加载，兼容旧版数据
 - **`model-sources/` 分离** — ONNX 源文件不放入 `public/models/`，APK 不含大模型文件
+- **manifest.baseUrl 支持环境变量** — `MODEL_BASE_URL` 环境变量可覆盖默认下载地址
 
 ### 依赖新增
 
@@ -72,11 +81,13 @@
 
 ### 测试
 
-- 打包脚本验证通过 — 4 个类别 ZIP + 1 个合集正确生成，含 config.json
+- 打包脚本验证通过 — 4 个类别 ZIP + 1 个合集正确生成，含 config.json + SHA256
 - ZIP 内容验证 — formula-rec 含 tokenizer.json，text-rec 含 ppocrv5_keys.txt
 - APK 内容验证 — 只含 doc-ori ONNX（6.5 MB）+ tokenizer/keys 小文件
 - 文字识别验证 — "不再生成。最终" 正确识别，confidence 0.954
 - 混合识别验证 — 文本"计算旋转体体积：" + 公式正确分离，无重复
+- 镜像源验证 — `gh.zwy.one` 和 `gh.xxooo.cf` 均可访问
+- GitHub Release 上传验证 — 5 个 ZIP + manifest 全部上传成功
 
 ---
 
