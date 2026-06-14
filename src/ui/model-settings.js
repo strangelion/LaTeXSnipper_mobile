@@ -8,6 +8,7 @@ import { showZipImportDialog, showFileImportDialog } from './model-import.js';
 import { openPackageBuilder } from './package-builder.js';
 import { t } from '../lang/i18n.js';
 import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
+import { ICONS } from '../constants.js';
 import { showProgress, hideProgress } from './status.js';
 
 const CAT_LABELS = {
@@ -27,6 +28,15 @@ export function initModelSettings() {
   // Expose refresh function for import dialog to call
   section.__refresh = () => renderModelSettings(section);
   renderModelSettings(section);
+
+  // Auto-refresh manifests so download buttons appear for new users
+  const manifests = getLocal(STORAGE_KEYS.MANIFESTS, []);
+  if (manifests.length === 0) {
+    refreshManifests().then(() => renderModelSettings(section)).catch((err) => {
+      Logger.error('MODEL', 'Auto-refresh manifests failed', err);
+      renderModelSettings(section);
+    });
+  }
 }
 
 async function renderModelSettings(container) {
@@ -53,6 +63,14 @@ async function renderModelSettings(container) {
     </div>
 
     <div class="model-section">
+      <div id="model-download-progress" style="display:none;margin-bottom:1rem;">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;" id="model-progress-label">下载中...</div>
+        <div style="width:100%;height:8px;background:var(--border-color);border-radius:4px;overflow:hidden;">
+          <div id="model-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#a78bfa);border-radius:4px;transition:width 0.3s;"></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;" id="model-progress-pct">0%</div>
+      </div>
+
       <h4>${t('model.currentModels')}</h4>
       ${MODEL_CATEGORIES.map(cat => {
         const catVariants = allVariants[cat]?.variants || [];
@@ -62,7 +80,7 @@ async function renderModelSettings(container) {
             <div class="cat-header">
               <span class="cat-name">${CAT_LABELS[cat] || cat}</span>
               <span class="cat-status ${catVariants.some(v => installed[cat]?.[v.id]) ? 'installed' : 'not-installed'}">
-                ${catVariants.some(v => installed[cat]?.[v.id]) ? '✓' : '✗'}
+                ${catVariants.some(v => installed[cat]?.[v.id]) ? ICONS.ready : ICONS.error}
               </span>
             </div>
             <div class="cat-variants">
@@ -162,15 +180,27 @@ function bindEvents(container) {
   container.querySelectorAll('.btn-download-variant').forEach(btn => {
     btn.addEventListener('click', async () => {
       const { cat, vid, source } = btn.dataset;
+      console.log(`[model] Download clicked: cat=${cat} vid=${vid} source=${source}`);
       const manifests = getLocal(STORAGE_KEYS.MANIFESTS, []);
       const allVars = getAllVariants(manifests);
       const variant = allVars[cat]?.variants.find(v => v.id === vid);
-      if (!variant) return;
+      if (!variant) {
+        console.error(`[model] Variant not found: cat=${cat} vid=${vid}, allVars keys:`, Object.keys(allVars));
+        return;
+      }
 
       const catLabel = t(`model.cat_${cat}`) || cat;
+      const progressWrap = container.querySelector('#model-download-progress');
+      const progressLabel = container.querySelector('#model-progress-label');
+      const progressFill = container.querySelector('#model-progress-fill');
+      const progressPct = container.querySelector('#model-progress-pct');
+
       btn.disabled = true;
       btn.textContent = t('model.downloading');
-      showProgress(`${t('model.downloading')} ${catLabel}...`, 0);
+      if (progressWrap) progressWrap.style.display = '';
+      if (progressLabel) progressLabel.textContent = `${t('model.downloading')} ${catLabel}...`;
+      if (progressFill) progressFill.style.width = '0%';
+      if (progressPct) progressPct.textContent = '0%';
 
       // Start notification bar progress
       if (isNativeOcrAvailable()) {
@@ -179,19 +209,22 @@ function bindEvents(container) {
 
       try {
         await downloadVariant(source, cat, vid, variant, (info) => {
-          // Update button text
           if (info.downloading && info.total > 0) {
             const pct = Math.round(info.downloaded / info.total * 100);
             btn.textContent = `${pct}%`;
-            showProgress(`${t('model.downloading')} ${catLabel}`, pct);
+            if (progressLabel) progressLabel.textContent = `${t('model.downloading')} ${catLabel}`;
+            if (progressFill) progressFill.style.width = pct + '%';
+            if (progressPct) progressPct.textContent = `${pct}%  (${(info.downloaded / 1024 / 1024).toFixed(1)}/${(info.total / 1024 / 1024).toFixed(1)} MB)`;
             if (isNativeOcrAvailable()) {
               OcrNative.showNotification(`${t('model.downloading')} ${catLabel}`, pct, 100);
             }
           } else if (info.verifying) {
             btn.textContent = 'SHA256...';
-            showProgress('SHA256...', 100);
+            if (progressLabel) progressLabel.textContent = 'SHA256 校验中...';
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressPct) progressPct.textContent = 'SHA256...';
             if (isNativeOcrAvailable()) {
-              OcrNative.showNotification('SHA256...', 100, 100);
+              OcrNative.showNotification('SHA256 校验中', 100, 100);
             }
           } else if (info.verified) {
             btn.textContent = t('model.downloading');
@@ -199,11 +232,12 @@ function bindEvents(container) {
             btn.textContent = `${info.downloaded}/${info.total}`;
           }
         });
-        hideProgress();
+        if (progressWrap) progressWrap.style.display = 'none';
         if (isNativeOcrAvailable()) OcrNative.hideNotification();
         renderModelSettings(container);
       } catch (err) {
-        hideProgress();
+        console.error(`[model] Download failed: cat=${cat} vid=${vid}`, err);
+        if (progressWrap) progressWrap.style.display = 'none';
         if (isNativeOcrAvailable()) OcrNative.hideNotification();
         btn.textContent = t('model.downloadFailed');
         setTimeout(() => { btn.disabled = false; btn.textContent = t('model.download'); }, 2000);
@@ -234,8 +268,18 @@ function bindEvents(container) {
   container.querySelector('#btn-create-package')?.addEventListener('click', openPackageBuilder);
 
   // Refresh
-  container.querySelector('#btn-refresh-manifests')?.addEventListener('click', async () => {
-    await refreshManifests();
+  container.querySelector('#btn-refresh-manifests')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = t('model.downloading') + '...';
+    try {
+      const result = await refreshManifests();
+      console.log(`[model] Refresh done: ${result.length} manifest(s) loaded`);
+    } catch (err) {
+      Logger.error('MODEL', 'Refresh manifests failed', err);
+    }
+    btn.disabled = false;
+    btn.textContent = t('model.refresh');
     renderModelSettings(container);
   });
 }

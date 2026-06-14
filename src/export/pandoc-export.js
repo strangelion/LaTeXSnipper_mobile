@@ -11,6 +11,7 @@
 
 import Logger from '../shared/logger.js';
 import { isPandocAvailable } from './pandoc-init.js';
+import { ICONS } from '../constants.js';
 
 // ── Export format definitions ──
 // action: 'render' = KaTeX SVG/PNG (no pandoc), 'pandoc' = needs pandoc.wasm, 'typst' = pure JS
@@ -128,25 +129,43 @@ async function _exportImage(latex, fmt) {
 async function _exportPandoc(latex, fmt) {
   const to = PANDOC_FORMAT_MAP[fmt.id];
   if (!to) { Logger.error('EXPORT', 'Unknown pandoc format: ' + fmt.id); return; }
-  const pandoc = await initPandoc();
-  // Binary formats (docx etc) must use output-file to get raw bytes
-  const isBinary = fmt.id === 'docx';
-  const opts = isBinary
-    ? { from: 'latex', to, standalone: false, 'output-file': 'stdout' }
-    : { from: 'latex', to, standalone: false };
-  const result = await pandoc.convert(opts, latex, {});
-  let blob;
-  if (isBinary) {
-    const outFile = result.files?.['stdout'];
-    if (outFile) { blob = new Blob([outFile], { type: fmt.mime }); }
-    else { Logger.warn('EXPORT', 'Pandoc returned no docx binary'); return; }
-  } else {
-    const text = result.stdout || '';
-    if (!text.trim()) { Logger.warn('EXPORT', 'Pandoc returned empty for ' + fmt.id); return; }
-    blob = new Blob([text], { type: fmt.mime + ';charset=utf-8' });
+
+  // Show loading indicator during WASM compilation (first use only)
+  let loadingEl = null;
+  if (!_pandocApi) {
+    loadingEl = document.createElement('div');
+    loadingEl.className = 'modal-overlay';
+    loadingEl.innerHTML = `<div class="modal-content" style="text-align:center;padding:2rem;">
+      <div style="margin-bottom:0.5rem;">${ICONS.loading}</div>
+      <div style="font-size:0.9rem;color:var(--fg);">正在初始化 Pandoc 引擎...</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">首次使用需编译 WASM，后续将缓存</div>
+    </div>`;
+    document.body.appendChild(loadingEl);
   }
-  const { saveFile } = await import('../shared/share.js');
-  await saveFile(blob, 'formula.' + fmt.ext);
+
+  try {
+    const pandoc = await initPandoc();
+    // Binary formats (docx etc) must use output-file to get raw bytes
+    const isBinary = fmt.id === 'docx';
+    const opts = isBinary
+      ? { from: 'latex', to, standalone: false, 'output-file': 'stdout' }
+      : { from: 'latex', to, standalone: false };
+    const result = await pandoc.convert(opts, latex, {});
+    let blob;
+    if (isBinary) {
+      const outFile = result.files?.['stdout'];
+      if (outFile) { blob = new Blob([outFile], { type: fmt.mime }); }
+      else { Logger.warn('EXPORT', 'Pandoc returned no docx binary'); return; }
+    } else {
+      const text = result.stdout || '';
+      if (!text.trim()) { Logger.warn('EXPORT', 'Pandoc returned empty for ' + fmt.id); return; }
+      blob = new Blob([text], { type: fmt.mime + ';charset=utf-8' });
+    }
+    const { saveFile } = await import('../shared/share.js');
+    await saveFile(blob, 'formula.' + fmt.ext);
+  } finally {
+    if (loadingEl) loadingEl.remove();
+  }
 }
 
 async function _exportTypst(latex) {

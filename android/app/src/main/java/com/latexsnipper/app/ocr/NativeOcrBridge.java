@@ -632,6 +632,15 @@ public class NativeOcrBridge {
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
 
+            // Android 13+ requires POST_NOTIFICATIONS permission
+            if (Build.VERSION.SDK_INT >= 33) {
+                if (context.checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    Log.w(TAG, "POST_NOTIFICATIONS permission not granted, skipping notification");
+                    return;
+                }
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationChannel channel = new NotificationChannel(
                     NOTIFICATION_CHANNEL_ID, "Model Download", NotificationManager.IMPORTANCE_LOW);
@@ -660,5 +669,20 @@ public class NativeOcrBridge {
         } catch (Exception e) {
             Log.w(TAG, "hideNotification failed: " + e.getMessage());
         }
+    }
+
+    @JavascriptInterface
+    public boolean requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (context.checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                if (context instanceof android.app.Activity) {
+                    ((android.app.Activity) context).requestPermissions(
+                        new String[]{"android.permission.POST_NOTIFICATIONS"}, 1002);
+                }
+                return false;
+            }
+        }
+        return true;
     }
 }

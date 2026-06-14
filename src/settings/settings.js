@@ -6,8 +6,9 @@ import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
 import Logger from '../shared/logger.js';
 import { shareFile } from '../shared/share.js';
 import { initModelSettings } from '../ui/model-settings.js';
-import { isPandocAvailable, downloadPandocWasm } from '../export/pandoc-init.js';
+import { isPandocAvailable, downloadPandocWasm, invalidatePandocCache } from '../export/pandoc-init.js';
 import { showProgress, hideProgress } from '../ui/status.js';
+import { ICONS } from '../constants.js';
 
 export function initSettings() {
   const extDiv = document.getElementById('extSettings');
@@ -335,8 +336,9 @@ export function initSettings() {
     try {
       const available = await isPandocAvailable();
       if (pandocStatus) {
-        pandocStatus.textContent = available ? '✓ 已下载' : '未下载';
-        pandocStatus.style.color = available ? 'var(--accent)' : 'var(--muted)';
+        pandocStatus.innerHTML = available
+          ? `<span style="color:var(--accent);display:inline-flex;align-items:center;gap:0.3rem;">${ICONS.ready} 已下载</span>`
+          : `<span style="color:var(--muted);display:inline-flex;align-items:center;gap:0.3rem;">${ICONS.error} 未下载</span>`;
       }
       if (pandocBtn) {
         pandocBtn.textContent = available ? '重新下载' : '下载 Pandoc WASM（~58 MB）';
@@ -367,12 +369,13 @@ export function initSettings() {
             OcrNative.showNotification('下载 Pandoc WASM', pct, 100);
           }
         } else if (info.phase === 'cached') {
-          pandocBtn.textContent = '✓ 已下载';
+          pandocBtn.innerHTML = `${ICONS.ready} 已下载`;
           showProgress('缓存中...', 100);
         }
       });
       hideProgress();
       if (isNativeOcrAvailable()) OcrNative.hideNotification();
+      invalidatePandocCache();
       await updatePandocStatus();
     } catch (err) {
       hideProgress();

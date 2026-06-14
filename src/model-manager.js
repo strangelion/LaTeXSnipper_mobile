@@ -164,10 +164,27 @@ export async function fetchManifest(source) {
     }
   }
 
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`Failed to fetch manifest: HTTP ${resp.status}`);
-  const json = await resp.json();
-  return parseManifest(json);
+  // Try direct fetch first, then mirrors — each with 10s timeout
+  const urls = [url];
+  if (url.includes('raw.githubusercontent.com')) {
+    urls.push(`https://gh.zwy.one/${url}`);
+    urls.push(`https://gh.xxooo.cf/${url}`);
+  }
+
+  let lastErr;
+  for (const fetchUrl of urls) {
+    try {
+      console.log(`[model] Fetching manifest: ${fetchUrl}`);
+      const resp = await fetch(fetchUrl, { signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      return parseManifest(json);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[model] Manifest fetch failed (${fetchUrl}): ${err.message}`);
+    }
+  }
+  throw lastErr || new Error('Failed to fetch manifest from all sources');
 }
 
 export async function refreshManifests() {
@@ -178,8 +195,9 @@ export async function refreshManifests() {
     try {
       const manifest = await fetchManifest(source);
       manifests.push(manifest);
+      console.log(`[model] Manifest loaded from ${source.id}: ${Object.keys(manifest.categories).length} categories`);
     } catch (err) {
-      console.warn(`Failed to fetch manifest from ${source.id}:`, err);
+      console.error(`[model] Failed to fetch manifest from ${source.id}:`, err.message || err);
     }
   }
 
@@ -506,6 +524,7 @@ async function downloadFileWithMirrors(urls, progressKey, onProgress) {
   const saved = progress[progressKey] || {};
   const existingBytes = saved.bytes || 0;
   const partialData = saved.chunks || [];
+  console.log(`[model] downloadFileWithMirrors: ${urls.length} URL(s) to try, existingBytes=${existingBytes}`);
 
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
@@ -593,6 +612,7 @@ export async function downloadVariant(sourceId, category, variantId, variant, on
 
   const baseUrl = manifest.baseUrl || source.url.replace(/\/[^/]+$/, '');
   const mirrorUrls = manifest.mirrors || source.mirrors || [];
+  console.log(`[model] downloadVariant: baseUrl=${baseUrl}, mirrors=${mirrorUrls.length}, zipFile=${variant.zipFile || 'none'}`);
 
   try {
     // If variant has zipFile, download the complete ZIP and import it
@@ -600,7 +620,7 @@ export async function downloadVariant(sourceId, category, variantId, variant, on
       if (onProgress) onProgress({ file: variant.zipFile, downloaded: 0, total: 1 });
 
       const progressKey = `${sourceId}/${category}/${variantId}/${variant.zipFile}`;
-      const urls = buildMirrorUrls(baseUrl, mirrorUrls, variant.zipFile);
+      const urls = await buildMirrorUrls(baseUrl, mirrorUrls, variant.zipFile);
 
       const { data, total, mirrorIndex } = await downloadFileWithMirrors(
         urls, progressKey,
@@ -648,7 +668,7 @@ export async function downloadVariant(sourceId, category, variantId, variant, on
       if (onProgress) onProgress({ file: filename, downloaded, total });
 
       const progressKey = `${sourceId}/${category}/${variantId}/${filename}`;
-      const urls = buildMirrorUrls(baseUrl, mirrorUrls, `${category}/${variantId}/${filename}`);
+      const urls = await buildMirrorUrls(baseUrl, mirrorUrls, `${category}/${variantId}/${filename}`);
 
       const { data } = await downloadFileWithMirrors(
         urls, progressKey,
@@ -697,4 +717,4 @@ export function isReady(manifests) {
   return true;
 }
 
-export { STORAGE_KEYS, DEFAULT_SOURCES, MODEL_CATEGORIES, getLocal };
+export { STORAGE_KEYS, DEFAULT_SOURCES, MODEL_CATEGORIES, getLocal, setLocal };

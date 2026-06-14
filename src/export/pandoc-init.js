@@ -13,15 +13,16 @@
 let _instance = null;
 let _loading = false;
 let _waiters = [];
+let _pandocAvailable = null; // cached: true/false/null (not checked yet)
 
 const WASM_FILENAME = 'pandoc.wasm';
 const WASM_DIR = 'pandoc-cache';
-const WASM_URL = 'https://github.com/jgm/pandoc/releases/download/3.6.4/pandoc-3.6.4-linux-amd64.tar.xz';
 
-// Minimal pandoc WASM URL — use the official release binary
-// For production, host the .wasm file on your own CDN or GitHub Release
+// Pandoc WASM download URLs — hosted on GitHub Release
 const PANDOC_WASM_URLS = [
-  'https://cdn.jsdelivr.net/gh/nicholasgasior/pandoc-wasm@master/pandoc.wasm',
+  'https://github.com/strangelion/LaTeXSnipper_mobile/releases/download/models-v1.3.0/pandoc.wasm',
+  'https://gh.zwy.one/https://github.com/strangelion/LaTeXSnipper_mobile/releases/download/models-v1.3.0/pandoc.wasm',
+  'https://gh.xxooo.cf/https://github.com/strangelion/LaTeXSnipper_mobile/releases/download/models-v1.3.0/pandoc.wasm',
 ];
 
 function hasCapacitorFilesystem() {
@@ -29,51 +30,44 @@ function hasCapacitorFilesystem() {
 }
 
 /**
- * Check if pandoc.wasm is cached in filesystem.
+ * Check if pandoc.wasm is cached in IndexedDB.
+ * Returns ArrayBuffer or null.
  */
 async function loadFromCache() {
-  if (!hasCapacitorFilesystem()) return null;
-  try {
-    const { Filesystem } = window.Capacitor.Plugins;
-    // Ensure directory exists
-    try { await Filesystem.mkdir({ path: WASM_DIR, directory: 'DATA', recursive: true }); } catch {}
-    const result = await Filesystem.readFile({ path: `${WASM_DIR}/${WASM_FILENAME}`, directory: 'DATA' });
-    // result.data is base64-encoded
-    const binaryString = atob(result.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes.buffer;
-  } catch {
-    return null;
-  }
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('pandoc-cache', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('wasm');
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('wasm', 'readonly');
+        const get = tx.objectStore('wasm').get(WASM_FILENAME);
+        get.onsuccess = () => { db.close(); resolve(get.result || null); };
+        get.onerror = () => { db.close(); resolve(null); };
+      };
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
 }
 
 /**
- * Save pandoc.wasm to filesystem cache.
+ * Save pandoc.wasm to IndexedDB cache.
  */
 async function saveToCache(arrayBuffer) {
-  if (!hasCapacitorFilesystem()) return;
-  try {
-    const { Filesystem } = window.Capacitor.Plugins;
-    try { await Filesystem.mkdir({ path: WASM_DIR, directory: 'DATA', recursive: true }); } catch {}
-    // Convert ArrayBuffer to base64
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-    await Filesystem.writeFile({
-      path: `${WASM_DIR}/${WASM_FILENAME}`,
-      data: base64,
-      directory: 'DATA',
-    });
-    console.log(`[pandoc] Cached ${WASM_FILENAME} (${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)} MB)`);
-  } catch (e) {
-    console.warn('[pandoc] Failed to cache WASM:', e.message);
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      const req = indexedDB.open('pandoc-cache', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('wasm');
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('wasm', 'readwrite');
+        tx.objectStore('wasm').put(arrayBuffer, WASM_FILENAME);
+        tx.oncomplete = () => { db.close(); console.log(`[pandoc] Cached ${WASM_FILENAME} (${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)} MB)`); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      };
+      req.onerror = () => reject(req.error);
+    } catch (e) { reject(e); }
+  });
 }
 
 /**
@@ -122,19 +116,32 @@ async function downloadWasm(onProgress) {
 
 /**
  * Check if pandoc.wasm is available (cached or static).
+ * Result is cached after first check to avoid repeated network requests.
  */
 export async function isPandocAvailable() {
+  if (_pandocAvailable !== null) return _pandocAvailable;
+
   // Check filesystem cache
   const cached = await loadFromCache();
-  if (cached) return true;
+  if (cached) { _pandocAvailable = true; return true; }
 
   // Check static asset (dev mode fallback)
   try {
     const resp = await fetch('/pandoc.wasm', { method: 'HEAD' });
-    return resp.ok;
+    _pandocAvailable = resp.ok;
+    return _pandocAvailable;
   } catch {
+    _pandocAvailable = false;
     return false;
   }
+}
+
+/**
+ * Invalidate pandoc availability cache (call after download).
+ */
+export function invalidatePandocCache() {
+  _pandocAvailable = null;
+  _instance = null;
 }
 
 /**
