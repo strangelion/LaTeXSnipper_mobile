@@ -18,7 +18,6 @@ import { initEditor, setEditorContent } from './editor/mathlive-config.js';
 import { initI18n, t, translateDOM, onLangChange } from './lang/i18n.js';
 import { initSettings } from './settings/settings.js';
 import { initCustomSelects, syncCustomSelects } from './ui/custom-select.js';
-import { initHistorySharing } from './shared/history-share-ui.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -306,7 +305,6 @@ async function boot() {
 
   // 5. Load history (IndexedDB — async but quick)
   renderHistoryList();
-  initHistorySharing();
 
   // 6. Init export dropdowns (defers importing pandoc-export chunk)
   import('./export/pandoc-export.js').then(({ createExportDropdown }) => {

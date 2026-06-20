@@ -271,45 +271,10 @@
         <button class="active" data-filter="all" data-i18n="history.all">全部</button>
         <button data-filter="favorites" data-i18n="history.favorite">收藏</button>
         <span class="history-toolbar-spacer"></span>
-        <button id="historyShare" data-i18n="share.title">共享</button>
         <button id="clearHistory" data-i18n="history.clear">清空</button>
       </div>
       <div class="history-list" id="historyList">
         <div class="history-empty" data-i18n="history.empty">暂无识别记录。<br>上传公式图片开始使用！</div>
-      </div>
-
-      <div class="share-dialog" id="shareDialog" aria-hidden="true">
-        <div class="share-dialog-panel">
-          <div class="share-dialog-header">
-            <div class="share-dialog-title" data-i18n="share.title">共享</div>
-            <button class="share-close" id="shareClose" type="button" data-i18n-title="common.close" title="关闭">×</button>
-          </div>
-
-          <div class="share-section">
-            <div class="set-section-title" data-i18n="share.lanTitle">局域网共享</div>
-            <input class="set-input" id="lanShareUrl" inputmode="url" placeholder="http://192.168.1.10:28766">
-            <input class="set-input" id="lanSharePin" inputmode="numeric" maxlength="6" data-i18n-placeholder="share.pin" placeholder="PIN" style="margin-top:0.45rem;">
-            <div class="share-actions">
-              <button class="ocr-btn secondary" id="lanPull" data-i18n="share.pull">从桌面端拉取</button>
-              <button class="ocr-btn secondary" id="lanPush" data-i18n="share.push">推送到桌面端</button>
-            </div>
-          </div>
-
-          <div class="share-section">
-            <div class="set-section-title" data-i18n="share.webdavTitle">WebDAV 加密同步</div>
-            <input class="set-input" id="webdavUrl" inputmode="url" data-i18n-placeholder="share.webdavUrl" placeholder="https://dav.example.com/latexsnipper/history.json">
-            <input class="set-input" id="webdavUser" autocomplete="username" data-i18n-placeholder="share.webdavUser" placeholder="用户名" style="margin-top:0.45rem;">
-            <input class="set-input" id="webdavPassword" type="password" autocomplete="current-password" data-i18n-placeholder="share.webdavPassword" placeholder="WebDAV 密码" style="margin-top:0.45rem;">
-            <input class="set-input" id="webdavEncryptPassword" type="password" autocomplete="new-password" data-i18n-placeholder="share.encryptPassword" placeholder="加密密码" style="margin-top:0.45rem;">
-            <div class="share-actions">
-              <button class="ocr-btn secondary" id="webdavDownload" data-i18n="share.download">下载并合并</button>
-              <button class="ocr-btn secondary" id="webdavUpload" data-i18n="share.upload">加密上传</button>
-            </div>
-            <p class="set-hint" data-i18n="share.webdavHint">WebDAV 内容会先用本机输入的加密密码加密，再上传到服务器。请记住该密码，丢失后无法解密。</p>
-          </div>
-
-          <div class="share-message" id="shareMessage"></div>
-        </div>
       </div>
     </div>
 
