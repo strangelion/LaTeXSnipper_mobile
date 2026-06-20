@@ -174,28 +174,21 @@
   display: none;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(15, 23, 42, 0.42);
   padding: 1rem;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  animation: shareFadeIn 0.18s ease-out;
 }
-@keyframes shareFadeIn { from { opacity: 0; } to { opacity: 1; } }
 .share-dialog.show { display: flex; }
 .share-dialog-panel {
   width: min(100%, 520px);
   max-height: min(84vh, 720px);
   overflow-y: auto;
-  overscroll-behavior: contain;
   background: var(--card-bg);
   color: var(--fg);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: var(--card-shadow), 0 8px 32px rgba(0,0,0,0.12);
-  padding: 1.25rem;
-  animation: shareSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 1rem;
 }
-@keyframes shareSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .share-dialog-header {
   display: flex;
   align-items: center;
@@ -204,31 +197,23 @@
 }
 .share-dialog-title {
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1rem;
   flex: 1;
-  color: var(--accent);
 }
 .share-close {
   width: 36px;
   height: 36px;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   color: var(--fg);
   font-size: 1.3rem;
   line-height: 1;
-  transition: background 0.15s, border-color 0.15s;
 }
-.share-close:hover { background: var(--border-color); }
 .share-section {
   border-top: 1px solid var(--border-color);
   padding-top: 0.85rem;
   margin-top: 0.85rem;
-}
-.share-section .set-section-title {
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 0.88rem;
 }
 .share-actions {
   display: grid;
@@ -236,33 +221,15 @@
   gap: 0.5rem;
   margin-top: 0.65rem;
 }
-.share-actions .ocr-btn {
-  width: 100%;
-  min-height: 38px;
-}
 .share-message {
   min-height: 1.25rem;
   margin-top: 0.85rem;
   color: var(--muted);
   font-size: 0.82rem;
-  line-height: 1.5;
 }
 .share-message.error { color: #dc2626; }
-[data-theme="dark"] .share-message.error { color: #f87171; }
-.share-actions .loading {
-  opacity: 0.55;
-  pointer-events: none;
-}
-.share-dialog-panel::-webkit-scrollbar { width: 4px; }
-.share-dialog-panel::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
-}
+.share-actions .loading { opacity: 0.65; }
 
 @media (min-width: 720px) {
   .share-dialog { align-items: center; }
-  .share-dialog-panel {
-    border-radius: 20px;
-    max-height: min(80vh, 640px);
-  }
 }

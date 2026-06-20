@@ -26,22 +26,9 @@ export async function pushLanHistory(baseUrl, pin, historyPackage) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(historyPackage),
   });
-  if (!resp.ok) {
-    let msg = `LAN push failed: HTTP ${resp.status}`;
-    try {
-      const err = await resp.json();
-      if (err.error) msg = err.error;
-    } catch (_) {}
-    throw new Error(msg);
-  }
-  let data;
-  try {
-    data = await resp.json();
-  } catch (_) {
-    throw new Error('LAN push failed: server returned invalid JSON');
-  }
-  if (data && data.ok === false) {
-    throw new Error(data.error || 'LAN push rejected by server');
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || data.ok === false) {
+    throw new Error(data.error || `LAN push failed: HTTP ${resp.status}`);
   }
   return data;
 }

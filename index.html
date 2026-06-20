@@ -297,7 +297,7 @@
 
           <div class="share-section">
             <div class="set-section-title" data-i18n="share.webdavTitle">WebDAV 加密同步</div>
-            <input class="set-input" id="webdavUrl" inputmode="url" data-i18n-placeholder="share.webdavUrl" placeholder="https://dav.example.com/user/">
+            <input class="set-input" id="webdavUrl" inputmode="url" data-i18n-placeholder="share.webdavUrl" placeholder="https://dav.example.com/latexsnipper/history.json">
             <input class="set-input" id="webdavUser" autocomplete="username" data-i18n-placeholder="share.webdavUser" placeholder="用户名" style="margin-top:0.45rem;">
             <input class="set-input" id="webdavPassword" type="password" autocomplete="current-password" data-i18n-placeholder="share.webdavPassword" placeholder="WebDAV 密码" style="margin-top:0.45rem;">
             <input class="set-input" id="webdavEncryptPassword" type="password" autocomplete="new-password" data-i18n-placeholder="share.encryptPassword" placeholder="加密密码" style="margin-top:0.45rem;">
@@ -306,26 +306,6 @@
               <button class="ocr-btn secondary" id="webdavUpload" data-i18n="share.upload">加密上传</button>
             </div>
             <p class="set-hint" data-i18n="share.webdavHint">WebDAV 内容会先用本机输入的加密密码加密，再上传到服务器。请记住该密码，丢失后无法解密。</p>
-          </div>
-
-          <div class="share-section">
-            <div class="set-section-title" data-i18n="share.autoSyncTitle">定时同步</div>
-            <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;">
-              <label class="set-toggle">
-                <input type="checkbox" id="autoSyncToggle">
-                <span class="set-toggle-track"></span>
-              </label>
-              <span style="font-size:0.85rem;" data-i18n="share.autoSyncEnable">启用定时同步</span>
-              <select class="set-select" id="autoSyncInterval" style="width:auto;min-width:6rem;margin-left:auto;">
-                <option value="300000">5 分钟</option>
-                <option value="900000" selected>15 分钟</option>
-                <option value="1800000">30 分钟</option>
-                <option value="3600000">1 小时</option>
-                <option value="7200000">2 小时</option>
-              </select>
-            </div>
-            <p class="set-hint" data-i18n="share.autoSyncHint">启用后会定时从 WebDAV 拉取并合并最新历史。需先填写上方 WebDAV 凭据。</p>
-            <p class="set-hint" id="autoSyncStatus" style="margin-top:0.3rem;"></p>
           </div>
 
           <div class="share-message" id="shareMessage"></div>
