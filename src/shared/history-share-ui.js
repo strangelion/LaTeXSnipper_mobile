@@ -6,9 +6,10 @@ import { t } from '../lang/i18n.js';
 import { buildHistoryPackage, packageToRecords } from './history-share-package.js';
 import { fetchLanHistory, pushLanHistory } from './lan-share-client.js';
 import { showSaveToast } from './share.js';
-import { downloadEncryptedWebdav, uploadEncryptedWebdav } from './webdav-sync.js';
+import { downloadEncryptedWebdav, uploadEncryptedWebdav, loadWebdavCredentials, saveWebdavCredentials, hasSavedWebdavCredentials } from './webdav-sync.js';
 
 let initialized = false;
+let autoSyncTimer = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -68,17 +69,44 @@ export function initHistorySharing() {
   initialized = true;
 
   const modal = $('shareDialog');
+  function openModal() {
+    modal?.classList.add('show');
+    modal?.setAttribute('aria-hidden', 'false');
+    setMessage('share.ready');
+    _loadSavedCredentials();
+  }
+  function closeModal() {
+    modal?.classList.remove('show');
+    modal?.setAttribute('aria-hidden', 'true');
+  }
+
+  async function _loadSavedCredentials() {
+    try {
+      const creds = await loadWebdavCredentials();
+      if (creds) {
+        if (creds.url) $('webdavUrl').value = creds.url;
+        if (creds.username) $('webdavUser').value = creds.username;
+        if (creds.password) $('webdavPassword').value = creds.password;
+        if (creds.encryptionPassword) $('webdavEncryptPassword').value = creds.encryptionPassword;
+      }
+    } catch (_) {}
+  }
+
+  async function _saveCurrentCredentials() {
+    try {
+      await saveWebdavCredentials(readWebdavSettings());
+    } catch (_) {}
+  }
   $('historyShare')?.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    modal?.classList.add('show');
-    setMessage('share.ready');
+    openModal();
   });
   $('shareClose')?.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    modal?.classList.remove('show');
+    closeModal();
   });
   modal?.addEventListener('pointerdown', (e) => {
-    if (e.target === modal) modal.classList.remove('show');
+    if (e.target === modal) closeModal();
   });
 
   $('lanPull')?.addEventListener('pointerdown', (e) => run(e.currentTarget, async () => {
@@ -96,12 +124,65 @@ export function initHistorySharing() {
 
   $('webdavUpload')?.addEventListener('pointerdown', (e) => run(e.currentTarget, async () => {
     await uploadEncryptedWebdav(readWebdavSettings(), await currentPackage());
+    await _saveCurrentCredentials();
     setMessage('share.uploaded');
   }));
 
   $('webdavDownload')?.addEventListener('pointerdown', (e) => run(e.currentTarget, async () => {
     const pkg = await downloadEncryptedWebdav(readWebdavSettings());
     const { added, updated } = await mergePackage(pkg);
+    await _saveCurrentCredentials();
     setMessage('share.imported', { added, updated });
   }));
+
+  const autoSyncToggle = $('autoSyncToggle');
+  const autoSyncInterval = $('autoSyncInterval');
+  const autoSyncStatus = $('autoSyncStatus');
+
+  async function doAutoSync() {
+    if (!autoSyncToggle?.checked) return;
+    const settings = readWebdavSettings();
+    if (!settings.url || !settings.encryptionPassword) {
+      if (autoSyncStatus) autoSyncStatus.textContent = t('share.autoSyncSkip');
+      scheduleNext();
+      return;
+    }
+    if (autoSyncStatus) autoSyncStatus.textContent = t('share.autoSyncRunning');
+    try {
+      const pkg = await downloadEncryptedWebdav(settings);
+      const { added, updated } = await mergePackage(pkg);
+      const now = new Date().toLocaleTimeString();
+      if (autoSyncStatus) autoSyncStatus.textContent = `${t('share.autoSyncDone', { added, updated })} (${now})`;
+    } catch (err) {
+      if (autoSyncStatus) autoSyncStatus.textContent = `${t('share.autoSyncError')}: ${err.message}`;
+    }
+    scheduleNext();
+  }
+
+  function scheduleNext() {
+    stopAutoSync();
+    if (!autoSyncToggle?.checked) return;
+    const ms = parseInt(autoSyncInterval?.value || '900000', 10);
+    autoSyncTimer = setTimeout(doAutoSync, ms);
+  }
+
+  function stopAutoSync() {
+    if (autoSyncTimer) {
+      clearTimeout(autoSyncTimer);
+      autoSyncTimer = null;
+    }
+  }
+
+  autoSyncToggle?.addEventListener('change', () => {
+    if (autoSyncToggle.checked) {
+      scheduleNext();
+    } else {
+      stopAutoSync();
+      if (autoSyncStatus) autoSyncStatus.textContent = '';
+    }
+  });
+
+  autoSyncInterval?.addEventListener('change', () => {
+    if (autoSyncToggle?.checked) scheduleNext();
+  });
 }
