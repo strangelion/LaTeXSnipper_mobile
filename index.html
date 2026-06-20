@@ -140,7 +140,6 @@
           <button class="hw-tool-btn" id="hwRedo" data-i18n="hw.redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>重做</button>
           <button class="hw-tool-btn" id="hwClear" data-i18n="hw.clear"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空</button>
           <button class="hw-tool-btn hw-recognize" id="hwRecognize" data-i18n="hw.recognize">识别</button>
-          <button class="hw-tool-btn" id="hwSendDesktop" data-i18n="hw.sendDesktop" style="background:var(--accent);color:#fff;border-color:var(--accent);">发送到桌面</button>
         </div>
       </div>
 
@@ -272,65 +271,10 @@
         <button class="active" data-filter="all" data-i18n="history.all">全部</button>
         <button data-filter="favorites" data-i18n="history.favorite">收藏</button>
         <span class="history-toolbar-spacer"></span>
-        <button id="historyShare" data-i18n="share.title">共享</button>
         <button id="clearHistory" data-i18n="history.clear">清空</button>
       </div>
       <div class="history-list" id="historyList">
         <div class="history-empty" data-i18n="history.empty">暂无识别记录。<br>上传公式图片开始使用！</div>
-      </div>
-
-      <div class="share-dialog" id="shareDialog" aria-hidden="true">
-        <div class="share-dialog-panel">
-          <div class="share-dialog-header">
-            <div class="share-dialog-title" data-i18n="share.title">共享</div>
-            <button class="share-close" id="shareClose" type="button" data-i18n-title="common.close" title="关闭">×</button>
-          </div>
-
-          <div class="share-section">
-            <div class="set-section-title" data-i18n="share.lanTitle">局域网共享</div>
-            <input class="set-input" id="lanShareUrl" inputmode="url" placeholder="http://192.168.1.10:28766">
-            <input class="set-input" id="lanSharePin" inputmode="numeric" maxlength="6" data-i18n-placeholder="share.pin" placeholder="PIN" style="margin-top:0.45rem;">
-            <div class="share-actions">
-              <button class="ocr-btn secondary" id="lanPull" data-i18n="share.pull">从桌面端拉取</button>
-              <button class="ocr-btn secondary" id="lanPush" data-i18n="share.push">推送到桌面端</button>
-            </div>
-          </div>
-
-          <div class="share-section">
-            <div class="set-section-title" data-i18n="share.webdavTitle">WebDAV 加密同步</div>
-            <input class="set-input" id="webdavUrl" inputmode="url" data-i18n-placeholder="share.webdavUrl" placeholder="https://dav.example.com/user/">
-            <input class="set-input" id="webdavUser" autocomplete="username" data-i18n-placeholder="share.webdavUser" placeholder="用户名" style="margin-top:0.45rem;">
-            <input class="set-input" id="webdavPassword" type="password" autocomplete="current-password" data-i18n-placeholder="share.webdavPassword" placeholder="WebDAV 密码" style="margin-top:0.45rem;">
-            <input class="set-input" id="webdavEncryptPassword" type="password" autocomplete="new-password" data-i18n-placeholder="share.encryptPassword" placeholder="加密密码" style="margin-top:0.45rem;">
-            <div class="share-actions">
-              <button class="ocr-btn secondary" id="webdavDownload" data-i18n="share.download">下载并合并</button>
-              <button class="ocr-btn secondary" id="webdavUpload" data-i18n="share.upload">加密上传</button>
-            </div>
-            <p class="set-hint" data-i18n="share.webdavHint">WebDAV 内容会先用本机输入的加密密码加密，再上传到服务器。请记住该密码，丢失后无法解密。</p>
-          </div>
-
-          <div class="share-section">
-            <div class="set-section-title" data-i18n="share.autoSyncTitle">定时同步</div>
-            <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;">
-              <label class="set-toggle">
-                <input type="checkbox" id="autoSyncToggle">
-                <span class="set-toggle-track"></span>
-              </label>
-              <span style="font-size:0.85rem;" data-i18n="share.autoSyncEnable">启用定时同步</span>
-              <select class="set-select" id="autoSyncInterval" style="width:auto;min-width:6rem;margin-left:auto;">
-                <option value="300000">5 分钟</option>
-                <option value="900000" selected>15 分钟</option>
-                <option value="1800000">30 分钟</option>
-                <option value="3600000">1 小时</option>
-                <option value="7200000">2 小时</option>
-              </select>
-            </div>
-            <p class="set-hint" data-i18n="share.autoSyncHint">启用后会定时从 WebDAV 拉取并合并最新历史。需先填写上方 WebDAV 凭据。</p>
-            <p class="set-hint" id="autoSyncStatus" style="margin-top:0.3rem;"></p>
-          </div>
-
-          <div class="share-message" id="shareMessage"></div>
-        </div>
       </div>
     </div>
 

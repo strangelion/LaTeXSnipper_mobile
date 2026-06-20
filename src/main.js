@@ -18,8 +18,6 @@ import { initEditor, setEditorContent } from './editor/mathlive-config.js';
 import { initI18n, t, translateDOM, onLangChange } from './lang/i18n.js';
 import { initSettings } from './settings/settings.js';
 import { initCustomSelects, syncCustomSelects } from './ui/custom-select.js';
-import { initHistorySharing } from './shared/history-share-ui.js';
-import { recognizeOnDesktop } from './shared/lan-share-client.js';
 
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
@@ -168,13 +166,6 @@ document.getElementById('camModal')?.addEventListener('click', (e) => {
 
 window.addEventListener('closecamera', closeCamera);
 
-function readLanShareSettings() {
-  return {
-    baseUrl: document.getElementById('lanShareUrl')?.value || '',
-    pin: document.getElementById('lanSharePin')?.value || '',
-  };
-}
-
 /* ── Handwriting setup ── */
 const hwCanvas = document.getElementById('hwCanvas');
 const hwWrap = document.getElementById('hwWrap');
@@ -190,33 +181,6 @@ if (hwCanvas && hwWrap) {
   document.getElementById('hwRecognize')?.addEventListener('click', async () => {
     const file = await hwExportImage();
     if (file) processImage(file);
-  });
-  document.getElementById('hwSendDesktop')?.addEventListener('click', async () => {
-    const btn = document.getElementById('hwSendDesktop');
-    const settings = readLanShareSettings();
-    if (!settings.baseUrl || !settings.pin) {
-      setStatus(t('hw.needLanSettings') || '请先在「共享」中填写局域网地址和 PIN');
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = t('hw.sending') || '发送中…';
-    try {
-      const blob = await hwExportImage();
-      if (!blob) return;
-      const result = await recognizeOnDesktop(settings.baseUrl, settings.pin, blob, recogMode || 'formula');
-      if (result.latex) {
-        showResult({ latex: result.latex, confidence: result.score ?? 1, type: 'formula', source: 'desktop-lan' });
-        setEditorContent(result.latex);
-        setStatus(t('hw.desktopResult') || '桌面端识别完成');
-      } else {
-        setStatus(t('hw.noResult') || '桌面端未识别到内容');
-      }
-    } catch (err) {
-      setStatus(`${t('hw.sendFailed') || '发送失败'}: ${err.message}`);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = t('hw.sendDesktop') || '发送到桌面';
-    }
   });
 }
 
@@ -341,7 +305,6 @@ async function boot() {
 
   // 5. Load history (IndexedDB — async but quick)
   renderHistoryList();
-  initHistorySharing();
 
   // 6. Init export dropdowns (defers importing pandoc-export chunk)
   import('./export/pandoc-export.js').then(({ createExportDropdown }) => {
