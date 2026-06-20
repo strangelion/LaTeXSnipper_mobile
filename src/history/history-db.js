@@ -75,3 +75,39 @@ export async function getResultCount() {
   const database = await getDB();
   return await database.count(STORE_NAME);
 }
+
+export async function importResults(records = []) {
+  const database = await getDB();
+  const existing = await database.getAll(STORE_NAME);
+  const known = new Set(existing.map(r => String(r.latex || '').trim()).filter(Boolean));
+  const tx = database.transaction(STORE_NAME, 'readwrite');
+  let added = 0;
+  let updated = 0;
+
+  for (const record of records) {
+    const latex = String(record?.latex || '').trim();
+    if (!latex) continue;
+    if (known.has(latex)) {
+      const current = existing.find(r => String(r.latex || '').trim() === latex);
+      if (current && record.favorite && !current.favorite) {
+        current.favorite = true;
+        await tx.store.put(current);
+        updated += 1;
+      }
+      continue;
+    }
+    known.add(latex);
+    await tx.store.add({
+      latex,
+      confidence: Number.isFinite(record.confidence) ? record.confidence : 1,
+      type: record.type || record.contentType || 'formula',
+      source: record.source || 'shared',
+      favorite: Boolean(record.favorite),
+      createdAt: Number.isFinite(record.createdAt) ? record.createdAt : Date.now(),
+    });
+    added += 1;
+  }
+
+  await tx.done;
+  return { added, updated };
+}
