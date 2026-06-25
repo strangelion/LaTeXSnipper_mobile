@@ -110,6 +110,7 @@ export function initEditor() {
   mathField.style.border = '1px solid var(--border-color)';
   mathField.style.borderRadius = '10px';
   mathField.style.background = 'var(--card-bg)';
+  mathField.style.color = 'var(--fg)';
   mathField.style.padding = '0.75rem';
 
   // Long-press context menu

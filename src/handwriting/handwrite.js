@@ -221,11 +221,11 @@ export async function hwExportImage() {
   const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4) {
-    // If pixel is not close to white, make it black
-    if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) {
-      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0;
+    // If alpha > 0 and pixel is not close to white, make it black
+    if (d[i + 3] > 0 && (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240)) {
+      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 255;
     } else {
-      d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+      d[i] = 255; d[i + 1] = 255; d[i + 2] = 255; d[i + 3] = 255;
     }
   }
   tctx.putImageData(imgData, 0, 0);
