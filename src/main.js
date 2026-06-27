@@ -1,4 +1,4 @@
-// main.js — Application entry point, wires all modules together
+// main.js — Application entry point, thin orchestrator
 
 import './styles/base.css';
 import './styles/ocr.css';
@@ -7,19 +7,24 @@ import './styles/editor.css';
 import './styles/history.css';
 import './styles/mobile.css';
 
-import { MODEL_BASE } from './constants.js';
 import { initTheme, getThemeIcon, getTheme } from './ui/theme.js';
-import { initModels, initUI, processImage, setStatus, copyResult, showResult, shareResult, onFileProcessed, hideSplash, polishResult } from './ui/ui.js';
-import { initHandwrite, hwSetTool, hwUndo, hwRedo, hwClear, hwExportImage, updateHwTheme } from './handwriting/handwrite.js';
-import { openCamera, closeCamera, capturePhoto, confirmCrop, retakePhoto, setCropMode, toggleFlash, initCamera } from './camera/camera.js';
-import { addResult, clearHistory } from './history/history-db.js';
+import { initModels, initUI, processImage, onFileProcessed, hideSplash } from './ui/ui.js';
+import { initHandwrite, updateHwTheme } from './handwriting/handwrite.js';
+import { initCamera } from './camera/camera.js';
+import { addResult } from './history/history-db.js';
 import { renderHistoryList } from './history/history-ui.js';
-import { initEditor, setEditorContent } from './editor/mathlive-config.js';
+import { initEditor } from './editor/mathlive-config.js';
 import { initI18n, t, translateDOM, onLangChange } from './lang/i18n.js';
 import { initSettings } from './settings/settings.js';
 import { initCustomSelects, syncCustomSelects } from './ui/custom-select.js';
+import { registerBinding, bindAll } from './core/event-registry.js';
+import { bindEvents as bindCameraEvents } from './camera/camera.js';
+import { bindUiEvents as bindHandwriteEvents } from './handwriting/handwrite.js';
+import { bindEvents as bindHistoryEvents } from './history/history-ui.js';
+import { bindEvents as bindResultEvents } from './ui/result.js';
+import { bindEvents as bindEditorEvents } from './editor/mathlive-config.js';
 
-/* ── Service Worker registration ── */
+/* ── Service Worker ── */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
@@ -28,41 +33,34 @@ if ('serviceWorker' in navigator) {
 function setupTabs() {
   const tabs = document.querySelectorAll('.bottom-nav button');
   const pages = document.querySelectorAll('.page');
-
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      const target = tab.dataset.page;
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       pages.forEach(p => p.classList.remove('active'));
-      const page = document.getElementById('page-' + target);
+      const page = document.getElementById('page-' + tab.dataset.page);
       if (page) page.classList.add('active');
     });
   });
 }
 
-/* ── Install prompt ── */
+/* ── PWA install prompt ── */
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  const banner = document.getElementById('installBanner');
-  if (banner) banner.classList.add('show');
+  document.getElementById('installBanner')?.classList.add('show');
 });
-
 document.getElementById('installBtn')?.addEventListener('click', async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
-  const result = await deferredPrompt.userChoice;
+  await deferredPrompt.userChoice;
   deferredPrompt = null;
   document.getElementById('installBanner')?.classList.remove('show');
 });
-
 document.getElementById('dismissInstall')?.addEventListener('click', () => {
   document.getElementById('installBanner')?.classList.remove('show');
 });
-
-// Hide banner if already installed
 if (window.matchMedia('(display-mode: standalone)').matches) {
   document.getElementById('installBanner')?.classList.remove('show');
 }
@@ -70,12 +68,9 @@ if (window.matchMedia('(display-mode: standalone)').matches) {
 /* ── Theme ── */
 const theme = initTheme();
 document.getElementById('themeToggle').innerHTML = getThemeIcon(theme);
+window.addEventListener('themechange', (e) => updateHwTheme(e.detail.theme));
 
-window.addEventListener('themechange', (e) => {
-  updateHwTheme(e.detail.theme);
-});
-
-/* ── DOM element map for UI module ── */
+/* ── DOM refs ── */
 const els = {
   statusIcon: document.getElementById('statusIcon'),
   statusText: document.getElementById('statusText'),
@@ -102,10 +97,9 @@ const els = {
   hwPanel: document.getElementById('hwPanel'),
   themeToggle: document.getElementById('themeToggle'),
 };
-
 initUI(els);
 
-/* ── Camera setup ── */
+/* ── Camera init ── */
 initCamera(
   document.getElementById('camVideo'),
   document.getElementById('camModal'),
@@ -114,74 +108,12 @@ initCamera(
   document.getElementById('camCropActions')
 );
 
-document.getElementById('camTrigger')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  openCamera();
-});
-
-document.getElementById('camCapture')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  capturePhoto();
-});
-
-document.getElementById('camCropConfirm')?.addEventListener('pointerdown', async (e) => {
-  e.preventDefault(); e.stopPropagation();
-  const file = await confirmCrop();
-  if (file) {
-    processImage(file);
-  }
-});
-
-document.getElementById('camCropRetake')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  retakePhoto();
-});
-
-document.getElementById('camCropModeRect')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  setCropMode('rect');
-});
-document.getElementById('camCropModeLasso')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  setCropMode('lasso');
-});
-
-document.getElementById('camClose')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  closeCamera();
-});
-
-document.getElementById('camFlash')?.addEventListener('pointerdown', (e) => {
-  e.preventDefault(); e.stopPropagation();
-  toggleFlash();
-});
-
-
-document.getElementById('camModal')?.addEventListener('click', (e) => {
-  // Only close on background click during live preview;
-  // during crop mode, canvas + cropActions cover the modal so this shouldn't fire
-  if (e.target === e.currentTarget) closeCamera();
-});
-
-window.addEventListener('closecamera', closeCamera);
-
-/* ── Handwriting setup ── */
+/* ── Handwriting init ── */
 const hwCanvas = document.getElementById('hwCanvas');
 const hwWrap = document.getElementById('hwWrap');
 if (hwCanvas && hwWrap) {
   initHandwrite(hwCanvas, hwWrap);
   updateHwTheme(getTheme());
-
-  document.getElementById('hwPen')?.addEventListener('click', () => hwSetTool('pen'));
-  document.getElementById('hwEraser')?.addEventListener('click', () => hwSetTool('eraser'));
-  document.getElementById('hwUndo')?.addEventListener('click', hwUndo);
-  document.getElementById('hwRedo')?.addEventListener('click', hwRedo);
-  document.getElementById('hwClear')?.addEventListener('click', hwClear);
-  document.getElementById('hwRecognize')?.addEventListener('click', async () => {
-    const file = await hwExportImage();
-    if (file) processImage(file);
-  });
 }
 
 /* ── Recognition mode selector ── */
@@ -194,29 +126,23 @@ document.querySelectorAll('.recog-tabs .mode-tab').forEach(btn => {
     recogMode = btn.dataset.mode;
   });
 });
-// When switching to handwriting, default to mixed mode
 document.getElementById('tabHandwrite')?.addEventListener('pointerdown', () => {
   document.querySelectorAll('.recog-tabs .mode-tab').forEach(b => b.classList.remove('active'));
-  const mixedBtn = document.querySelector('.recog-tabs [data-mode="mixed"]');
-  if (mixedBtn) mixedBtn.classList.add('active');
+  document.querySelector('.recog-tabs [data-mode="mixed"]')?.classList.add('active');
   recogMode = 'mixed';
 });
 document.getElementById('tabImage')?.addEventListener('pointerdown', () => {
   document.querySelectorAll('.recog-tabs .mode-tab').forEach(b => b.classList.remove('active'));
-  const formulaBtn = document.querySelector('.recog-tabs [data-mode="formula"]');
-  if (formulaBtn) formulaBtn.classList.add('active');
+  document.querySelector('.recog-tabs [data-mode="formula"]')?.classList.add('active');
   recogMode = 'formula';
 });
-
-// Export recogMode for ui.js to use
 window.__recogMode = () => recogMode;
 
-/* ── Back button / swipe-back ── */
+/* ── Android back button ── */
 (async () => {
   try {
     const { App } = await import('@capacitor/app');
     App.addListener('backButton', ({ canGoBack }) => {
-      // Camera modal open → close camera, don't exit
       if (document.getElementById('camModal')?.classList.contains('show')) {
         window.dispatchEvent(new CustomEvent('closecamera'));
         return;
@@ -229,84 +155,51 @@ window.__recogMode = () => recogMode;
         App.exitApp();
       }
     });
-  } catch (_) { /* browser dev mode, Capacitor not available */ }
+  } catch (_) {}
 })();
-document.getElementById('shareBtn')?.addEventListener('click', shareResult);
-document.getElementById('aiPolishBtn')?.addEventListener('click', () => polishResult().catch(() => {}));
 
-document.getElementById('sendToEditorBtn')?.addEventListener('click', () => {
-  const latex = document.getElementById('resultCode')?.textContent;
-  if (latex) setEditorContent(latex);
-});
-
-/* ── Particle background (disabled — affects UX on mobile) ── */
-// initParticles('mathBg');
+/* ── Register feature event bindings ── */
+registerBinding((els) => bindCameraEvents({ onRecognize: processImage }));
+registerBinding(() => bindHandwriteEvents({ onRecognize: processImage }));
+registerBinding(() => bindHistoryEvents());
+registerBinding(() => bindResultEvents());
+registerBinding(() => bindEditorEvents());
 
 /* ── Save OCR results to history ── */
 onFileProcessed(async (result, file) => {
-    if (result && result.latex) {
-      const source = file.type === 'application/pdf' ? 'pdf'
-        : file.name === 'camera.jpg' ? 'camera'
-        : file.name === 'handwrite.png' ? 'handwrite'
-        : 'file';
-      await addResult({
-        latex: result.latex,
-        confidence: result.confidence,
-        type: 'formula',
-        source,
-      });
-      renderHistoryList();
-    }
-  });
-
-// History toolbar
-document.getElementById('clearHistory')?.addEventListener('click', async () => {
-  const filter = document.querySelector('.history-toolbar button.active')?.dataset?.filter || 'all';
-  if (filter === 'favorites') {
-    await clearHistory(false); // clear only favorites
-  } else {
-    await clearHistory(); // keep favorites
+  if (result && result.latex) {
+    const source = file.type === 'application/pdf' ? 'pdf'
+      : file.name === 'camera.jpg' ? 'camera'
+      : file.name === 'handwrite.png' ? 'handwrite'
+      : 'file';
+    await addResult({
+      latex: result.latex,
+      confidence: result.confidence,
+      type: 'formula',
+      source,
+    });
+    renderHistoryList();
   }
-  renderHistoryList(filter);
-});
-document.querySelectorAll('.history-toolbar button[data-filter]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.history-toolbar button[data-filter]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderHistoryList(btn.dataset.filter);
-  });
 });
 
-// Load history when tab is shown
-document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListener('click', () => {
-  renderHistoryList();
-});
-
-/* ── Editor tab ── */
-
-/* ── Startup: load models ── */
+/* ── Boot ── */
 async function boot() {
-  // 1. Init logging (loads localStorage — fast)
   const { default: Logger } = await import('./shared/logger.js');
   Logger.logSystemInfo();
 
-  // 2. Init i18n + translate static text (dynamic import language file)
   await initI18n();
   translateDOM();
 
-  // 3. Init custom dropdowns + settings (localStorage reads only)
   initCustomSelects();
   initSettings();
   syncCustomSelects();
   onLangChange(() => syncCustomSelects());
 
-  // 4. Init editor (may retry if MathfieldElement script not loaded yet)
-  initEditor();
+  bindAll(els);
 
-  // 5. Load history (IndexedDB — async but quick)
+  initEditor();
   renderHistoryList();
 
-  // 6. Init export dropdowns (defers importing pandoc-export chunk)
   import('./export/pandoc-export.js').then(({ createExportDropdown }) => {
     const ocrContainer = document.getElementById('exportDropdownContainer');
     if (ocrContainer) {
@@ -318,38 +211,19 @@ async function boot() {
     const editorExportContainer = document.getElementById('editorExportContainer');
     if (editorExportContainer) {
       createExportDropdown(editorExportContainer, {
-        getText: () => {
-          const mf = document.getElementById('mathField');
-          return mf?.value?.trim() || '';
-        },
+        getText: () => document.getElementById('mathField')?.value?.trim() || '',
         t,
       });
     }
   }).catch(() => {});
 
-  // 7. Bind editor buttons
-  document.getElementById('editorKbdToggle')?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    import('./editor/mathlive-config.js').then(mod => mod.toggleKeyboard());
-  });
-  document.getElementById('editorClearBtn')?.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    const mf = document.getElementById('mathField');
-    if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
-  });
-
-  // 8. Preload MathJax if selected as render engine
   try {
     const saved = JSON.parse(localStorage.getItem('ls_settings') || '{}');
     if (saved.renderEngine === 'mathjax') {
       window.__renderEngine = 'mathjax';
       const mod = await import('./editor/mathjax-renderer.js');
       mod.ensureMathjax();
-      if (mod.isMathjaxReady()) {
-        Logger.info('init', 'MathJax loaded');
-      } else {
-        Logger.info('init', 'MathJax loading...');
-      }
+      Logger.info('init', mod.isMathjaxReady() ? 'MathJax loaded' : 'MathJax loading...');
     } else {
       window.__renderEngine = 'katex';
     }
@@ -357,16 +231,10 @@ async function boot() {
     window.__renderEngine = 'katex';
   }
 
-  // 9. Hide splash screen
   hideSplash();
-
-  // 10. Load models — initModels handles its own status bar updates
   initModels();
 
-  // 11. Check first launch — show welcome dialog if needed
-  import('./ui/welcome-dialog.js').then(({ checkFirstLaunch }) => {
-    checkFirstLaunch();
-  }).catch(() => {});
+  import('./ui/welcome-dialog.js').then(m => m.checkFirstLaunch()).catch(() => {});
 }
 
 setupTabs();

@@ -610,3 +610,19 @@ function downloadBlob(blob, filename) {
 
 // Export for use by polish.js and pandoc-export.js
 export { renderMathPreview, renderLatexToSvgs, combineSvgs, svgToPngBlob };
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindEvents() {
+  document.getElementById('shareBtn')?.addEventListener('click', shareResult);
+  document.getElementById('aiPolishBtn')?.addEventListener('click', () => {
+    import('./polish.js').then(m => m.polishResult().catch(() => {}));
+  });
+  document.getElementById('sendToEditorBtn')?.addEventListener('click', async () => {
+    const latex = document.getElementById('resultCode')?.textContent;
+    if (latex) {
+      const { setEditorContent } = await import('../editor/mathlive-config.js');
+      setEditorContent(latex);
+    }
+  });
+}

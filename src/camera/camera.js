@@ -762,3 +762,32 @@ export function retakePhoto() {
   camCropImg = null; camCropDisplay = null; camCropPoints = null;
   openCamera();
 }
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindEvents({ onRecognize } = {}) {
+  const bind = (id, evt, fn) => {
+    document.getElementById(id)?.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      fn(e);
+    });
+  };
+
+  bind('camTrigger', 'pointerdown', () => openCamera());
+  bind('camCapture', 'pointerdown', () => capturePhoto());
+  bind('camCropConfirm', 'pointerdown', async () => {
+    const file = await confirmCrop();
+    if (file && onRecognize) onRecognize(file);
+  });
+  bind('camCropRetake', 'pointerdown', () => retakePhoto());
+  bind('camCropModeRect', 'pointerdown', () => setCropMode('rect'));
+  bind('camCropModeLasso', 'pointerdown', () => setCropMode('lasso'));
+  bind('camClose', 'pointerdown', () => closeCamera());
+  bind('camFlash', 'pointerdown', () => toggleFlash());
+
+  document.getElementById('camModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeCamera();
+  });
+
+  window.addEventListener('closecamera', closeCamera);
+}

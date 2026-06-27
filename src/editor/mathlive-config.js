@@ -475,3 +475,17 @@ export function resetKbdState() {
   }
   _setKbdState(0);
 }
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindEvents() {
+  document.getElementById('editorKbdToggle')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    toggleKeyboard();
+  });
+  document.getElementById('editorClearBtn')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const mf = document.getElementById('mathField');
+    if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
+}

@@ -247,3 +247,17 @@ export function updateHwTheme(theme) {
     : 'linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)';
   hwWrap.style.backgroundSize = '20px 20px';
 }
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindUiEvents({ onRecognize } = {}) {
+  document.getElementById('hwPen')?.addEventListener('click', () => hwSetTool('pen'));
+  document.getElementById('hwEraser')?.addEventListener('click', () => hwSetTool('eraser'));
+  document.getElementById('hwUndo')?.addEventListener('click', hwUndo);
+  document.getElementById('hwRedo')?.addEventListener('click', hwRedo);
+  document.getElementById('hwClear')?.addEventListener('click', hwClear);
+  document.getElementById('hwRecognize')?.addEventListener('click', async () => {
+    const file = await hwExportImage();
+    if (file && onRecognize) onRecognize(file);
+  });
+}
