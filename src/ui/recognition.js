@@ -4,7 +4,8 @@
 import { els, getFileInputHandler } from './dom-refs.js';
 import { setStatus, showError, showProgress, hideProgress } from './status.js';
 import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from './result.js';
-import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
+import { isNativeOcrAvailable } from '../native/ocr-native.js';
+import { getPipeline } from '../ocr/pipeline-registry.js';
 import Logger from '../shared/logger.js';
 import { t } from '../lang/i18n.js';
 import { MAX_PDF_PAGES } from '../constants.js';
@@ -212,8 +213,8 @@ async function processPDFNative(file, pageRange, onProgress) {
     const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
     const base64 = await fileToBase64(new File([blob], 'page.jpg'));
 
-  const Ocr = OcrNative;
-    const result = await Ocr.recognizeMixed({ image: base64 });
+    const mixedPl = getPipeline('mixed');
+    const result = await mixedPl.run(base64);
     const mixedText = result.text || result.regions?.map(r => r.text).filter(Boolean).join('\n') || '';
     const latex = result.regions?.filter(r => r.type === 'formula').map(r => r.text).join(' \\\\ ') || '';
     pages.push({ latex: mixedText || latex, confidence: result.confidence || 0.5, page: pageNum });
@@ -278,7 +279,6 @@ export async function processImage(file) {
     }
     try {
       const base64 = await fileToBase64(file);
-      const Ocr = OcrNative;
 
       const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
       if (isPdf) {
@@ -336,13 +336,15 @@ export async function processImage(file) {
       }, 500);
 
       let result;
-      if (mode === 'formula') {
-        result = await Ocr.recognizeFormula({ image: base64 });
-      } else if (mode === 'text') {
-        result = await Ocr.recognizeText({ image: base64 });
-      } else { // mixed
-        result = await Ocr.recognizeMixed({ image: base64 });
+      const pipeline = getPipeline(mode);
+      if (!pipeline) {
+        clearInterval(progressTimer);
+        hideProgress();
+        showError(t('recog.unknownMode', { mode }) || `Unknown mode: ${mode}`);
+        setStatus('ready', t('status.ready'), false);
+        return null;
       }
+      result = await pipeline.run(base64, { file });
 
       clearInterval(progressTimer);
       hideProgress();

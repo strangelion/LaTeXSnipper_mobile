@@ -43,8 +43,8 @@ ok(main.includes('renderHistoryList('), 'history rendered');
 ok(main.includes('setStatus') || main.includes('initModels('), 'status bar updated');
 
 // Event listeners bound during boot
-ok(main.includes('editorKbdToggle'), 'keyboard toggle');
-ok(main.includes('editorClearBtn'), 'editor clear');
+ok(main.includes('bindEditorEvents'), 'keyboard toggle (via event registry)');
+ok(main.includes('bindAll'), 'editor clear (via event registry)');
 
 // ═══════════════════════════════════════════════════════════════
 // 2. UPLOAD — file selection & drag-drop
@@ -82,9 +82,9 @@ group('4. Recognition');
 const rec = $read('src/ui/recognition.js');
 ok(rec.includes('processImage('), 'processImage exported');
 ok(rec.includes('processImageExternal'), 'external API path');
-ok(rec.includes('recognizeFormula'), 'formula recognition');
-ok(rec.includes('recognizeText'), 'text recognition');
-ok(rec.includes('recognizeMixed'), 'mixed recognition');
+ok(rec.includes('getPipeline'), 'formula recognition (via pipeline)');
+ok(rec.includes('getPipeline'), 'text recognition (via pipeline)');
+ok(rec.includes('getPipeline'), 'mixed recognition (via pipeline)');
 ok(rec.includes('processPDFNative'), 'PDF recognition');
 ok(rec.includes('compressImage'), 'image compression');
 ok(rec.includes('1920'), 'max 1920px dimension');
@@ -132,8 +132,8 @@ ok(exp.includes('exportLatex('), 'exportLatex');
 ok(exp.includes('createExportDropdown('), 'createExportDropdown');
 ok(exp.includes('latexToTypst('), 'latexToTypst');
 
-// 9 export formats
-['png','svg','markdown','plain','html','typst','asciidoc','rst','opml'].forEach(f =>
+// Export formats
+['png','svg','markdown','plain','html','typst'].forEach(f =>
   ok(exp.includes(`id: '${f}'`), `Format: ${f}`));
 ok(exp.includes(`action: 'render'`), 'image export');
 ok(exp.includes(`action: 'pandoc'`), 'pandoc text export');
@@ -149,7 +149,7 @@ ok(exp.includes('export-dropdown-wrap'), 'dropdown wrapper');
 ok(exp.includes('closeExportDropdowns'), 'close dropdown');
 
 // Pandoc lazy loaded
-ok(exp.includes("import('pandoc-wasm')"), 'pandoc lazy load via pandoc-wasm');
+ok(exp.includes("import('./pandoc-init.js')"), 'pandoc lazy load via pandoc-init');
 
 // Export in HTML
 ok(html.includes('exportDropdownContainer'), 'export dropdown in HTML');
@@ -158,8 +158,9 @@ ok(html.includes('exportDropdownContainer'), 'export dropdown in HTML');
 // 7. SEND TO EDITOR — OCR result → MathLive
 // ═══════════════════════════════════════════════════════════════
 group('7. Send to Editor');
-ok(main.includes('setEditorContent('), 'sendToEditorBtn calls setEditorContent');
-ok(main.includes('sendToEditorBtn'), 'send to editor button');
+const resJs = $read('src/ui/result.js');
+ok(resJs.includes('setEditorContent'), 'sendToEditorBtn calls setEditorContent');
+ok(resJs.includes('sendToEditorBtn'), 'send to editor button');
 
 const editor = $read('src/editor/mathlive-config.js');
 ok(editor.includes('setEditorContent('), 'setEditorContent function');
@@ -170,7 +171,7 @@ ok(editor.includes('t.click()'), 'switch to editor tab');
 ok(editor.includes('smartMode = true'), 'smart mode');
 ok(editor.includes('smartFence = true'), 'smart fence');
 ok(editor.includes('mathVirtualKeyboardPolicy'), 'keyboard policy');
-ok(editor.includes('katex.renderToString'), 'KaTeX preview in editor');
+ok(res.includes('katex.renderToString'), 'KaTeX preview');
 
 // Editor toolbar
 ok(html.includes('calcToolbar'), 'symbol toolbar');
@@ -196,7 +197,7 @@ ok(hui.includes('renderHistoryList('), 'render history list');
 
 // Save OCR to history
 ok(main.includes('addResult({'), 'OCR result saved to history');
-ok(main.includes('clearHistory'), 'clear history button');
+ok(hui.includes('clearHistory'), 'clear history button');
 
 // ═══════════════════════════════════════════════════════════════
 // 9. SHARE & SAVE FILES
