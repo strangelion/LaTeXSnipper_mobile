@@ -221,11 +221,11 @@ export async function hwExportImage() {
   const imgData = tctx.getImageData(0, 0, tmp.width, tmp.height);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4) {
-    // If pixel is not close to white, make it black
-    if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) {
-      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0;
+    // If alpha > 0 and pixel is not close to white, make it black
+    if (d[i + 3] > 0 && (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240)) {
+      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 255;
     } else {
-      d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+      d[i] = 255; d[i + 1] = 255; d[i + 2] = 255; d[i + 3] = 255;
     }
   }
   tctx.putImageData(imgData, 0, 0);
@@ -246,4 +246,18 @@ export function updateHwTheme(theme) {
     ? 'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)'
     : 'linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)';
   hwWrap.style.backgroundSize = '20px 20px';
+}
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindUiEvents({ onRecognize } = {}) {
+  document.getElementById('hwPen')?.addEventListener('click', () => hwSetTool('pen'));
+  document.getElementById('hwEraser')?.addEventListener('click', () => hwSetTool('eraser'));
+  document.getElementById('hwUndo')?.addEventListener('click', hwUndo);
+  document.getElementById('hwRedo')?.addEventListener('click', hwRedo);
+  document.getElementById('hwClear')?.addEventListener('click', hwClear);
+  document.getElementById('hwRecognize')?.addEventListener('click', async () => {
+    const file = await hwExportImage();
+    if (file && onRecognize) onRecognize(file);
+  });
 }

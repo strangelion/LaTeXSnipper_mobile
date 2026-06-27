@@ -1,3 +1,33 @@
+## [未发布] — 架构重构：EventRegistry + OCR Pipeline
+
+### 架构变更
+
+- **main.js 瘦身（373 → 218 行，-41%）** — 引入 EventRegistry 模式，每个功能模块自包含事件绑定
+  - 新增 `src/core/event-registry.js`：`registerBinding()` + `bindAll()` 统一管理事件注册
+  - Camera 按钮事件 → `camera.js bindEvents()`
+  - Handwriting 工具事件 → `handwriting.js bindUiEvents()`
+  - History 工具栏事件 → `history-ui.js bindEvents()`
+  - 分享/润色/发送到编辑器 → `result.js bindEvents()`
+  - 编辑器按钮事件 → `mathlive-config.js bindEvents()`
+  - 新增功能不再需要修改 main.js，各模块自行注册事件
+- **OCR Pipeline 可插拔架构** — 替换 `recognition.js` 中的 if/else 模式分发
+  - 新增 `src/ocr/pipeline.js`：`OcrPipeline` 基类，定义 `run(image, context)` 接口
+  - 新增 `src/ocr/pipeline-registry.js`：`registerPipeline()` / `getPipeline()` / `listPipelines()`
+  - 新增 `src/ocr/pipelines/formula.js` — 公式管线（委托 Java recognizeFormula）
+  - 新增 `src/ocr/pipelines/text.js` — 文字管线（委托 Java recognizeText）
+  - 新增 `src/ocr/pipelines/mixed.js` — 混合管线（委托 Java recognizeMixed，含 regions fallback）
+  - 新增识别模式只需创建 pipeline 文件 + 注册，无需修改 recognition.js
+
+### 测试
+
+- 修复 `test_integration.js` 中 3 个失败（import 检查 + event registry 检查）
+- 修复 `test_user_workflows.js` 中 10 个失败（适配新架构 + 修正预存在错误）
+  - asciidoc/rst/opml 格式从未实现，从测试中移除
+  - pandoc lazy load 检查字符串更正为 `pandoc-init.js`
+  - KaTeX preview 检查位置从 mathlive-config.js 更正为 result.js
+
+---
+
 ## v1.3.0 — 动态模型管理、标准化打包格式、OCR 修复 (2026-06-14)
 
 ### 架构变更

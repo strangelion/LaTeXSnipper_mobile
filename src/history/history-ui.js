@@ -9,7 +9,7 @@
 //
 // Inline buttons at card bottom-right (always visible): share, copy
 // Star at top-right corner: toggle favorite
-import { getAllResults, toggleFavorite, deleteResult } from './history-db.js';
+import { getAllResults, toggleFavorite, deleteResult, clearHistory } from './history-db.js';
 import { setEditorContent } from '../editor/mathlive-config.js';
 import { t } from '../lang/i18n.js';
 
@@ -492,5 +492,31 @@ export async function renderHistoryList(filter = 'all') {
         if (record) setEditorContent(record.latex);
       });
     });
+  });
+}
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindEvents() {
+  document.getElementById('clearHistory')?.addEventListener('click', async () => {
+    const filter = document.querySelector('.history-toolbar button.active')?.dataset?.filter || 'all';
+    if (filter === 'favorites') {
+      await clearHistory(false);
+    } else {
+      await clearHistory();
+    }
+    renderHistoryList(filter);
+  });
+
+  document.querySelectorAll('.history-toolbar button[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.history-toolbar button[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderHistoryList(btn.dataset.filter);
+    });
+  });
+
+  document.querySelector('.bottom-nav button[data-page="history"]')?.addEventListener('click', () => {
+    renderHistoryList();
   });
 }

@@ -110,6 +110,7 @@ export function initEditor() {
   mathField.style.border = '1px solid var(--border-color)';
   mathField.style.borderRadius = '10px';
   mathField.style.background = 'var(--card-bg)';
+  mathField.style.color = 'var(--fg)';
   mathField.style.padding = '0.75rem';
 
   // Long-press context menu
@@ -473,4 +474,18 @@ export function resetKbdState() {
     mathField.blur();
   }
   _setKbdState(0);
+}
+
+// ── Event bindings (called from main.js via event-registry) ──
+
+export function bindEvents() {
+  document.getElementById('editorKbdToggle')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    toggleKeyboard();
+  });
+  document.getElementById('editorClearBtn')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const mf = document.getElementById('mathField');
+    if (mf) { mf.value = ''; mf.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
 }

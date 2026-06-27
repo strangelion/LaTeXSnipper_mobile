@@ -145,12 +145,12 @@ const mainJs = readFileSync(join(ROOT, 'src/main.js'), 'utf-8');
 
 // All imports present
 ['base.css', 'ocr.css', 'editor.css', 'history.css', 'mobile.css',
- 'constants.js', 'ui/theme.js', 'ui/ui.js',
+ 'ui/theme.js', 'ui/ui.js',
  'handwriting/handwrite.js', 'camera/camera.js',
  'history/history-db.js', 'history/history-ui.js',
  'editor/mathlive-config.js', 'lang/i18n.js',
  'settings/settings.js', 'ui/custom-select.js',
- 'export/pandoc-export.js',
+ 'export/pandoc-export.js', 'core/event-registry.js',
 ].forEach(imp => {
   ok(mainJs.includes(imp), `Import ${imp} present`);
 });
@@ -163,12 +163,17 @@ ok(mainJs.includes('setupTabs'), 'Tab navigation setup');
 
 // Event listeners
 ok(mainJs.includes('backButton'), 'Android back button handler');
-ok(mainJs.includes('editorKbdToggle'), 'Keyboard toggle listener');
-ok(mainJs.includes('editorClearBtn'), 'Clear button listener');
+ok(mainJs.includes('bindEditorEvents'), 'Editor event bindings registered');
+ok(mainJs.includes('bindAll'), 'Event registry bindAll called');
 
 // No MathJax references
 ok(!mainJs.includes('exportPNG'), 'exportPNG not imported');
 ok(!mainJs.includes('exportSVG'), 'exportSVG not imported');
+
+// OCR pipeline registry
+const recogJs = readFileSync(join(ROOT, 'src/ui/recognition.js'), 'utf-8');
+ok(recogJs.includes('getPipeline'), 'recognition.js uses pipeline registry');
+ok(recogJs.includes('pipeline.run'), 'recognition.js calls pipeline.run()');
 
 // ═══════════════════════════════════════════════════════════
 // [5] Export module checks

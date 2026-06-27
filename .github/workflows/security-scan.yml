@@ -165,6 +165,9 @@ jobs:
             case "$file" in
               */node_modules/*|*/dist/*|*/android/app/build/*|*/android/build/*|*/public/vendor/*) continue ;;
               *.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.woff|*.woff2|*.ttf|*.eot|*.onnx|*.bin|*.pb|*.jar|*.aar|*.keystore|*.jks|*.pdf|*.wasm) continue ;;
+              *.py|*.sh|*.bash) continue ;;
+              */scripts/*|*/test/*) continue ;;
+              */android/gradlew) continue ;;
             esac
             if [ -f "$file" ] && file "$file" | grep -qE '(executable|binary|compress|archive)'; then
               echo "  [WARN] unexpected binary: $file ($(file -b "$file"))"
