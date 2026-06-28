@@ -5,12 +5,15 @@ import { OcrNative } from '../ocr-native.js';
 import { OcrPipeline } from '../pipeline.js';
 import { createResult, createBlock } from '../ocr-result.js';
 
-export const formulaPipeline = new OcrPipeline('formula', {
-  checkModels: () => {
-    const s = window.__nativeModelStatus;
-    return s?.formulaDet && s?.formulaRec;
-  },
-
+export const formulaPipeline = new OcrPipeline({
+  id: 'formula',
+  name: 'Formula Recognition',
+  description: 'Detect and recognize mathematical formulas',
+  icon: '📐',
+  requiredModels: ['formula-det', 'formula-rec'],
+  supportsPDF: true,
+  supportsBatch: false,
+}, {
   run: async (image) => {
     const result = await OcrNative.recognizeFormula({ image });
     if (result.error) {

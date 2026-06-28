@@ -95,22 +95,29 @@ ok(!html.includes('exportSvgBtn'), 'Old SVG btn removed');
 ok(html.includes('manifest.json'), 'Manifest');
 ok(html.includes('serviceWorker') || $exists('public/sw.js'), 'SW');
 
-// ─── 4. main.js ───
-group('4. main.js');
+// ─── 4. main.js / bootstrap / app ───
+group('4. Entry Points');
 const main = $read('src/main.js');
-['base.css','ocr.css','editor.css',
- 'handwriting/handwrite.js','camera/camera.js',
- 'history/history-db.js','editor/mathlive-config.js',
- 'export/pandoc-export.js','ui/custom-select.js'
-].forEach(m => ok(main.includes(m), `Import ${m}`));
+const bootstrapJs = $read('src/core/bootstrap.js');
+const appJs = $read('src/core/app.js');
 
-ok(main.includes('boot('), 'boot()');
-ok(main.includes('initModels('), 'initModels()');
-ok(main.includes('initI18n('), 'initI18n()');
-ok(main.includes('initEditor('), 'initEditor()');
-ok(main.includes('createExportDropdown'), 'createExportDropdown');
-ok(main.includes('bindEditorEvents'), 'Keyboard toggle bound (via registry)');
-ok(main.includes('bindAll'), 'Clear btn bound (via registry)');
+ok(main.includes('bootstrap'), 'main.js: bootstrap()');
+ok(main.includes('createApp'), 'main.js: createApp()');
+ok(main.includes('start'), 'main.js: start()');
+
+ok(bootstrapJs.includes('initTheme'), 'bootstrap: initTheme');
+ok(bootstrapJs.includes('serviceWorker') || bootstrapJs.includes('sw.js'), 'bootstrap: service worker');
+ok(bootstrapJs.includes('setupTabs') || bootstrapJs.includes('bottom-nav'), 'bootstrap: tabs');
+
+ok(appJs.includes('initUI'), 'app: initUI');
+ok(appJs.includes('initCamera'), 'app: initCamera');
+ok(appJs.includes('initHandwrite'), 'app: initHandwrite');
+ok(appJs.includes('initI18n'), 'app: initI18n');
+ok(appJs.includes('initModels'), 'app: initModels');
+ok(appJs.includes('initEditor'), 'app: initEditor');
+ok(appJs.includes('bindAll'), 'app: bindAll');
+ok(appJs.includes('bindEditorEvents'), 'app: bindEditorEvents');
+
 ok(!main.includes('exportPNG'), 'exportPNG removed');
 ok(!main.includes('exportSVG'), 'exportSVG removed');
 

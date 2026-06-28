@@ -1,9 +1,13 @@
-## [未发布] — 架构重构：EventRegistry + OCR Pipeline + 统一数据模型 + 目录重组
+## [未发布] — 架构重构：EventRegistry + Pipeline + OcrResult + Feature First
 
 ### 架构变更
 
-- **main.js 瘦身（373 → 218 行，-41%）** — 引入 EventRegistry 模式，每个功能模块自包含事件绑定
-  - 新增 `src/core/event-registry.js`：`registerBinding()` + `bindAll()` 统一管理事件注册
+- **main.js 入口精简（373 → 15 行）** — 拆分为 bootstrap.js（平台初始化）+ app.js（模块加载）+ main.js（仅调用）
+  - `bootstrap.js`：Theme、Service Worker、Tab 导航、PWA 安装提示
+  - `app.js`：模块初始化、事件注册、业务逻辑
+  - `main.js`：`bootstrap() → createApp() → start()`
+- **EventRegistry 模式** — 每个功能模块自包含事件绑定
+  - 新增 `src/core/event-registry.js`：`registerBinding()` + `bindAll()`
   - Camera 按钮事件 → `camera.js bindEvents()`
   - Handwriting 工具事件 → `handwriting.js bindUiEvents()`
   - History 工具栏事件 → `history-ui.js bindEvents()`
@@ -17,6 +21,10 @@
   - 新增 `src/ocr/pipelines/text.js` — 文字管线（委托 Java recognizeText）
   - 新增 `src/ocr/pipelines/mixed.js` — 混合管线（委托 Java recognizeMixed，含 regions fallback）
   - 新增识别模式只需创建 pipeline 文件 + 注册，无需修改 recognition.js
+- **Pipeline Metadata** — 每个 pipeline 包含 id/name/description/icon/requiredModels/supportsPDF/supportsBatch/version
+- **Lazy Pipeline Registry** — pipeline 按需加载（`import()`），启动时不再全部加载
+  - 构建产物自动拆分为独立 chunk（`formula-*.js`、`text-*.js`、`mixed-*.js`）
+- **Registry 统一 checkModels** — 模型可用性检查从各 pipeline 收到 Registry，由 `checkPipelineModels()` 统一查 Model Manager
 - **统一数据模型 OcrResult** — OCR 结果从裸字符串升级为结构化 AST
   - 新增 `src/ocr/ocr-result.js`：`OcrResult` / `OcrBlock` 类型定义 + `createResult()` / `createBlock()` / `fromString()`
   - 三个 Pipeline 均返回 OcrResult（blocks + confidence + raw + meta）
