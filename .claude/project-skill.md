@@ -374,15 +374,27 @@ Typst 转换器（`pandoc-export.js`）：
 npm install            # 安装依赖
 npm run dev            # Vite 开发服务器（:5174）
 npm run build          # 构建到 dist/
+```
+
+### Android
+```bash
 npx cap sync android   # 同步到 Android
 cd android && ./gradlew assembleDebug  # 编译 debug APK
-
-# 安全合规检查
-npx eslint . --no-eslintrc --config <(echo '{"parserOptions":{"ecmaVersion":2022,"sourceType":"module"},"env":{"browser":true,"es2022":true},"rules":{"no-eval":"error","no-implied-eval":"error","no-undef":"error","no-debugger":"error"}}')||true
-
-# GitHub Actions 打包（Release）
-# Actions → Build Android APK → 输入版本号 + 勾选 Release → Run workflow
 ```
+
+### iOS（需要 macOS + Xcode）
+```bash
+# 推荐：构建后自动打开 Xcode，选签名后点 Run
+bash scripts/build-ios.sh
+
+# 仅模拟器
+bash scripts/build-ios.sh --simulator
+
+# 真机 IPA
+bash scripts/build-ios.sh --device
+```
+
+免费 Apple ID 即可签名（不需要 $99 开发者账号），限制：每 7 天重新签名，最多 3 个 app。
 
 ### 测试
 ```bash

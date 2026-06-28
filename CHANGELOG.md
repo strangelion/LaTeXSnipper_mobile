@@ -103,6 +103,15 @@
   - 输出到 `dist-models/`（Vite 不清理的独立目录）
   - 排除 .gitignore 等非模型文件
 - **多语言补齐** — zh-TW/ja/ko 补齐 31 个缺失键（Settings 标签页、模型管理、按钮、PDF/状态/结果）
+- **iOS 构建支持** — 新增 `scripts/build-ios.sh` 本地构建脚本 + GitHub Actions 真机 IPA 构建
+  - 模拟器构建：`bash scripts/build-ios.sh`（无需 Apple 账号）
+  - 真机构建：`bash scripts/build-ios.sh --device`（需要签名）
+  - CI 支持 simulator/device 两种模式选择
+
+### 修复
+
+- **删除模型后缓存未释放** — `deleteModel()` 只删文件，ONNX Session 仍留在内存。修复：删除后调用 `ocrEngine.release()` 释放所有 Session
+- **手写板主题切换无响应** — `themechange` 事件被 dispatch 但无人监听。修复：在 `app.js` 添加监听调用 `updateHwTheme()`
 
 ### 修复
 

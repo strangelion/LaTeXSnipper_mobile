@@ -43,9 +43,29 @@
 npm install           # 安装依赖
 npm run dev           # Vite 开发服务器 (:5174)
 npm run build         # 构建到 dist/
+```
+
+### Android
+
+```bash
 npx cap sync android  # 同步到 Android
 cd android && ./gradlew assembleDebug  # 编译 debug APK
 ```
+
+### iOS（需要 macOS + Xcode）
+
+```bash
+# 推荐：构建后自动打开 Xcode，在 Xcode 里选签名后点 Run
+bash scripts/build-ios.sh
+
+# 仅构建模拟器版本
+bash scripts/build-ios.sh --simulator
+
+# 构建真机 IPA
+bash scripts/build-ios.sh --device
+```
+
+免费 Apple ID 即可签名（不需要 $99 开发者账号），限制：每 7 天需重新签名，最多同时装 3 个 app。
 
 ## 测试
 
