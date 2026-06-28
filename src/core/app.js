@@ -20,7 +20,7 @@ import { getTheme } from '../ui/theme.js';
 
 let _els = null;
 
-export function createApp() {
+export async function createApp() {
   // DOM refs
   _els = {
     statusIcon: document.getElementById('statusIcon'),

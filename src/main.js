@@ -11,6 +11,6 @@ import './styles/mobile.css';
 import { bootstrap } from './core/bootstrap.js';
 import { createApp, start } from './core/app.js';
 
-bootstrap();
-createApp();
-start();
+await bootstrap();
+await createApp();
+await start();

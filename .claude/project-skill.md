@@ -9,7 +9,7 @@
 - 新增功能归到所属模块，不要跨模块散落
 - 修改 `public/` 下文件后需重新 `npm run build`
 - 提交时**不添加 `Co-Authored-By` 署名行**
-- 新增 OCR 模式：创建 `src/ocr/pipelines/<name>.js` → 在 `pipeline-registry.js` 注册即可，无需改 recognition.js
+- 新增 OCR 模式：创建 `src/ocr/pipelines/<name>.js` → 在 `pipelines/manifest.json` 加一行声明即可，无需改 recognition.js 或 registry
 - 新增功能模块：在模块内导出 `bindEvents()` → 在 `app.js` 注册，无需改 main.js
 
 ---
@@ -29,7 +29,7 @@ LaTeXSnipper_mobile/
 │   ├── sw.js                  # Service Worker
 │   └── manifest.json          # PWA 清单
 ├── src/
-│   ├── main.js                # 入口（15 行）：bootstrap → createApp → start
+│   ├── main.js                # 入口（17 行）：await bootstrap → await createApp → await start
 │   ├── constants.js           # 全局常量
 │   ├── update-checker.js      # GitHub Releases 自动更新检查
 │   ├── core/                  # 基础设施
@@ -41,11 +41,12 @@ LaTeXSnipper_mobile/
 │   │   └── lang/              # 语言文件（zh-CN/zh-TW/en/ja/ko）
 │   ├── ocr/                   # OCR 管线
 │   │   ├── pipeline.js        # OcrPipeline 基类（Metadata: id/name/icon/requiredModels）
-│   │   ├── pipeline-registry.js # 注册表（Lazy 加载 + checkPipelineModels）
+│   │   ├── pipeline-registry.js # 注册表（Manifest 自发现 + Lazy 加载 + checkPipelineModels）
 │   │   ├── ocr-result.js      # OcrResult/OcrBlock 数据模型
 │   │   ├── ocr-native.js      # Android Native Bridge 封装
 │   │   ├── recognition.js     # 识别协调器（PDF/外部API/Pipeline调度）
 │   │   └── pipelines/         # 可插拔 Pipeline（lazy chunk）
+│   │       ├── manifest.json  # Pipeline 声明（自动发现注册）
 │   │       ├── formula.js     # 公式识别
 │   │       ├── text.js        # 文字识别
 │   │       └── mixed.js       # 混合识别

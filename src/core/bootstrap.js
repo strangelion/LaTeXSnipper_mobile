@@ -3,7 +3,7 @@
 
 import { initTheme, getThemeIcon } from '../ui/theme.js';
 
-export function bootstrap() {
+export async function bootstrap() {
   // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
