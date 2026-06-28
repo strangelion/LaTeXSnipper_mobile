@@ -1,18 +1,21 @@
-name: Build iOS IPA
+name: Build iOS
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号'
+        description: 'Version (e.g. 1.4.0)'
         required: true
         default: '1.0.0'
         type: string
-      create_release:
-        description: '创建 GitHub Release'
-        required: false
-        default: false
-        type: boolean
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'simulator'
+        type: choice
+        options:
+          - simulator
+          - device
 
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
@@ -33,8 +36,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup CocoaPods
-        run: |
-          gem install cocoapods --no-document
+        run: gem install cocoapods --no-document
 
       - name: Set version
         run: |
@@ -51,16 +53,18 @@ jobs:
         run: |
           rm -rf ios
           npx cap add ios
-          cp .github/ExportOptions.plist ios/App/ExportOptions.plist
+          cp ios/App/Podfile ios/App/Podfile.bak 2>/dev/null || true
 
       - name: Sync Capacitor iOS
         run: npx cap sync ios
 
       - name: Install CocoaPods
         working-directory: ios/App
-        run: pod install --repo-update 2>&1 || echo "Pods skipped"
+        run: pod install --repo-update 2>&1 || pod install 2>&1
 
-      - name: Build for Simulator (no account needed)
+      # ── Simulator Build ──
+      - name: Build for Simulator
+        if: inputs.build_type == 'simulator'
         working-directory: ios/App
         run: |
           xcodebuild build \
@@ -69,17 +73,105 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO 2>&1 || echo "Build failed"
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Package Simulator App
+        if: inputs.build_type == 'simulator'
         working-directory: ios/App
         run: |
           APP=$(find ~/Library/Developer/Xcode/DerivedData -name "App.app" -path "*/Build/Products/*" 2>/dev/null | head -1)
-          if [ -n "$APP" ]; then mkdir -p build && cp -r "$APP" build/ && echo "Packaged: $APP"; fi
+          if [ -n "$APP" ]; then
+            mkdir -p build
+            cp -r "$APP" build/
+            echo "Packaged: $APP"
+          fi
 
       - name: Upload Simulator App
-        if: hashFiles('ios/App/build/App.app') != ''
+        if: inputs.build_type == 'simulator'
         uses: actions/upload-artifact@v4
         with:
           name: LaTeXSnipper-v${{ inputs.version }}-iOS-simulator
           path: ios/App/build/App.app
+          retention-days: 7
+
+      # ── Device Build (requires secrets) ──
+      - name: Import signing certificate
+        if: inputs.build_type == 'device'
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERTIFICATE_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Import provisioning profile
+        if: inputs.build_type == 'device'
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+          UUID=$(security cms -D -i "$PP_PATH" | plutil -extract UUID raw -)
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
+          echo "PROVISIONING_PROFILE_UUID=$UUID" >> $GITHUB_ENV
+
+      - name: Build for Device
+        if: inputs.build_type == 'device'
+        working-directory: ios/App
+        run: |
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ env.PROVISIONING_PROFILE_UUID }}"
+
+      - name: Create IPA
+        if: inputs.build_type == 'device'
+        working-directory: ios/App
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "App.app" -path "*/Build/Products/Release-iphoneos/*" 2>/dev/null | head -1)
+          if [ -n "$APP" ]; then
+            mkdir -p build/Payload
+            cp -r "$APP" build/Payload/
+            cd build
+            zip -r "LaTeXSnipper-v${{ inputs.version }}.ipa" Payload/
+            rm -rf Payload
+            echo "IPA created: build/LaTeXSnipper-v${{ inputs.version }}.ipa"
+          else
+            echo "ERROR: Could not find built App.app"
+            exit 1
+          fi
+
+      - name: Upload IPA
+        if: inputs.build_type == 'device'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaTeXSnipper-v${{ inputs.version }}-iOS
+          path: ios/App/build/LaTeXSnipper-v${{ inputs.version }}.ipa
+          retention-days: 30
+
+      - name: Clean up keychain
+        if: inputs.build_type == 'device' && always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
