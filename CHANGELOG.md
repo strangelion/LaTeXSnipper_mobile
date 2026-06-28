@@ -2,10 +2,10 @@
 
 ### 架构变更
 
-- **main.js 入口精简（373 → 15 行）** — 拆分为 bootstrap.js（平台初始化）+ app.js（模块加载）+ main.js（仅调用）
+- **main.js 入口精简（373 → 17 行）** — 拆分为 bootstrap.js（平台初始化）+ app.js（模块加载）+ main.js（仅 await 调用）
   - `bootstrap.js`：Theme、Service Worker、Tab 导航、PWA 安装提示
   - `app.js`：模块初始化、事件注册、业务逻辑
-  - `main.js`：`bootstrap() → createApp() → start()`
+  - `main.js`：`await bootstrap() → await createApp() → await start()`
 - **EventRegistry 模式** — 每个功能模块自包含事件绑定
   - 新增 `src/core/event-registry.js`：`registerBinding()` + `bindAll()`
   - Camera 按钮事件 → `camera.js bindEvents()`
@@ -24,6 +24,8 @@
 - **Pipeline Metadata** — 每个 pipeline 包含 id/name/description/icon/requiredModels/supportsPDF/supportsBatch/version
 - **Lazy Pipeline Registry** — pipeline 按需加载（`import()`），启动时不再全部加载
   - 构建产物自动拆分为独立 chunk（`formula-*.js`、`text-*.js`、`mixed-*.js`）
+- **Pipeline Manifest 自发现** — 新增 pipeline 只需写文件 + 在 `pipelines/manifest.json` 加一行声明，Registry 自动构建 loader
+- **启动流程 Async 化** — `await bootstrap()` → `await createApp()` → `await start()`，为 Model/Plugin 异步初始化留路
 - **Registry 统一 checkModels** — 模型可用性检查从各 pipeline 收到 Registry，由 `checkPipelineModels()` 统一查 Model Manager
 - **统一数据模型 OcrResult** — OCR 结果从裸字符串升级为结构化 AST
   - 新增 `src/ocr/ocr-result.js`：`OcrResult` / `OcrBlock` 类型定义 + `createResult()` / `createBlock()` / `fromString()`

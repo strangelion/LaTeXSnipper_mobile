@@ -25,9 +25,11 @@ console.log('══════════════════════�
 // ═══════════════════════════════════════════════════════════════
 group('1. Pipeline Registry');
 const registry = $read('src/ocr/pipeline-registry.js');
-ok(registry.includes("'formula'"), 'formula pipeline registered');
-ok(registry.includes("'text'"), 'text pipeline registered');
-ok(registry.includes("'mixed'"), 'mixed pipeline registered');
+const manifest = $read('src/ocr/pipelines/manifest.json');
+ok(manifest.includes('"formula"'), 'formula pipeline in manifest');
+ok(manifest.includes('"text"'), 'text pipeline in manifest');
+ok(manifest.includes('"mixed"'), 'mixed pipeline in manifest');
+ok(registry.includes('pipelineManifest'), 'registry loads manifest');
 ok(registry.includes('getPipeline'), 'getPipeline exported');
 ok(registry.includes('registerPipeline'), 'registerPipeline exported');
 ok(registry.includes('listPipelines'), 'listPipelines exported');

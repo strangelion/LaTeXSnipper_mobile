@@ -99,7 +99,7 @@ LaTeXSnipper_mobile/
 │   ├── model-manifest.json    # 清单文件（含 baseUrl/mirrors/checksums）
 │   └── latexsnipper-*.zip     # 模型 ZIP 包
 ├── src/
-│   ├── main.js                # 入口（15 行）：bootstrap → createApp → start
+│   ├── main.js                # 入口（17 行）：await bootstrap → await createApp → await start
 │   ├── core/                  # 基础设施
 │   │   ├── bootstrap.js       # 平台初始化（Theme/SW/Tab/PWA）
 │   │   ├── app.js             # 模块加载/事件注册/业务逻辑
@@ -109,11 +109,12 @@ LaTeXSnipper_mobile/
 │   │   └── lang/              # 语言文件（zh-CN/zh-TW/en/ja/ko）
 │   ├── ocr/                   # OCR 管线
 │   │   ├── pipeline.js        # OcrPipeline 基类（Metadata: id/name/icon/requiredModels）
-│   │   ├── pipeline-registry.js # 注册表（Lazy 加载 + checkPipelineModels）
+│   │   ├── pipeline-registry.js # 注册表（Manifest 自发现 + Lazy 加载 + checkPipelineModels）
 │   │   ├── ocr-result.js      # OcrResult/OcrBlock 数据模型
 │   │   ├── ocr-native.js      # Android Native Bridge 封装
 │   │   ├── recognition.js     # 识别协调器（PDF/外部API/Pipeline调度）
 │   │   └── pipelines/         # 可插拔 Pipeline
+│   │       ├── manifest.json  # Pipeline 声明（自动发现注册）
 │   │       ├── formula.js     # 公式识别（lazy chunk）
 │   │       ├── text.js        # 文字识别（lazy chunk）
 │   │       └── mixed.js       # 混合识别（lazy chunk）

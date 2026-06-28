@@ -1,0 +1,19 @@
+{
+  "pipelines": [
+    {
+      "id": "formula",
+      "entry": "./formula.js",
+      "export": "formulaPipeline"
+    },
+    {
+      "id": "text",
+      "entry": "./text.js",
+      "export": "textPipeline"
+    },
+    {
+      "id": "mixed",
+      "entry": "./mixed.js",
+      "export": "mixedPipeline"
+    }
+  ]
+}
