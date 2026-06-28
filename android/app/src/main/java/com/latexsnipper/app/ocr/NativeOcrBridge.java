@@ -347,6 +347,10 @@ public class NativeOcrBridge {
     public String deleteModel(String category, String variantId) {
         ModelManager mm = new ModelManager(context);
         boolean ok = mm.deleteVariant(category, variantId);
+        if (ok) {
+            // Release cached sessions so deleted model can't be used from memory
+            ocrEngine.release();
+        }
         return ok ? "ok" : "error:delete failed";
     }
 
