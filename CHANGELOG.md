@@ -1,4 +1,4 @@
-## [未发布] — 架构重构：EventRegistry + Pipeline + OcrResult + Feature First
+## v1.3.1 — 架构重构：EventRegistry + Pipeline + OcrResult + Feature First
 
 ### 架构变更
 
