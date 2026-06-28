@@ -6,7 +6,7 @@
 //   sources.json             — registered manifest sources
 //   active.json              — current active model selections
 
-import Logger from './shared/logger.js';
+import Logger from '../core/logger.js';
 
 const STORAGE_KEYS = {
   SOURCES: 'ls_model_sources',

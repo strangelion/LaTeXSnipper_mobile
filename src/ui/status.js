@@ -1,7 +1,7 @@
 // Status bar + progress bar
 import { els } from './dom-refs.js';
 import { ICONS } from '../constants.js';
-import { t } from '../lang/i18n.js';
+import { t } from '../core/i18n.js';
 
 export function setStatus(type, text, showSpin) {
   if (!els.statusIcon || !els.statusText || !els.spinner) return;

@@ -1,6 +1,6 @@
 // Update checker — fetches latest release from GitHub, shows changelog modal
 
-import { t } from './lang/i18n.js';
+import { t } from './core/i18n.js';
 
 const REPO_API = 'https://api.github.com/repos/strangelion/LaTeXSnipper_mobile/releases/latest';
 const CHECK_INTERVAL = 12 * 60 * 60 * 1000;

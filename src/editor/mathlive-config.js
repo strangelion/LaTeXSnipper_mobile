@@ -184,7 +184,7 @@ export function initEditor() {
   document.getElementById('editorCopy')?.addEventListener('click', async () => {
     const latex = mathField.value?.trim();
     if (!latex) return;
-    const { t } = await import('../lang/i18n.js');
+    const { t } = await import('../core/i18n.js');
     navigator.clipboard.writeText(latex).then(() => {
       const b = document.getElementById('editorCopy');
       if (b) { b.textContent = t('btn.copied'); setTimeout(() => b.textContent = t('editor.copyLatex'), 1500); }

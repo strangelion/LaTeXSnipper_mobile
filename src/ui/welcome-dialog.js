@@ -1,8 +1,8 @@
 // Welcome Dialog — first-launch引导用户下载模型或使用外部API
-import { isReady, getLocal, STORAGE_KEYS, refreshManifests, downloadVariant, getAllVariants, MODEL_CATEGORIES, getSources } from '../model-manager.js';
-import { t } from '../lang/i18n.js';
+import { isReady, getLocal, STORAGE_KEYS, refreshManifests, downloadVariant, getAllVariants, MODEL_CATEGORIES, getSources } from '../model/model-manager.js';
+import { t } from '../core/i18n.js';
 import { ICONS } from '../constants.js';
-import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
+import { OcrNative, isNativeOcrAvailable } from '../ocr/ocr-native.js';
 
 /**
  * Check if first launch and show welcome dialog if needed.

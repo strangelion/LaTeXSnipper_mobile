@@ -1,9 +1,9 @@
 // Model Import UI — handles ZIP and file import with auto-detection
-import { importFromZip, importSingleFile, MODEL_CATEGORIES, getActiveModels } from '../model-manager.js';
-import { analyzeOnnx } from '../model-analyzer.js';
-import { t } from '../lang/i18n.js';
-import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
-import Logger from '../shared/logger.js';
+import { importFromZip, importSingleFile, MODEL_CATEGORIES, getActiveModels } from './model-manager.js';
+import { analyzeOnnx } from './model-analyzer.js';
+import { t } from '../core/i18n.js';
+import { OcrNative, isNativeOcrAvailable } from '../ocr/ocr-native.js';
+import Logger from '../core/logger.js';
 
 /**
  * Show import dialog for ZIP files.

@@ -7,12 +7,12 @@ let _fallbackDict = {};
 let _reloadCallbacks = [];
 
 const LANG_MAP = {
-  'zh-CN': () => import('./zh-CN.js'),
-  'zh-TW': () => import('./zh-TW.js'),
-  'zh': () => import('./zh-CN.js'),
-  'en': () => import('./en.js'),
-  'ja': () => import('./ja.js'),
-  'ko': () => import('./ko.js'),
+  'zh-CN': () => import('./lang/zh-CN.js'),
+  'zh-TW': () => import('./lang/zh-TW.js'),
+  'zh': () => import('./lang/zh-CN.js'),
+  'en': () => import('./lang/en.js'),
+  'ja': () => import('./lang/ja.js'),
+  'ko': () => import('./lang/ko.js'),
 };
 
 function _detectLang() {
@@ -42,7 +42,7 @@ async function _loadDict(code) {
 
 export async function initI18n() {
   _lang = _detectLang();
-  try { _fallbackDict = (await import('./zh-CN.js')).default; } catch (_) { _fallbackDict = {}; }
+  try { _fallbackDict = (await import('./lang/zh-CN.js')).default; } catch (_) { _fallbackDict = {}; }
   const langDict = await _loadDict(_lang);
   _dict = { ..._fallbackDict, ...langDict };
   return _lang;

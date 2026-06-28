@@ -21,7 +21,7 @@ import {
   markUninstalled,
   getAllVariants,
   MODEL_CATEGORIES,
-} from '../src/model-manager.js';
+} from '../src/model/model-manager.js';
 
 function testValidateManifest() {
   const valid = {

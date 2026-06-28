@@ -1,8 +1,9 @@
 // Mixed pipeline — detects both formulas and text in a single image.
 // Delegates entirely to Java's OcrEngine.recognizeMixed().
 
-import { OcrNative } from '../../native/ocr-native.js';
+import { OcrNative } from '../ocr-native.js';
 import { OcrPipeline } from '../pipeline.js';
+import { createResult, createBlock } from '../ocr-result.js';
 
 export const mixedPipeline = new OcrPipeline('mixed', {
   checkModels: () => {
@@ -12,24 +13,38 @@ export const mixedPipeline = new OcrPipeline('mixed', {
 
   run: async (image) => {
     const result = await OcrNative.recognizeMixed({ image });
-    // Mixed mode may return formattedText, text, or regions
+    if (result.error) {
+      return { blocks: [], confidence: 0, raw: '', meta: {}, error: result.error };
+    }
+
+    const regions = result.regions || [];
     let text = result.formattedText || result.latex || result.text || '';
     let confidence = result.confidence || 0;
 
-    // Fallback: combine region texts if primary text is empty
-    if (!text && result.regions) {
-      const parts = result.regions.map(r => r.text).filter(Boolean);
-      text = parts.join('\n');
-      confidence = result.regions.reduce((s, r) => s + (r.confidence || 0), 0)
-        / Math.max(result.regions.length, 1);
+    // Build blocks from regions if available
+    if (regions.length > 0) {
+      const blocks = regions.map(r => {
+        const type = r.type === 'formula' ? 'formula' : 'text';
+        const block = createBlock(type, r.text || '', {
+          confidence: r.confidence || confidence,
+          geometry: r.bbox,
+        });
+        if (type === 'formula') {
+          block.mathStyle = r.isolated ? 'display' : 'inline';
+        }
+        return block;
+      });
+      return createResult(blocks, { confidence, raw: text });
     }
 
-    return {
-      latex: text,
-      text,
-      confidence,
-      regions: result.regions || [],
-      error: result.error,
-    };
+    // Fallback: single text block
+    if (!text && regions.length === 0) {
+      return createResult([], { confidence, raw: '' });
+    }
+
+    return createResult(
+      text ? [createBlock('text', text, { confidence })] : [],
+      { confidence, raw: text }
+    );
   },
 });

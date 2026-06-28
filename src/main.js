@@ -14,7 +14,7 @@ import { initCamera } from './camera/camera.js';
 import { addResult } from './history/history-db.js';
 import { renderHistoryList } from './history/history-ui.js';
 import { initEditor } from './editor/mathlive-config.js';
-import { initI18n, t, translateDOM, onLangChange } from './lang/i18n.js';
+import { initI18n, t, translateDOM, onLangChange } from './core/i18n.js';
 import { initSettings } from './settings/settings.js';
 import { initCustomSelects, syncCustomSelects } from './ui/custom-select.js';
 import { registerBinding, bindAll } from './core/event-registry.js';
@@ -184,7 +184,7 @@ onFileProcessed(async (result, file) => {
 
 /* ── Boot ── */
 async function boot() {
-  const { default: Logger } = await import('./shared/logger.js');
+  const { default: Logger } = await import('./core/logger.js');
   Logger.logSystemInfo();
 
   await initI18n();

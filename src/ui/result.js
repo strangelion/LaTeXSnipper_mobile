@@ -1,7 +1,7 @@
 // Result display, math preview, copy/share/export, PDF browser
 import { els } from './dom-refs.js';
-import { t } from '../lang/i18n.js';
-import Logger from '../shared/logger.js';
+import { t } from '../core/i18n.js';
+import Logger from '../core/logger.js';
 
 // ── Render engine (MathJax support) ──
 let _mathjaxRenderer = null;
@@ -297,7 +297,7 @@ export function copyResult() {
 
 export async function shareResult() {
   if (!els.resultCode) return;
-  const { shareText } = await import('../shared/share.js');
+  const { shareText } = await import('../export/share.js');
   await shareText(els.resultCode.textContent, {
     title: 'LaTeXSnipper OCR Result',
     dialogTitle: '分享识别结果',
@@ -552,7 +552,7 @@ export async function exportPNG() {
     if (!composite) return;
     const blob = await svgToPngBlob(composite);
     if (!blob) return;
-    const { shareFile } = await import('../shared/share.js');
+    const { shareFile } = await import('../export/share.js');
     await shareFile(blob, 'formula.png', latex, { title: 'LaTeXSnipper' });
   } catch (e) { Logger.error('EXPORT', 'exportPNG failed', e); }
 }
@@ -569,7 +569,7 @@ export async function exportSVG() {
     if (!composite) return;
     const svgStr = new XMLSerializer().serializeToString(composite);
     const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + svgStr], { type: 'image/svg+xml' });
-    const { shareFile } = await import('../shared/share.js');
+    const { shareFile } = await import('../export/share.js');
     await shareFile(blob, 'formula.svg', latex, { title: 'LaTeXSnipper' });
   } catch (e) { Logger.error('EXPORT', 'exportSVG failed', e); }
 }

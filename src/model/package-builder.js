@@ -1,5 +1,5 @@
 // Package Builder — in-app tool to create model packages
-import { MODEL_CATEGORIES, importFromZip } from '../model-manager.js';
+import { MODEL_CATEGORIES, importFromZip } from './model-manager.js';
 
 const CAT_LABELS = {
   'formula-det': '公式检测',

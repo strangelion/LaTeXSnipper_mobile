@@ -234,7 +234,7 @@ const Logger = {
   async exportAndShare() {
     const text = this.getExportText();
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const { shareFile } = await import('./share.js');
+    const { shareFile } = await import('../export/share.js');
     await shareFile(blob, 'latexsnipper-debug-log.txt', '', {
       title: 'LaTeXSnipper 调试日志',
       dialogTitle: '导出调试日志',
