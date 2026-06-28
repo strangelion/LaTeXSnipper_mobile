@@ -5,10 +5,12 @@
 - CSS 使用 `src/styles/` 分模块管理（base/ocr/editor/handwriting/mobile）
 - HTML 标签内联事件用 `pointerdown` 而不是 `click`（WebView 兼容）
 - 所有用户可见文本使用 `data-i18n` 属性 + `t()` 函数，禁止硬编码中文
-- 语言包在 `src/lang/` 统一管理，新增文本只需加键值对
+- 语言包在 `src/core/lang/` 统一管理，新增文本只需加键值对
 - 新增功能归到所属模块，不要跨模块散落
 - 修改 `public/` 下文件后需重新 `npm run build`
 - 提交时**不添加 `Co-Authored-By` 署名行**
+- 新增 OCR 模式：创建 `src/ocr/pipelines/<name>.js` → 在 `pipeline-registry.js` 注册即可，无需改 recognition.js
+- 新增功能模块：在模块内导出 `bindEvents()` → 在 `app.js` 注册，无需改 main.js
 
 ---
 
@@ -27,37 +29,52 @@ LaTeXSnipper_mobile/
 │   ├── sw.js                  # Service Worker
 │   └── manifest.json          # PWA 清单
 ├── src/
-│   ├── main.js                # 入口：模块组装、事件绑定、启动
+│   ├── main.js                # 入口（15 行）：bootstrap → createApp → start
 │   ├── constants.js           # 全局常量
 │   ├── update-checker.js      # GitHub Releases 自动更新检查
-│   ├── lang/                  # 多语言（zh-CN/zh-TW/en/ja/ko）
-│   ├── native/                # Android Native Bridge 封装
-│   │   └── ocr-native.js      # window.NativeOcr 异步调用封装
-│   ├── shared/                # 通用工具模块
-│   │   ├── share.js           # 分享功能（Capacitor → 下载降级）
-│   │   └── logger.js          # 日志收集（localStorage + Java 桥接 + DOM 事件）
+│   ├── core/                  # 基础设施
+│   │   ├── bootstrap.js       # 平台初始化（Theme/SW/Tab/PWA）
+│   │   ├── app.js             # 模块加载/事件注册/业务逻辑
+│   │   ├── event-registry.js  # EventRegistry（registerBinding/bindAll）
+│   │   ├── logger.js          # 日志收集（localStorage + Java 桥接 + DOM 事件）
+│   │   ├── i18n.js            # 国际化引擎
+│   │   └── lang/              # 语言文件（zh-CN/zh-TW/en/ja/ko）
+│   ├── ocr/                   # OCR 管线
+│   │   ├── pipeline.js        # OcrPipeline 基类（Metadata: id/name/icon/requiredModels）
+│   │   ├── pipeline-registry.js # 注册表（Lazy 加载 + checkPipelineModels）
+│   │   ├── ocr-result.js      # OcrResult/OcrBlock 数据模型
+│   │   ├── ocr-native.js      # Android Native Bridge 封装
+│   │   ├── recognition.js     # 识别协调器（PDF/外部API/Pipeline调度）
+│   │   └── pipelines/         # 可插拔 Pipeline（lazy chunk）
+│   │       ├── formula.js     # 公式识别
+│   │       ├── text.js        # 文字识别
+│   │       └── mixed.js       # 混合识别
+│   ├── model/                 # 模型管理
+│   │   ├── model-manager.js   # 清单解析、CRUD、下载、导入、变体合并
+│   │   ├── model-analyzer.js  # ONNX protobuf 解析器
+│   │   ├── model-import.js    # ZIP/单文件导入 UI
+│   │   ├── model-settings.js  # 设置页模型管理 UI
+│   │   └── package-builder.js # 模型包创建器
 │   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手/旋转
 │   ├── handwriting/           # Canvas 手写板 + 导出
 │   ├── editor/                # MathLive 编辑器 + 虚拟键盘 + KaTeX 预览
 │   ├── export/                # 导出模块
-│   │   └── pandoc-export.js   # 统一导出系统（下拉菜单 + 9 种格式）
+│   │   ├── pandoc-export.js   # 统一导出系统（下拉菜单 + 9 种格式）
+│   │   ├── latex-generator.js # OcrResult → LaTeX
+│   │   ├── markdown-generator.js # OcrResult → Markdown
+│   │   └── share.js           # 分享功能（Capacitor → 下载降级）
 │   ├── history/               # IndexedDB 存储（idb 封装）
 │   ├── settings/              # 设置页面逻辑
 │   ├── ui/                    # UI 组件
 │   │   ├── ui.js              # 状态栏/进度条/拖放/模式切换
-│   │   ├── recognition.js     # 识别入口（Native → External API，模型可用性检查）
 │   │   ├── result.js          # 结果显示/KaTeX预览/复制/分享/PDF分页/导出
 │   │   ├── splash.js          # 启动加载进度
 │   │   ├── custom-select.js   # 自定义下拉选择器
 │   │   ├── status.js          # 状态栏（带图标）
 │   │   ├── theme.js           # 日/夜主题切换
 │   │   ├── polish.js          # AI 整理（DeepSeek API）
-│   │   ├── model-settings.js  # 设置页模型管理 UI（源/变体选择/下载/删除/导入）
-│   │   ├── model-import.js    # ZIP/单文件导入 UI
-│   │   ├── package-builder.js # 模型包创建器（拖入 .onnx → ZIP 导出/直接安装）
+│   │   ├── welcome-dialog.js  # 首次启动欢迎弹窗
 │   │   └── dom-refs.js        # DOM 元素引用共享
-│   ├── model-manager.js       # 模型清单解析、CRUD、下载、导入、变体合并
-│   ├── model-analyzer.js      # ONNX protobuf 解析器（自动推断模型类别）
 │   └── styles/                # CSS 样式模块
 │       ├── base.css           # CSS 变量、布局、导航、自定义下拉
 │       ├── ocr.css            # 识别页面 + 导出下拉菜单样式
@@ -83,13 +100,12 @@ LaTeXSnipper_mobile/
 │           ├── DocOriPreProcess.java       # 方向检测
 │           ├── ModelConfig.java            # config.json 解析 + 模型文件发现
 │           └── ImagePreProcess.java        # 图像增强
-├── test/                      # 测试套件
-│   ├── run_tests.sh           # 一键运行全部（10 项）
-│   ├── test_*.py              # OCR 模型测试（7 项 Python）
-│   ├── test_pandoc_export.js  # Pandoc WASM + Typst 导出（45 项）
-│   ├── test_katex.js          # KaTeX 公式渲染（35 项）
-│   ├── test_integration.js    # 集成/模块/配置检查（227 项）
-│   └── test_e2e.js            # 全量 E2E（20 大类 309 项）
+├── test/                      # 测试套件（4 套 785+ 项）
+│   ├── test_behavior_consistency.js  # 行为一致性（112 项）
+│   ├── test_integration.js           # 集成测试（221 项）
+│   ├── test_user_workflows.js        # 用户工作流（154 项）
+│   ├── test_e2e.js                   # E2E 全量（303 项）
+│   └── test_*.py                     # OCR 模型测试（Python）
 ├── scripts/
 │   ├── package-models.js      # 模型打包脚本（生成 per-category + 完整 ZIP）
 │   └── quantize.py            # 模型量化
@@ -312,7 +328,7 @@ pandoc.wasm（58 MB）不内置 APK，用户在设置页手动下载。
 ```
 
 - 静态 HTML：`data-i18n` / `data-i18n-html` / `data-i18n-title`
-- 动态 JS：`import { t } from './lang/i18n.js'`
+- 动态 JS：`import { t } from './core/i18n.js'`
 - 新增语言：复制 zh-CN.js → 翻译 → 在 LANG_MAP 注册 → 加 HTML 选项
 - 所有用户可见文本必须通过 i18n 系统，禁止硬编码
 
@@ -320,11 +336,11 @@ pandoc.wasm（58 MB）不内置 APK，用户在设置页手动下载。
 
 | 语言 | 文件 |
 |------|------|
-| 简体中文 | `src/lang/zh-CN.js` |
-| 繁体中文 | `src/lang/zh-TW.js` |
-| 英文 | `src/lang/en.js` |
-| 日文 | `src/lang/ja.js` |
-| 韩文 | `src/lang/ko.js` |
+| 简体中文 | `src/core/lang/zh-CN.js` |
+| 繁体中文 | `src/core/lang/zh-TW.js` |
+| 英文 | `src/core/lang/en.js` |
+| 日文 | `src/core/lang/ja.js` |
+| 韩文 | `src/core/lang/ko.js` |
 
 ---
 

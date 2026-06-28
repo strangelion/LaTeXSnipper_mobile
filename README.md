@@ -50,17 +50,20 @@ cd android && ./gradlew assembleDebug  # 编译 debug APK
 ## 测试
 
 ```bash
-conda activate ppocr_finetune
-bash test/run_tests.sh   # 全部 10 项测试
+node test/test_behavior_consistency.js   # 行为一致性（112 项）
+node test/test_integration.js            # 项目结构检查（221 项）
+node test/test_user_workflows.js         # 全用户流程（154 项）
+node test/test_e2e.js                    # 端到端全量（303 项）
+bash test/run_tests.sh                   # 全部 10 项（含 Python OCR 模型测试）
 ```
 
 | # | 测试 | 类型 | 项数 |
 |--|------|------|------|
-| 1-7 | OCR 模型（公式检测/识别/文字检测/识别/端到端管线/混合排版/方向检测） | Python | 7 |
-| 8 | Pandoc WASM 导出 + Typst 转换器 | Node.js | 43 |
-| 9 | KaTeX 公式渲染 | Node.js | 35 |
-| 10 | 集成测试（结构/模块/配置/国际化） | Node.js | 227 |
-| — | E2E 全量测试（20 大类模块） | Node.js | 308 |
+| 1 | 行为一致性（Pipeline/OcrResult/Registry/目录结构） | Node.js | 112 |
+| 2 | 集成测试（结构/模块/配置/国际化） | Node.js | 221 |
+| 3 | 用户工作流（Boot→OCR→Result→Export→Editor→History） | Node.js | 154 |
+| 4 | E2E 全量测试（20 大类模块） | Node.js | 303 |
+| 5-11 | OCR 模型（公式检测/识别/文字检测/识别/端到端管线/混合排版/方向检测） | Python | 7 |
 
 ## 项目结构
 
@@ -72,37 +75,56 @@ LaTeXSnipper_mobile/
 │   ├── models/                # 内置模型（doc-ori ONNX + tokenizer/keys fallback）
 │   └── ...
 ├── model-sources/             # 打包用 ONNX 源文件（.gitignore，不进 APK）
-│   ├── mathcraft-formula-det/ # YOLOv8 公式检测
-│   ├── mathcraft-formula-rec/ # TrOCR 公式识别 + tokenizer
-│   ├── mathcraft-text-det/    # DBNet 文字检测
-│   ├── mathcraft-text-rec/    # CRNN 文字识别 + keys 字典
-│   └── mathcraft-doc-ori/     # 方向检测（也内置 APK）
 ├── dist-models/               # 打包输出（.gitignore）
 │   ├── model-manifest.json    # 清单文件（含 baseUrl/mirrors/checksums）
 │   └── latexsnipper-*.zip     # 模型 ZIP 包
 ├── src/
-│   ├── main.js                # 入口
-│   ├── model-manager.js       # 模型清单、下载（镜像+断点续传+SHA256）、导入
+│   ├── main.js                # 入口（15 行）：bootstrap → createApp → start
+│   ├── core/                  # 基础设施
+│   │   ├── bootstrap.js       # 平台初始化（Theme/SW/Tab/PWA）
+│   │   ├── app.js             # 模块加载/事件注册/业务逻辑
+│   │   ├── logger.js          # 日志收集
+│   │   ├── i18n.js            # 国际化引擎
+│   │   ├── event-registry.js  # EventRegistry（registerBinding/bindAll）
+│   │   └── lang/              # 语言文件（zh-CN/zh-TW/en/ja/ko）
+│   ├── ocr/                   # OCR 管线
+│   │   ├── pipeline.js        # OcrPipeline 基类（Metadata: id/name/icon/requiredModels）
+│   │   ├── pipeline-registry.js # 注册表（Lazy 加载 + checkPipelineModels）
+│   │   ├── ocr-result.js      # OcrResult/OcrBlock 数据模型
+│   │   ├── ocr-native.js      # Android Native Bridge 封装
+│   │   ├── recognition.js     # 识别协调器（PDF/外部API/Pipeline调度）
+│   │   └── pipelines/         # 可插拔 Pipeline
+│   │       ├── formula.js     # 公式识别（lazy chunk）
+│   │       ├── text.js        # 文字识别（lazy chunk）
+│   │       └── mixed.js       # 混合识别（lazy chunk）
+│   ├── model/                 # 模型管理
+│   │   ├── model-manager.js   # 清单解析、下载、导入
+│   │   ├── model-analyzer.js  # ONNX protobuf 解析
+│   │   ├── model-import.js    # ZIP/单文件导入 UI
+│   │   ├── model-settings.js  # 设置页模型管理 UI
+│   │   └── package-builder.js # 模型包创建器
 │   ├── camera/                # 全屏相机：拍照/框选/套索/四角把手
 │   ├── handwriting/           # Canvas 手写板
 │   ├── editor/                # MathLive 编辑器 + KaTeX 预览
 │   ├── history/               # IndexedDB 历史
+│   ├── export/                # 导出模块
+│   │   ├── pandoc-export.js   # 统一导出系统（下拉菜单 + 9 种格式）
+│   │   ├── latex-generator.js # OcrResult → LaTeX
+│   │   ├── markdown-generator.js # OcrResult → Markdown
+│   │   └── share.js           # 分享功能
 │   ├── settings/              # 设置页面
-│   ├── ui/                    # UI 组件（识别/结果/模型管理/导入/打包）
-│   ├── lang/                  # 多语言 (zh-CN/zh-TW/en/ja/ko)
-│   └── native/                # Android Native Bridge
+│   ├── ui/                    # UI 组件（结果/状态/主题/下拉/润色）
+│   ├── constants.js           # 全局常量
+│   └── styles/                # CSS 样式模块
 ├── android/                   # Capacitor Android 项目
 │   └── app/src/main/java/.../ocr/
 │       ├── OcrEngine.java     # 主编排器（formula/text/mixed）
 │       ├── OnnxRunner.java    # ONNX Runtime 会话管理
 │       ├── ModelConfig.java   # config.json 解析 + 模型文件发现
 │       └── ...                # 预处理/后处理/检测/识别
-├── scripts/
-│   └── package-models.js      # 模型打包（config.json + SHA256 + 镜像）
-└── .github/workflows/
-    ├── build-apk.yml          # Android APK 构建
-    ├── package-models.yml     # 模型打包 + Release 上传
-    └── security-scan.yml      # 安全扫描
+├── test/                      # 测试套件（4 套，785+ 项）
+├── scripts/                   # 打包脚本
+└── .github/workflows/         # CI/CD
 ```
 
 ## 模型下载
