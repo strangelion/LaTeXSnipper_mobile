@@ -3,16 +3,16 @@ import { els, setFileInputHandler } from './dom-refs.js';
 import { updateSplash, hideSplash } from './splash.js';
 import { setStatus, showError, showProgress, hideProgress } from './status.js';
 import { showResult, hideResult, copyResult, initPDFNav } from './result.js';
-import { processImage } from './recognition.js';
+import { processImage } from '../ocr/recognition.js';
 import { toggleTheme, getThemeIcon, getTheme } from './theme.js';
-import { OcrNative, isNativeOcrAvailable, waitForNativeOcr, loadModelsAndWait } from '../native/ocr-native.js';
-import Logger from '../shared/logger.js';
+import { OcrNative, isNativeOcrAvailable, waitForNativeOcr, loadModelsAndWait } from '../ocr/ocr-native.js';
+import Logger from '../core/logger.js';
 
 // ── Re-exports (main.js imports via ui.js) ──
 export { hideSplash, updateSplash } from './splash.js';
 export { setStatus, showError, showProgress, hideProgress } from './status.js';
 export { showResult, hideResult, copyResult, shareResult, showPDFBrowser, hidePDFBrowser, gotoPDFPage } from './result.js';
-export { processImage } from './recognition.js';
+export { processImage } from '../ocr/recognition.js';
 export { polishResult } from './polish.js';
 
 // ── Init ──

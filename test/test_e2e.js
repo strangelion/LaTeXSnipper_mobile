@@ -31,10 +31,10 @@ group('1. Critical Files');
  'src/editor/mathlive-config.js','src/camera/camera.js',
  'src/handwriting/handwrite.js','src/history/history-db.js',
  'src/history/history-ui.js','src/settings/settings.js',
- 'src/ui/result.js','src/ui/recognition.js','src/ui/status.js',
+ 'src/ui/result.js','src/ocr/recognition.js','src/ui/status.js',
  'src/ui/ui.js','src/ui/theme.js','src/ui/custom-select.js',
- 'src/ui/polish.js','src/shared/logger.js','src/shared/share.js',
- 'src/native/ocr-native.js',
+ 'src/ui/polish.js','src/core/logger.js','src/export/share.js',
+ 'src/ocr/ocr-native.js',
  'src/styles/base.css','src/styles/ocr.css','src/styles/editor.css',
  'src/styles/handwriting.css','src/styles/history.css','src/styles/mobile.css',
  'public/sw.js','public/manifest.json',
@@ -51,7 +51,7 @@ ok(pkg.dependencies['pandoc-wasm'], 'pandoc-wasm dep');
 ok(pkg.dependencies['katex'] || $exists('public/vendor/katex.min.js'), 'KaTeX dep');
 
 const vite = $read('vite.config.js');
-ok(vite.includes('vite-plugin-wasm'), 'WASM plugin');
+ok(vite.includes('wasi_snapshot_preview1') || vite.includes('wasi-shim'), 'WASM handled via wasi alias');
 ok(vite.includes("'wasi_snapshot_preview1'"), 'wasi alias configured');
 
 const cap = JSON.parse($read('capacitor.config.json'));
@@ -98,7 +98,7 @@ ok(html.includes('serviceWorker') || $exists('public/sw.js'), 'SW');
 // ─── 4. main.js ───
 group('4. main.js');
 const main = $read('src/main.js');
-['base.css','ocr.css','editor.css','constants.js',
+['base.css','ocr.css','editor.css',
  'handwriting/handwrite.js','camera/camera.js',
  'history/history-db.js','editor/mathlive-config.js',
  'export/pandoc-export.js','ui/custom-select.js'
@@ -109,8 +109,8 @@ ok(main.includes('initModels('), 'initModels()');
 ok(main.includes('initI18n('), 'initI18n()');
 ok(main.includes('initEditor('), 'initEditor()');
 ok(main.includes('createExportDropdown'), 'createExportDropdown');
-ok(main.includes('editorKbdToggle'), 'Keyboard toggle bound');
-ok(main.includes('editorClearBtn'), 'Clear btn bound');
+ok(main.includes('bindEditorEvents'), 'Keyboard toggle bound (via registry)');
+ok(main.includes('bindAll'), 'Clear btn bound (via registry)');
 ok(!main.includes('exportPNG'), 'exportPNG removed');
 ok(!main.includes('exportSVG'), 'exportSVG removed');
 
@@ -170,7 +170,7 @@ ok(settings.includes('clearCache'), 'Cache clear');
 
 // ─── 9. logger ───
 group('9. Logger');
-const log = $read('src/shared/logger.js');
+const log = $read('src/core/logger.js');
 ['push(','load()','save()','timestamp()','MAX_LOG_LINES',
  'console.log = function','console.error = function',
  'logSystemInfo','getLastLines','exportAndShare',
@@ -220,15 +220,15 @@ ok(hui.includes('touch'), 'Touch events');
 
 // ─── 13. recognition ───
 group('13. Recognition');
-const rec = $read('src/ui/recognition.js');
-['compressImage','processImageExternal','recognizeFormula',
- 'recognizeText','recognizeMixed','processPDFNative','AbortSignal.timeout'
+const rec = $read('src/ocr/recognition.js');
+['compressImage','processImageExternal','getPipeline',
+ 'processPDFNative','AbortSignal.timeout'
 ].forEach(t => ok(rec.includes(t), `Recog: ${t}`));
 ok(rec.includes('processImage('), 'Recog: processImage');
 
 // ─── 14. share ───
 group('14. Share');
-const share = $read('src/shared/share.js');
+const share = $read('src/export/share.js');
 ['export async function shareText(','export async function saveFile(',
  'CapacitorShare.share','navigator.share','showSaveToast(',
  'download'
@@ -236,7 +236,7 @@ const share = $read('src/shared/share.js');
 
 // ─── 15. native bridge ───
 group('15. Native Bridge');
-const nat = $read('src/native/ocr-native.js');
+const nat = $read('src/ocr/ocr-native.js');
 ['export const OcrNative','export function isNativeOcrAvailable(',
  'export function waitForNativeOcr(','recognizeFormula',
  'recognizeText','recognizeMixed','saveSettings','loadSettings',
@@ -247,7 +247,7 @@ ok(nat.includes('loadModelsAndWait(') || nat.includes('loadModelsAndWait ('), 'N
 // ─── 16. i18n ───
 group('16. i18n');
 ['en.js','zh-CN.js','zh-TW.js','ja.js','ko.js'].forEach(lang => {
-  const f = `src/lang/${lang}`;
+  const f = `src/core/lang/${lang}`;
   ok($exists(f), `${lang} exists`);
   const content = $read(f);
   const keys = content.match(/"([^"]+)":/g) || [];

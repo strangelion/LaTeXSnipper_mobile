@@ -3,13 +3,13 @@ import {
   getSources, addSource, removeSource, getActiveModels, setActiveModel,
   getInstalledModels, markUninstalled, getAllVariants, refreshManifests,
   downloadVariant, MODEL_CATEGORIES, getLocal, STORAGE_KEYS
-} from '../model-manager.js';
+} from './model-manager.js';
 import { showZipImportDialog, showFileImportDialog } from './model-import.js';
 import { openPackageBuilder } from './package-builder.js';
-import { t } from '../lang/i18n.js';
-import { OcrNative, isNativeOcrAvailable } from '../native/ocr-native.js';
+import { t } from '../core/i18n.js';
+import { OcrNative, isNativeOcrAvailable } from '../ocr/ocr-native.js';
 import { ICONS } from '../constants.js';
-import { showProgress, hideProgress } from './status.js';
+import { showProgress, hideProgress } from '../ui/status.js';
 
 const CAT_LABELS = {
   'formula-det': '公式检测',

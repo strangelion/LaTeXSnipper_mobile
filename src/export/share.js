@@ -8,8 +8,8 @@
  */
 
 import { Share as CapacitorShare } from '@capacitor/share';
-import Logger from './logger.js';
-import { t } from '../lang/i18n.js';
+import Logger from '../core/logger.js';
+import { t } from '../core/i18n.js';
 
 /**
  * Show a brief success toast at the bottom of screen.

@@ -35,7 +35,7 @@ const essentialFiles = [
   'src/export/pandoc-export.js',
   'src/export/pandoc-init.js',
   'src/ui/result.js',
-  'src/ui/recognition.js',
+  'src/ocr/recognition.js',
   'src/ui/status.js',
   'src/ui/splash.js',
   'src/ui/custom-select.js',
@@ -43,9 +43,9 @@ const essentialFiles = [
   'src/editor/mathlive-config.js',
   'src/history/history-db.js',
   'src/settings/settings.js',
-  'src/shared/share.js',
-  'src/shared/logger.js',
-  'src/native/ocr-native.js',
+  'src/export/share.js',
+  'src/core/logger.js',
+  'src/ocr/ocr-native.js',
   'src/styles/base.css',
   'src/styles/ocr.css',
   'src/styles/editor.css',
@@ -148,7 +148,7 @@ const mainJs = readFileSync(join(ROOT, 'src/main.js'), 'utf-8');
  'ui/theme.js', 'ui/ui.js',
  'handwriting/handwrite.js', 'camera/camera.js',
  'history/history-db.js', 'history/history-ui.js',
- 'editor/mathlive-config.js', 'lang/i18n.js',
+ 'editor/mathlive-config.js', 'core/i18n.js',
  'settings/settings.js', 'ui/custom-select.js',
  'export/pandoc-export.js', 'core/event-registry.js',
 ].forEach(imp => {
@@ -171,7 +171,7 @@ ok(!mainJs.includes('exportPNG'), 'exportPNG not imported');
 ok(!mainJs.includes('exportSVG'), 'exportSVG not imported');
 
 // OCR pipeline registry
-const recogJs = readFileSync(join(ROOT, 'src/ui/recognition.js'), 'utf-8');
+const recogJs = readFileSync(join(ROOT, 'src/ocr/recognition.js'), 'utf-8');
 ok(recogJs.includes('getPipeline'), 'recognition.js uses pipeline registry');
 ok(recogJs.includes('pipeline.run'), 'recognition.js calls pipeline.run()');
 
@@ -250,7 +250,7 @@ ok(existsSync(join(handwriteDir, 'handwrite.js')), 'Handwrite module exists');
 // [9] i18n language files consistency
 // ═══════════════════════════════════════════════════════════
 console.log('\n─── [9] i18n consistency ───');
-const langDir = join(ROOT, 'src/lang');
+const langDir = join(ROOT, 'src/core/lang');
 const langFiles = ['en.js', 'zh-CN.js', 'zh-TW.js', 'ja.js', 'ko.js'];
 const allKeys = {};
 

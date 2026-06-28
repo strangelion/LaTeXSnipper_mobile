@@ -1,4 +1,4 @@
-## [未发布] — 架构重构：EventRegistry + OCR Pipeline
+## [未发布] — 架构重构：EventRegistry + OCR Pipeline + 统一数据模型 + 目录重组
 
 ### 架构变更
 
@@ -17,14 +17,25 @@
   - 新增 `src/ocr/pipelines/text.js` — 文字管线（委托 Java recognizeText）
   - 新增 `src/ocr/pipelines/mixed.js` — 混合管线（委托 Java recognizeMixed，含 regions fallback）
   - 新增识别模式只需创建 pipeline 文件 + 注册，无需修改 recognition.js
+- **统一数据模型 OcrResult** — OCR 结果从裸字符串升级为结构化 AST
+  - 新增 `src/ocr/ocr-result.js`：`OcrResult` / `OcrBlock` 类型定义 + `createResult()` / `createBlock()` / `fromString()`
+  - 三个 Pipeline 均返回 OcrResult（blocks + confidence + raw + meta）
+  - 新增 `src/export/latex-generator.js` 和 `src/export/markdown-generator.js`：从 OcrResult 生成导出格式
+  - `recognition.js` 适配 OcrResult，向后兼容字符串输入
+- **目录重构 Feature First** — 按功能域重新组织 src/ 目录
+  - `core/`：基础设施（logger、i18n、event-registry、constants）
+  - `ocr/`：OCR 管线（pipeline、pipelines、ocr-native、recognition）
+  - `model/`：模型管理（model-manager、model-analyzer、model-import、model-settings、package-builder）
+  - `export/share.js` 从 shared/ 移入 export/
+  - 删除无用的 `shared/export.js`
+  - 语言文件移入 `core/lang/`
+  - 所有 import 路径批量更新
 
 ### 测试
 
 - 修复 `test_integration.js` 中 3 个失败（import 检查 + event registry 检查）
 - 修复 `test_user_workflows.js` 中 10 个失败（适配新架构 + 修正预存在错误）
-  - asciidoc/rst/opml 格式从未实现，从测试中移除
-  - pandoc lazy load 检查字符串更正为 `pandoc-init.js`
-  - KaTeX preview 检查位置从 mathlive-config.js 更正为 result.js
+- 更新所有测试文件以匹配新目录结构
 
 ---
 

@@ -9,7 +9,7 @@
 // lacks full LaTeX math mode support, so we use a direct symbol table +
 // structural converter instead of pandoc for Typst).
 
-import Logger from '../shared/logger.js';
+import Logger from '../core/logger.js';
 import { isPandocAvailable } from './pandoc-init.js';
 import { ICONS } from '../constants.js';
 
@@ -114,7 +114,7 @@ async function _exportImage(latex, fmt) {
   if (!svgs || svgs.length === 0) { Logger.warn('EXPORT', 'MathJax rendered no SVGs'); return; }
   const composite = combineSvgs(svgs);
   if (!composite) return;
-  const { saveFile } = await import('../shared/share.js');
+  const { saveFile } = await import('./share.js');
 
   if (fmt.id === 'png') {
     const blob = await svgToPngBlob(composite);
@@ -161,7 +161,7 @@ async function _exportPandoc(latex, fmt) {
       if (!text.trim()) { Logger.warn('EXPORT', 'Pandoc returned empty for ' + fmt.id); return; }
       blob = new Blob([text], { type: fmt.mime + ';charset=utf-8' });
     }
-    const { saveFile } = await import('../shared/share.js');
+    const { saveFile } = await import('./share.js');
     await saveFile(blob, 'formula.' + fmt.ext);
   } finally {
     if (loadingEl) loadingEl.remove();
@@ -172,7 +172,7 @@ async function _exportTypst(latex) {
   const text = latexToTypst(latex);
   if (!text.trim()) { Logger.warn('EXPORT', 'Typst conversion returned empty'); return; }
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  const { saveFile } = await import('../shared/share.js');
+  const { saveFile } = await import('./share.js');
   await saveFile(blob, 'formula.typ');
 }
 

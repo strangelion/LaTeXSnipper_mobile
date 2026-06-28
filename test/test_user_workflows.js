@@ -79,7 +79,7 @@ ok(cam.includes('camera.jpg'), 'filename camera.jpg');
 // 4. OCR — recognition pipeline
 // ═══════════════════════════════════════════════════════════════
 group('4. Recognition');
-const rec = $read('src/ui/recognition.js');
+const rec = $read('src/ocr/recognition.js');
 ok(rec.includes('processImage('), 'processImage exported');
 ok(rec.includes('processImageExternal'), 'external API path');
 ok(rec.includes('getPipeline'), 'formula recognition (via pipeline)');
@@ -203,7 +203,7 @@ ok(hui.includes('clearHistory'), 'clear history button');
 // 9. SHARE & SAVE FILES
 // ═══════════════════════════════════════════════════════════════
 group('9. Share / Save');
-const share = $read('src/shared/share.js');
+const share = $read('src/export/share.js');
 ok(share.includes('shareText('), 'share text');
 ok(share.includes('saveFile('), 'save file');
 ok(share.includes('CapacitorShare.share'), 'Capacitor share');
@@ -268,14 +268,14 @@ ok(html.includes('themeToggle'), 'theme toggle button');
 // ═══════════════════════════════════════════════════════════════
 group('13. i18n / Text');
 // Verify no hardcoded Chinese in non-lang files (except vendor/data)
-const srcFiles = ['main.js','ui/ui.js','ui/result.js','ui/recognition.js',
+const srcFiles = ['main.js','ui/ui.js','ui/result.js','ocr/recognition.js',
   'ui/status.js','ui/splash.js','ui/custom-select.js','ui/polish.js',
   'editor/mathlive-config.js','settings/settings.js',
   'history/history-db.js','history/history-ui.js',
   'camera/camera.js','handwriting/handwrite.js',
   'export/pandoc-export.js','export/exporter.js',
-  'shared/logger.js','shared/share.js',
-  'native/ocr-native.js'];
+  'core/logger.js','export/share.js',
+  'ocr/ocr-native.js'];
 let hardcodedFound = 0;
 srcFiles.forEach(f => {
   const content = $read(`src/${f}`);
@@ -302,7 +302,7 @@ if (hardcodedFound === 0) pass('no hardcoded Chinese in source files');
 // 14. LOGGER
 // ═══════════════════════════════════════════════════════════════
 group('14. Logger');
-const log = $read('src/shared/logger.js');
+const log = $read('src/core/logger.js');
 ok(log.includes('push('), 'push log');
 ok(log.includes('load()'), 'load from localStorage');
 ok(log.includes('save()'), 'save to localStorage');
@@ -321,7 +321,7 @@ ok(log.includes('Error.stack') || log.includes('instanceof Error'), 'stack trace
 // 15. NATIVE BRIDGE
 // ═══════════════════════════════════════════════════════════════
 group('15. Native Bridge');
-const nat = $read('src/native/ocr-native.js');
+const nat = $read('src/ocr/ocr-native.js');
 ok(nat.includes('OcrNative'), 'OcrNative exported');
 ok(nat.includes('isNativeOcrAvailable('), 'isNativeOcrAvailable');
 ok(nat.includes('waitForNativeOcr('), 'waitForNativeOcr');

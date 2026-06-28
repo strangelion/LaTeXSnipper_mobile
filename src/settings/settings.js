@@ -1,11 +1,11 @@
 // Settings module — engine, presets, skin, AI polish, update check
 // Imported once in main.js. All DOM IDs are in index.html.
 
-import { isNativeOcrAvailable, OcrNative } from '../native/ocr-native.js';
-import { t, currentLang, setLang, onLangChange } from '../lang/i18n.js';
-import Logger from '../shared/logger.js';
-import { shareFile } from '../shared/share.js';
-import { initModelSettings } from '../ui/model-settings.js';
+import { isNativeOcrAvailable, OcrNative } from '../ocr/ocr-native.js';
+import { t, currentLang, setLang, onLangChange } from '../core/i18n.js';
+import Logger from '../core/logger.js';
+import { shareFile } from '../export/share.js';
+import { initModelSettings } from '../model/model-settings.js';
 import { isPandocAvailable, downloadPandocWasm, invalidatePandocCache } from '../export/pandoc-init.js';
 import { showProgress, hideProgress } from '../ui/status.js';
 import { ICONS } from '../constants.js';

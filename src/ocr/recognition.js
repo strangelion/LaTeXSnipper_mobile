@@ -1,13 +1,14 @@
 // Image recognition pipeline — routes all recognition through Native OcrPlugin (Android)
 // In browser dev mode (no Capacitor), falls back to external API only.
 
-import { els, getFileInputHandler } from './dom-refs.js';
-import { setStatus, showError, showProgress, hideProgress } from './status.js';
-import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from './result.js';
-import { isNativeOcrAvailable } from '../native/ocr-native.js';
-import { getPipeline } from '../ocr/pipeline-registry.js';
-import Logger from '../shared/logger.js';
-import { t } from '../lang/i18n.js';
+import { els, getFileInputHandler } from '../ui/dom-refs.js';
+import { setStatus, showError, showProgress, hideProgress } from '../ui/status.js';
+import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from '../ui/result.js';
+import { isNativeOcrAvailable } from './ocr-native.js';
+import { getPipeline } from './pipeline-registry.js';
+import { fromString } from './ocr-result.js';
+import Logger from '../core/logger.js';
+import { t } from '../core/i18n.js';
 import { MAX_PDF_PAGES } from '../constants.js';
 
 let lastRecognitionTime = 0;
@@ -215,8 +216,15 @@ async function processPDFNative(file, pageRange, onProgress) {
 
     const mixedPl = getPipeline('mixed');
     const result = await mixedPl.run(base64);
-    const mixedText = result.text || result.regions?.map(r => r.text).filter(Boolean).join('\n') || '';
-    const latex = result.regions?.filter(r => r.type === 'formula').map(r => r.text).join(' \\\\ ') || '';
+    // OcrResult: extract text from raw or blocks
+    let mixedText = result.raw || '';
+    if (!mixedText && result.blocks && result.blocks.length > 0) {
+      mixedText = result.blocks.map(b => b.content).filter(Boolean).join('\n');
+    }
+    const latex = result.blocks
+      ?.filter(b => b.type === 'formula')
+      .map(b => b.content)
+      .join(' \\\\ ') || '';
     pages.push({ latex: mixedText || latex, confidence: result.confidence || 0.5, page: pageNum });
   }
 
@@ -351,7 +359,7 @@ export async function processImage(file) {
 
       URL.revokeObjectURL(url);
       lastRecognitionTime = Date.now();
-      Logger.info('recog', `Result: ${JSON.stringify({ error: result?.error, latex: result?.latex?.substring(0, 50), text: result?.text?.substring(0, 50), confidence: result?.confidence, regions: result?.regions?.length })}`);
+      Logger.info('recog', `Result: ${JSON.stringify({ error: result?.error, blocks: result?.blocks?.length, confidence: result?.confidence, raw: result?.raw?.substring(0, 50) })}`);
 
       if (result && result.error) {
         showError(t('recog.recognitionFailed', {msg: result.error}));
@@ -359,20 +367,20 @@ export async function processImage(file) {
         return null;
       }
 
-      // Extract text: formula/text modes use latex/text, mixed mode uses formattedText or regions
-      let text = result.latex || result.text || '';
-      let confidence = result.confidence || 0;
-      Logger.info('recog', `Extracted text: "${text.substring(0, 100)}", confidence: ${confidence}`);
+      // Extract text from OcrResult
+      const ocrResult = result;
+      let text = ocrResult.raw || '';
+      let confidence = ocrResult.confidence || 0;
 
-      // Mixed mode: if formattedText is empty, fall back to combining region texts
-      if (!text && result.regions) {
-        const parts = result.regions.map(r => r.text).filter(Boolean);
-        text = parts.join('\n');
-        confidence = result.regions.reduce((s, r) => s + (r.confidence || 0), 0) / Math.max(result.regions.length, 1);
+      // Fallback: combine block contents if raw is empty
+      if (!text && ocrResult.blocks && ocrResult.blocks.length > 0) {
+        text = ocrResult.blocks.map(b => b.content).filter(Boolean).join('\n');
       }
 
+      Logger.info('recog', `Extracted text: "${text.substring(0, 100)}", confidence: ${confidence}`);
+
       if (!text) {
-        Logger.warn('recog', `Empty result: confidence=${confidence}, result=${JSON.stringify(result).substring(0, 200)}`);
+        Logger.warn('recog', `Empty result: confidence=${confidence}, blocks=${ocrResult.blocks?.length}`);
         showError((confidence ? t('recog.confidenceTooLow', {pct: (confidence*100).toFixed(1)}) : t('recog.emptyResult')));
         setStatus('ready', t('status.readyRetry'), false);
         return null;
@@ -380,8 +388,8 @@ export async function processImage(file) {
 
       showResult(text, confidence);
       setStatus('done', t('status.done'), false);
-      const fh = getFileInputHandler(); if (fh) fh({ latex: text, confidence }, file);
-      return { latex: text, confidence };
+      const fh = getFileInputHandler(); if (fh) fh({ latex: text, confidence, blocks: ocrResult.blocks }, file);
+      return { latex: text, confidence, blocks: ocrResult.blocks };
     } catch (e) {
       URL.revokeObjectURL(url);
       showError(t('recog.recognitionFailed', {msg: e.message || e}));

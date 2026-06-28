@@ -1,6 +1,6 @@
 // Test model-analyzer.js — inferCategory with synthetic shapes
 
-import { inferCategory } from '../src/model-analyzer.js';
+import { inferCategory } from '../src/model/model-analyzer.js';
 
 function testInferFormulaDet() {
   const result = inferCategory(

@@ -11,7 +11,7 @@
 // Star at top-right corner: toggle favorite
 import { getAllResults, toggleFavorite, deleteResult, clearHistory } from './history-db.js';
 import { setEditorContent } from '../editor/mathlive-config.js';
-import { t } from '../lang/i18n.js';
+import { t } from '../core/i18n.js';
 
 // ── Constants ──
 const DELETE_ZONE    = 80;   // fixed width delete zone when snapped
@@ -69,7 +69,7 @@ function copyToClipboard(text) {
 async function shareLatex(text) {
   const lines = text.split('\n').filter(l => l.trim());
   const formatted = lines.map(l => '$$\n' + l.trim() + '\n$$').join('\n');
-  const { shareText } = await import('../shared/share.js');
+  const { shareText } = await import('../export/share.js');
   await shareText(formatted, { title: 'LaTeXSnipper', dialogTitle: '分享公式' });
 }
 
