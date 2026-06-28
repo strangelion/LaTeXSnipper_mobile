@@ -65,6 +65,7 @@ export function createApp() {
   if (hwCanvas && hwWrap) {
     initHandwrite(hwCanvas, hwWrap);
     updateHwTheme(getTheme());
+    window.addEventListener('themechange', (e) => updateHwTheme(e.detail.theme));
   }
 
   // Recognition mode selector
