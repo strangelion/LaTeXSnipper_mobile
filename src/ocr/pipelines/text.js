@@ -5,12 +5,15 @@ import { OcrNative } from '../ocr-native.js';
 import { OcrPipeline } from '../pipeline.js';
 import { createResult, createBlock } from '../ocr-result.js';
 
-export const textPipeline = new OcrPipeline('text', {
-  checkModels: () => {
-    const s = window.__nativeModelStatus;
-    return s?.textDet && s?.textRec;
-  },
-
+export const textPipeline = new OcrPipeline({
+  id: 'text',
+  name: 'Text Recognition',
+  description: 'Detect and recognize printed or handwritten text',
+  icon: '📝',
+  requiredModels: ['text-det', 'text-rec'],
+  supportsPDF: true,
+  supportsBatch: false,
+}, {
   run: async (image) => {
     const result = await OcrNative.recognizeText({ image });
     if (result.error) {

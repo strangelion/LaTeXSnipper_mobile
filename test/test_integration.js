@@ -140,33 +140,37 @@ ok(mobileCss.length > 0, 'Mobile CSS not empty');
 // ═══════════════════════════════════════════════════════════
 // [4] Main JS entry point checks
 // ═══════════════════════════════════════════════════════════
-console.log('\n─── [4] main.js structure ───');
+console.log('\n─── [4] main.js / bootstrap / app structure ───');
 const mainJs = readFileSync(join(ROOT, 'src/main.js'), 'utf-8');
+const bootstrapJs = readFileSync(join(ROOT, 'src/core/bootstrap.js'), 'utf-8');
+const appJs = readFileSync(join(ROOT, 'src/core/app.js'), 'utf-8');
+const allEntry = mainJs + bootstrapJs + appJs;
 
-// All imports present
-['base.css', 'ocr.css', 'editor.css', 'history.css', 'mobile.css',
- 'ui/theme.js', 'ui/ui.js',
- 'handwriting/handwrite.js', 'camera/camera.js',
- 'history/history-db.js', 'history/history-ui.js',
- 'editor/mathlive-config.js', 'core/i18n.js',
- 'settings/settings.js', 'ui/custom-select.js',
- 'export/pandoc-export.js', 'core/event-registry.js',
-].forEach(imp => {
-  ok(mainJs.includes(imp), `Import ${imp} present`);
-});
+// main.js is thin orchestrator
+ok(mainJs.includes('bootstrap'), 'main.js calls bootstrap()');
+ok(mainJs.includes('createApp'), 'main.js calls createApp()');
+ok(mainJs.includes('start'), 'main.js calls start()');
 
-// Boot function
-ok(mainJs.includes('async function boot'), 'boot() function present');
-ok(mainJs.includes('initI18n'), 'initI18n called');
-ok(mainJs.includes('initModels'), 'initModels called');
-ok(mainJs.includes('setupTabs'), 'Tab navigation setup');
+// bootstrap.js handles platform setup
+ok(bootstrapJs.includes('initTheme'), 'bootstrap: initTheme');
+ok(bootstrapJs.includes('serviceWorker'), 'bootstrap: serviceWorker');
+ok(bootstrapJs.includes('setupTabs') || bootstrapJs.includes('bottom-nav'), 'bootstrap: tab navigation');
+ok(bootstrapJs.includes('beforeinstallprompt') || bootstrapJs.includes('installBanner'), 'bootstrap: PWA install');
 
-// Event listeners
-ok(mainJs.includes('backButton'), 'Android back button handler');
-ok(mainJs.includes('bindEditorEvents'), 'Editor event bindings registered');
-ok(mainJs.includes('bindAll'), 'Event registry bindAll called');
+// app.js handles modules
+ok(appJs.includes('initUI'), 'app: initUI');
+ok(appJs.includes('initCamera'), 'app: initCamera');
+ok(appJs.includes('initHandwrite'), 'app: initHandwrite');
+ok(appJs.includes('initI18n'), 'app: initI18n');
+ok(appJs.includes('initModels'), 'app: initModels');
+ok(appJs.includes('initEditor'), 'app: initEditor');
+ok(appJs.includes('initSettings'), 'app: initSettings');
+ok(appJs.includes('bindAll'), 'app: bindAll');
+ok(appJs.includes('bindEditorEvents'), 'app: Editor event bindings');
+ok(appJs.includes('backButton'), 'app: Android back button');
+ok(appJs.includes('recogMode') || appJs.includes('mode-tab'), 'app: recognition mode selector');
 
-// No MathJax references
+// No MathJax references in entry
 ok(!mainJs.includes('exportPNG'), 'exportPNG not imported');
 ok(!mainJs.includes('exportSVG'), 'exportSVG not imported');
 

@@ -108,6 +108,11 @@ export function isNativeOcrAvailable() {
   return typeof window.NativeOcr !== 'undefined' && window.NativeOcr !== null;
 }
 
+/** Get the current native model status (sync, from global state). */
+export function getNativeModelStatus() {
+  return window.__nativeModelStatus || null;
+}
+
 export function waitForNativeOcr(timeout = 8000) {
   return new Promise((resolve) => {
     if (isNativeOcrAvailable()) return resolve(true);

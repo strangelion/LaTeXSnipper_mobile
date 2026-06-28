@@ -5,12 +5,15 @@ import { OcrNative } from '../ocr-native.js';
 import { OcrPipeline } from '../pipeline.js';
 import { createResult, createBlock } from '../ocr-result.js';
 
-export const mixedPipeline = new OcrPipeline('mixed', {
-  checkModels: () => {
-    const s = window.__nativeModelStatus;
-    return (s?.formulaDet && s?.formulaRec) || (s?.textDet && s?.textRec);
-  },
-
+export const mixedPipeline = new OcrPipeline({
+  id: 'mixed',
+  name: 'Mixed Recognition',
+  description: 'Detect both formulas and text in a single image',
+  icon: '🔀',
+  requiredModels: ['formula-det', 'formula-rec', 'text-det', 'text-rec'],
+  supportsPDF: true,
+  supportsBatch: false,
+}, {
   run: async (image) => {
     const result = await OcrNative.recognizeMixed({ image });
     if (result.error) {

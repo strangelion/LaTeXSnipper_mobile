@@ -30,21 +30,26 @@ console.log('══════════════════════�
 group('1. Boot / Initialization');
 const html = $read('index.html');
 const main = $read('src/main.js');
+const bootstrap = $read('src/core/bootstrap.js');
+const app = $read('src/core/app.js');
+const allEntry = main + bootstrap + app;
 
-ok(main.includes('function boot('), 'boot() entry point');
-ok(main.includes('initI18n('), 'i18n initialized');
-ok(main.includes('translateDOM('), 'DOM translated');
-ok(main.includes('initCustomSelects('), 'custom dropdowns initialized');
-ok(main.includes('initSettings('), 'settings initialized');
-ok(main.includes('initEditor('), 'editor initialized');
-ok(main.includes('hideSplash('), 'splash hidden');
-ok(main.includes('initModels('), 'model loading started');
-ok(main.includes('renderHistoryList('), 'history rendered');
-ok(main.includes('setStatus') || main.includes('initModels('), 'status bar updated');
+ok(main.includes('bootstrap'), 'main.js calls bootstrap()');
+ok(main.includes('createApp'), 'main.js calls createApp()');
+ok(main.includes('start'), 'main.js calls start()');
+ok(allEntry.includes('initI18n('), 'i18n initialized');
+ok(allEntry.includes('translateDOM('), 'DOM translated');
+ok(allEntry.includes('initCustomSelects('), 'custom dropdowns initialized');
+ok(allEntry.includes('initSettings('), 'settings initialized');
+ok(allEntry.includes('initEditor('), 'editor initialized');
+ok(allEntry.includes('hideSplash('), 'splash hidden');
+ok(allEntry.includes('initModels('), 'model loading started');
+ok(allEntry.includes('renderHistoryList('), 'history rendered');
+ok(allEntry.includes('setStatus') || allEntry.includes('initModels('), 'status bar updated');
 
-// Event listeners bound during boot
-ok(main.includes('bindEditorEvents'), 'keyboard toggle (via event registry)');
-ok(main.includes('bindAll'), 'editor clear (via event registry)');
+// Event listeners bound during app init
+ok(allEntry.includes('bindEditorEvents'), 'keyboard toggle (via event registry)');
+ok(allEntry.includes('bindAll'), 'editor clear (via event registry)');
 
 // ═══════════════════════════════════════════════════════════════
 // 2. UPLOAD — file selection & drag-drop
@@ -95,7 +100,7 @@ ok(hw.includes('hwExportImage'), 'handwrite export image');
 ok(hw.includes('handwrite.png'), 'filename handwrite.png');
 
 // Recognition mode selector
-ok(main.includes('recogMode'), 'recognition mode variable');
+ok(allEntry.includes('recogMode'), 'recognition mode variable');
 
 // ═══════════════════════════════════════════════════════════════
 // 5. RESULT — display, copy, share
@@ -196,7 +201,7 @@ const hui = $read('src/history/history-ui.js');
 ok(hui.includes('renderHistoryList('), 'render history list');
 
 // Save OCR to history
-ok(main.includes('addResult({'), 'OCR result saved to history');
+ok(allEntry.includes('addResult({'), 'OCR result saved to history');
 ok(hui.includes('clearHistory'), 'clear history button');
 
 // ═══════════════════════════════════════════════════════════════

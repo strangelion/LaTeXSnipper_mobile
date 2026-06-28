@@ -5,7 +5,7 @@ import { els, getFileInputHandler } from '../ui/dom-refs.js';
 import { setStatus, showError, showProgress, hideProgress } from '../ui/status.js';
 import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from '../ui/result.js';
 import { isNativeOcrAvailable } from './ocr-native.js';
-import { getPipeline } from './pipeline-registry.js';
+import { getPipeline, checkPipelineModels } from './pipeline-registry.js';
 import { fromString } from './ocr-result.js';
 import Logger from '../core/logger.js';
 import { t } from '../core/i18n.js';
@@ -214,7 +214,7 @@ async function processPDFNative(file, pageRange, onProgress) {
     const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
     const base64 = await fileToBase64(new File([blob], 'page.jpg'));
 
-    const mixedPl = getPipeline('mixed');
+    const mixedPl = await getPipeline('mixed');
     const result = await mixedPl.run(base64);
     // OcrResult: extract text from raw or blocks
     let mixedText = result.raw || '';
@@ -275,11 +275,10 @@ export async function processImage(file) {
   // ── Native mode — check if models are actually available ──
   if (isNative()) {
     const mode = window.__recogMode?.() || 'formula';
-    const hasFormulaModels = window.__nativeModelStatus?.formulaDet && window.__nativeModelStatus?.formulaRec;
-    const hasTextModels = window.__nativeModelStatus?.textDet && window.__nativeModelStatus?.textRec;
-    Logger.info('recog', `Mode: ${mode}, formulaModels: ${hasFormulaModels}, textModels: ${hasTextModels}, nativeModelStatus: ${JSON.stringify(window.__nativeModelStatus)}`);
+    Logger.info('recog', `Mode: ${mode}, nativeModelStatus: ${JSON.stringify(window.__nativeModelStatus)}`);
 
-    if ((mode === 'formula' && !hasFormulaModels) || (mode === 'text' && !hasTextModels) || (mode === 'mixed' && !hasFormulaModels && !hasTextModels)) {
+    const modelsReady = await checkPipelineModels(mode);
+    if (!modelsReady) {
       const msg = t('status.noModels') || 'No local models installed. Download models in Settings or switch to External API.';
       showError(msg);
       setStatus('ready', msg, false);
@@ -344,7 +343,7 @@ export async function processImage(file) {
       }, 500);
 
       let result;
-      const pipeline = getPipeline(mode);
+      const pipeline = await getPipeline(mode);
       if (!pipeline) {
         clearInterval(progressTimer);
         hideProgress();
