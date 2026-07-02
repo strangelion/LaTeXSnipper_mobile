@@ -62,6 +62,8 @@ const CATEGORY_MAP = {
         confidence_threshold: 0.25,
         iou_threshold: 0.45,
         max_detections: 100,
+        apply_sigmoid: true,
+        output_layout: 'row_major',
       },
     },
   },
