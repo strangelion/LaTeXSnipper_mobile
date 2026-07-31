@@ -17,7 +17,7 @@
     "jszip": "^3.10.1",
     "katex": "^0.17.0",
     "mathjax": "^3.2.2",
-    "mathlive": "^0.104.0",
+    "mathlive": "^0.110.0",
     "onnxruntime-web": "1.21.0",
     "pandoc-wasm": "^1.0.1",
     "pdfjs-dist": "4.2.67",
