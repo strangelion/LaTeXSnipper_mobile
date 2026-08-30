@@ -54,3 +54,4 @@ test_output/
 
 # 56MB pandoc WASM binary (copied from node_modules at build time)
 public/pandoc.wasm
+.learnings/

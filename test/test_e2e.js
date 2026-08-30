@@ -158,7 +158,7 @@ ok(exp.includes('latexToTypst'), 'latexToTypst');
 
 ok(exp.includes("action: 'render'"), 'Image action');
 ok(exp.includes("action: 'pandoc'"), 'Pandoc action');
-ok(exp.includes("action: 'typst'"), 'Typst action');
+ok(exp.includes("action: 'core'"), 'Core semantic action');
 
 ok(exp.includes("import('./pandoc-init.js')"), 'Pandoc lazy load');
 

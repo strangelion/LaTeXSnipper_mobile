@@ -188,7 +188,7 @@ const exportJs = readFileSync(join(ROOT, 'src/export/pandoc-export.js'), 'utf-8'
 ok(exportJs.includes('EXPORT_FORMATS'), 'Export formats defined');
 ok(exportJs.includes("action: 'render'"), 'Image export action');
 ok(exportJs.includes("action: 'pandoc'"), 'Pandoc text export action');
-ok(exportJs.includes("action: 'typst'"), 'Typst action (pure JS)');
+ok(exportJs.includes("action: 'core'"), 'Core semantic export action');
 ok(exportJs.includes('exportLatex'), 'exportLatex function');
 ok(exportJs.includes('createExportDropdown'), 'createExportDropdown function');
 ok(exportJs.includes('latexToTypst'), 'latexToTypst function');

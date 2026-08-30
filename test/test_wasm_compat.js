@@ -100,8 +100,11 @@ console.log('\n─── [7] Build config checks ───');
 const { readFileSync: rf } = await import('node:fs');
 const viteConfig = rf(join(__dirname, '..', 'vite.config.js'), 'utf-8');
 
-ok(viteConfig.includes('vite-plugin-wasm'), 'vite-plugin-wasm configured');
-ok(viteConfig.includes('vite-plugin-top-level-await'), 'top-level-await plugin');
+const packageJson = JSON.parse(rf(join(__dirname, '..', 'package.json'), 'utf-8'));
+ok(packageJson.dependencies?.['latexsnipper-wasm']?.includes('/v3.2.0/'),
+  'Core WASM release package is pinned');
+ok(existsSync(join(__dirname, 'test_core_integration.js')),
+  'Core WASM has an executable integration contract');
 ok(viteConfig.includes("'wasi_snapshot_preview1'"), 'wasi alias configured');
 ok(viteConfig.includes('assetsInlineLimit: 0'), 'WASM inlining disabled');
 

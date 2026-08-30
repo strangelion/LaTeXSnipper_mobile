@@ -142,7 +142,7 @@ ok(exp.includes('latexToTypst('), 'latexToTypst');
   ok(exp.includes(`id: '${f}'`), `Format: ${f}`));
 ok(exp.includes(`action: 'render'`), 'image export');
 ok(exp.includes(`action: 'pandoc'`), 'pandoc text export');
-ok(exp.includes(`action: 'typst'`), 'typst export');
+ok(exp.includes(`action: 'core'`), 'Core semantic export');
 
 // PNG/SVG export path: KaTeX → SVG → composite → save
 ok(res.includes('renderLatexToSvgs'), 'render to SVGs');
