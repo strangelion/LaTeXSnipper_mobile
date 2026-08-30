@@ -48,6 +48,18 @@ export class OcrPipeline {
    * @returns {Promise<OcrResult>}
    */
   async run(image, context = {}) {
-    return this._run(image, context);
+    const result = await this._run(image, context);
+    if (!result || result.error) return result;
+
+    // Core owns the post-recognition document contract and semantic exports.
+    // Android inference remains in the production Java ONNX path until Core
+    // ships a non-stub Android runtime.
+    const { attachCoreDocument } = await import('../core/core-runtime.js');
+    return attachCoreDocument(result, {
+      ...context,
+      mode: this.meta.id,
+      model: `mobile-${this.meta.id}`,
+      pipelineVersion: this.meta.version,
+    });
   }
 }

@@ -1,35 +1,36 @@
-// Unified export system: Pandoc WASM (text formats) + MathJax (image formats)
+// Unified export system: LaTeXSnipper Core (semantic formats) + Pandoc WASM
+// (DOCX/plain fallback) + MathJax (image formats).
 //
 // Provides:
 //   EXPORT_FORMATS — all supported output formats
 //   exportLatex(latex, fmt) — core export, saves file to Downloads
 //   createExportDropdown(container, { getText, t }) — builds custom-styled dropdown
 //
-// Typst export: pure JS LaTeX→Typst conversion (pandoc-wasm WASM binary
-// lacks full LaTeX math mode support, so we use a direct symbol table +
-// structural converter instead of pandoc for Typst).
+// Semantic exports (including Typst) are generated from the canonical Core
+// Document AST. This keeps Mobile output aligned with desktop/Core behavior.
 
 import Logger from '../core/logger.js';
 import { isPandocAvailable } from './pandoc-init.js';
 import { ICONS } from '../constants.js';
 
 // ── Export format definitions ──
-// action: 'render' = KaTeX SVG/PNG (no pandoc), 'pandoc' = needs pandoc.wasm, 'typst' = pure JS
+// action: 'render' = MathJax SVG/PNG, 'core' = Core semantic conversion,
+// 'pandoc' = formats that still need pandoc.wasm.
 export const EXPORT_FORMATS = [
   { id: 'png',      action: 'render', ext: 'png',  mime: 'image/png',       label: 'PNG' },
   { id: 'svg',      action: 'render', ext: 'svg',  mime: 'image/svg+xml',   label: 'SVG' },
-  { id: 'latex',    action: 'pandoc', ext: 'tex',  mime: 'text/plain',      label: 'LaTeX' },
-  { id: 'mathml',   action: 'pandoc', ext: 'html', mime: 'text/html',       label: 'MathML' },
-  { id: 'markdown', action: 'pandoc', ext: 'md',   mime: 'text/markdown',   label: 'Markdown' },
-  { id: 'html',     action: 'pandoc', ext: 'html', mime: 'text/html',       label: 'HTML' },
-  { id: 'typst',    action: 'typst',  ext: 'typ',  mime: 'text/plain',      label: 'Typst' },
+  { id: 'latex',    action: 'core',   ext: 'tex',  mime: 'text/plain',      label: 'LaTeX' },
+  { id: 'mathml',   action: 'core',   ext: 'mml',  mime: 'application/mathml+xml', label: 'MathML' },
+  { id: 'markdown', action: 'core',   ext: 'md',   mime: 'text/markdown',   label: 'Markdown' },
+  { id: 'html',     action: 'core',   ext: 'html', mime: 'text/html',       label: 'HTML' },
+  { id: 'typst',    action: 'core',   ext: 'typ',  mime: 'text/plain',      label: 'Typst' },
   { id: 'docx',     action: 'pandoc', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'Word' },
   { id: 'plain',    action: 'pandoc', ext: 'txt',  mime: 'text/plain',      label: 'Plain Text' },
 ];
 
 /**
  * Get available export formats based on pandoc availability.
- * If pandoc is not downloaded, only show render (PNG/SVG) and typst formats.
+ * Core and image formats remain available when pandoc is not downloaded.
  */
 export async function getAvailableFormats() {
   const pandocReady = await isPandocAvailable();
@@ -66,7 +67,7 @@ const PANDOC_FORMAT_MAP = {
   plain: 'plain',
 };
 
-// ── Pandoc WASM lazy loader (only for non-Typst text formats) ──
+// ── Pandoc WASM lazy loader (DOCX/plain compatibility formats) ──
 let _pandocApi = null;
 let _pandocLoading = false;
 let _pandocWaiters = [];
@@ -95,17 +96,41 @@ async function initPandoc() {
 }
 
 // ── Core export handler ──
-export async function exportLatex(latex, fmt) {
+export async function exportLatex(latex, fmt, ocrResult = null) {
   if (!latex || !latex.trim()) return;
   Logger.info('EXPORT', 'Exporting as ' + fmt.id);
 
   if (fmt.action === 'render') {
     await _exportImage(latex, fmt);
-  } else if (fmt.action === 'typst') {
-    await _exportTypst(latex);
+  } else if (fmt.action === 'core') {
+    await _exportCore(latex, fmt, ocrResult);
   } else {
     await _exportPandoc(latex, fmt);
   }
+}
+
+const CORE_FORMAT_MAP = {
+  latex: 'latex',
+  mathml: 'mathml',
+  markdown: 'markdown_block',
+  html: 'html',
+  typst: 'typst',
+};
+
+async function _exportCore(latex, fmt, ocrResult) {
+  const coreFormat = CORE_FORMAT_MAP[fmt.id];
+  if (!coreFormat) throw new Error(`Unsupported Core export format: ${fmt.id}`);
+  const { convertLatexWithCore, convertOcrResult } = await import('../core/core-runtime.js');
+  const artifact = ocrResult?.blocks
+    ? await convertOcrResult(ocrResult, coreFormat)
+    : await convertLatexWithCore(latex, coreFormat);
+  if (!artifact.text?.trim()) {
+    throw new Error(`Core returned an empty ${fmt.id} artifact`);
+  }
+  const blob = new Blob([artifact.text], { type: `${fmt.mime};charset=utf-8` });
+  const { saveFile } = await import('./share.js');
+  await saveFile(blob, `formula.${fmt.ext}`);
+  Logger.info('EXPORT', `Core ${fmt.id} export ${artifact.sizeBytes || blob.size} bytes`);
 }
 
 async function _exportImage(latex, fmt) {
@@ -502,7 +527,7 @@ export function latexToTypst(input) {
 
 // ── Dropdown factory ──
 
-export function createExportDropdown(container, { getText, t }) {
+export function createExportDropdown(container, { getText, getResult, t }) {
   const _t = t || (k => k);
   const wrap = document.createElement('div');
   wrap.className = 'export-dropdown-wrap';
@@ -538,7 +563,7 @@ export function createExportDropdown(container, { getText, t }) {
         btn.disabled = true;
 
         try {
-          await exportLatex(text, fmt);
+          await exportLatex(text, fmt, getResult?.() || null);
         } catch (err) {
           Logger.error('EXPORT', 'Export via dropdown failed', err);
         } finally {

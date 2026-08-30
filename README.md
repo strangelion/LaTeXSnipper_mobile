@@ -8,6 +8,7 @@
 - **MathLive 公式编辑器** — 所见即所得数学公式编辑，支持三态键盘切换（关闭 / MathLive 虚拟键盘 / 系统原生键盘）、智能模式、符号工具栏
 - **手写画板** — 墨迹平滑、压感、撤销/重做/调整画布
 - **历史记录** — IndexedDB 存储，收藏夹管理，滑动手势（右滑删除、左滑分享/复制/收藏）
+- **Core 统一文档语义** — OCR 后生成 LaTeXSnipper Core Document AST，并由 Core 统一导出 LaTeX / MathML / Markdown / HTML / Typst
 - **多格式导出** — PNG / SVG / LaTeX / MathML / Markdown / HTML / Typst / Word (.docx) / Plain Text
 - **AI 整理** — 连接 DeepSeek 兼容 API 对识别结果进行纠错和格式化
 - **公式渲染引擎切换** — KaTeX（轻量快速）/ MathJax（兼容性更好）
@@ -24,6 +25,7 @@
 |------|------|
 | 构建 | Vite 8 + Rollup 4 |
 | OCR 引擎 | ONNX Runtime Android (Java) |
+| 统一文档与语义转换 | LaTeXSnipper Core 3.2.0 (WASM，API v3 / Document schema 1.0.0) |
 | 公式检测 | YOLOv8 |
 | 公式识别 | TrOCR (DeiT 编码器 + 束搜索解码) |
 | 文字检测 | DBNet (PP-OCRv5) + Moore-Neighbor 轮廓追踪 |
@@ -32,10 +34,16 @@
 | 公式渲染 | KaTeX 0.17 / MathJax（可切换） |
 | 公式编辑 | MathLive 0.104 |
 | 文档转换 | pandoc-wasm 1.0（按需下载，不内置 APK） |
-| 文本导出 | 纯 JS LaTeX → Typst 转换器（200+ 符号映射） |
+| 文本导出 | LaTeXSnipper Core（LaTeX / MathML / Markdown / HTML / Typst）+ pandoc-wasm（DOCX / Plain） |
 | PDF 渲染 | pdfjs-dist 4.2 |
 | 移动框架 | Capacitor 8 (Android/iOS) |
 | 存储 | IndexedDB (idb 封装) |
+
+### Core 接入边界
+
+- Android 识别仍使用已经可工作的 Java ONNX Runtime 管线；识别完成后进入 Core 3 的 API 协商、Document AST 校验与语义导出。
+- 浏览器与 Capacitor 都懒加载同一份固定版本 Core WASM，Core 初始化失败会在 `result.meta.core` 中明确记录，但不会丢弃已完成的 OCR 结果。
+- 当前 Core Android/iOS FFI 的识别运行时仍是 stub，因此尚未用它替换生产推理。待 Core 提供非 stub 移动运行时后，再将推理节点迁入 native FFI，Document AST 不需要再次改版。
 
 ## 快速开始
 
@@ -43,6 +51,7 @@
 npm install           # 安装依赖
 npm run dev           # Vite 开发服务器 (:5174)
 npm run build         # 构建到 dist/
+npm run test:core     # 实际加载 Core WASM，验证 AST、转换与失败回退
 ```
 
 ### Android
@@ -74,6 +83,8 @@ node test/test_behavior_consistency.js   # 行为一致性（112 项）
 node test/test_integration.js            # 项目结构检查（221 项）
 node test/test_user_workflows.js         # 全用户流程（154 项）
 node test/test_e2e.js                    # 端到端全量（303 项）
+npm run test:core                        # Core WASM 契约与失败降级
+npm run test:device-core                 # 可选：ADB/CDP 真机原生 OCR → Core smoke
 bash test/run_tests.sh                   # 全部 10 项（含 Python OCR 模型测试）
 ```
 
@@ -103,6 +114,7 @@ LaTeXSnipper_mobile/
 │   ├── core/                  # 基础设施
 │   │   ├── bootstrap.js       # 平台初始化（Theme/SW/Tab/PWA）
 │   │   ├── app.js             # 模块加载/事件注册/业务逻辑
+│   │   ├── core-runtime.js    # Core WASM 协商、Document AST 与语义转换
 │   │   ├── logger.js          # 日志收集
 │   │   ├── i18n.js            # 国际化引擎
 │   │   ├── event-registry.js  # EventRegistry（registerBinding/bindAll）

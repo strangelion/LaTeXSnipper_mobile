@@ -6,7 +6,7 @@ import { setStatus, showError, showProgress, hideProgress } from '../ui/status.j
 import { showResult, hideResult, showPDFBrowser, hidePDFBrowser } from '../ui/result.js';
 import { isNativeOcrAvailable } from './ocr-native.js';
 import { getPipeline, checkPipelineModels } from './pipeline-registry.js';
-import { fromString } from './ocr-result.js';
+import { createBlock, createResult } from './ocr-result.js';
 import Logger from '../core/logger.js';
 import { t } from '../core/i18n.js';
 import { MAX_PDF_PAGES } from '../constants.js';
@@ -368,6 +368,7 @@ export async function processImage(file) {
 
       // Extract text from OcrResult
       const ocrResult = result;
+      window.__lastOcrResult = ocrResult;
       let text = ocrResult.raw || '';
       let confidence = ocrResult.confidence || 0;
 
@@ -387,8 +388,14 @@ export async function processImage(file) {
 
       showResult(text, confidence);
       setStatus('done', t('status.done'), false);
-      const fh = getFileInputHandler(); if (fh) fh({ latex: text, confidence, blocks: ocrResult.blocks }, file);
-      return { latex: text, confidence, blocks: ocrResult.blocks };
+      const publishedResult = {
+        ...ocrResult,
+        latex: text,
+        confidence,
+        blocks: ocrResult.blocks,
+      };
+      const fh = getFileInputHandler(); if (fh) fh(publishedResult, file);
+      return publishedResult;
     } catch (e) {
       URL.revokeObjectURL(url);
       showError(t('recog.recognitionFailed', {msg: e.message || e}));
@@ -437,8 +444,30 @@ async function processImageExternal(file, settings) {
     let latex = data.choices?.[0]?.message?.content || '';
     latex = latex.replace(/```latex\n?/g, '').replace(/```\n?/g, '').trim();
     lastRecognitionTime = Date.now();
-    if (latex) { showResult(latex, 1.0); setStatus('done', t('status.cloudDone'), false); const fh = getFileInputHandler(); if (fh) fh({ latex, confidence: 1.0 }, file); }
-    else { showError(t('recog.cloudEmpty')); setStatus('ready', t('status.ready'), false); }
+    if (latex) {
+      const cloudResult = createResult([
+        createBlock('formula', latex, { confidence: 1.0, mathStyle: 'display' }),
+      ], {
+        confidence: 1.0,
+        raw: latex,
+        meta: { model: settings.model || 'external-api' },
+      });
+      const { attachCoreDocument } = await import('../core/core-runtime.js');
+      const publishedResult = await attachCoreDocument(cloudResult, {
+        model: settings.model || 'external-api',
+        pipelineVersion: 'external-v1',
+      });
+      publishedResult.latex = latex;
+      window.__lastOcrResult = publishedResult;
+      showResult(latex, 1.0);
+      setStatus('done', t('status.cloudDone'), false);
+      const fh = getFileInputHandler();
+      if (fh) fh(publishedResult, file);
+      return publishedResult;
+    }
+    showError(t('recog.cloudEmpty'));
+    setStatus('ready', t('status.ready'), false);
+    return null;
   } catch (e) { showError(t('recog.cloudFailed', {msg: e.message || e})); setStatus('ready', t('status.ready'), false); }
 }
 

@@ -103,6 +103,14 @@ export async function start() {
   const { default: Logger } = await import('./logger.js');
   Logger.logSystemInfo();
 
+  // Warm Core in parallel. It is intentionally non-blocking: the 15 MB WASM
+  // chunk must not delay first paint, while the first recognition still awaits
+  // capability negotiation before publishing its canonical Document AST.
+  import('./core-runtime.js')
+    .then(({ initCoreRuntime }) => initCoreRuntime())
+    .then(({ info }) => Logger.info('core', `Core ${info.versions.coreVersion} ready`))
+    .catch((error) => Logger.warn('core', `Core unavailable; native OCR fallback kept: ${error.message || error}`));
+
   await initI18n();
   translateDOM();
 
@@ -121,6 +129,7 @@ export async function start() {
     if (ocrContainer) {
       createExportDropdown(ocrContainer, {
         getText: () => document.getElementById('resultCode')?.textContent || '',
+        getResult: () => window.__lastOcrResult || null,
         t,
       });
     }

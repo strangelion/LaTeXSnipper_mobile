@@ -17,6 +17,7 @@
  * @property {number} confidence - Overall confidence (0-1)
  * @property {string} raw - Raw text output (backward compat)
  * @property {Object} meta - Pipeline-specific metadata
+ * @property {Object} [document] - Canonical LaTeXSnipper Core Document AST
  */
 
 export function createResult(blocks, { confidence = 0, raw = '', meta = {} } = {}) {
