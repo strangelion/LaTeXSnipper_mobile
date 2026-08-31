@@ -20,7 +20,7 @@
     "katex": "^0.17.0",
     "latexsnipper-wasm": "https://github.com/strangelion/latexsnipper-core/releases/download/v3.2.0/latexsnipper-wasm-web.tgz",
     "mathjax": "^3.2.2",
-    "mathlive": "^0.104.0",
+    "mathlive": "^0.110.0",
     "onnxruntime-web": "1.21.0",
     "pandoc-wasm": "^1.0.1",
     "pdfjs-dist": "4.2.67",
