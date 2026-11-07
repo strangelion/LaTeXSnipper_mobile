@@ -17,7 +17,7 @@
     "@capacitor/share": "^8.0.1",
     "idb": "^8.0.0",
     "jszip": "^3.10.1",
-    "katex": "^0.17.0",
+    "katex": "^0.18.2",
     "latexsnipper-wasm": "https://github.com/strangelion/latexsnipper-core/releases/download/v3.2.0/latexsnipper-wasm-web.tgz",
     "mathjax": "^3.2.2",
     "mathlive": "^0.110.0",
